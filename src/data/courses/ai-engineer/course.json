@@ -1,0 +1,11 @@
+{
+  "id": "ai-engineer",
+  "order": 1,
+  "title": "AI Engineer",
+  "tagline": "Build production apps on top of foundation models.",
+  "description": "The full roadmap.sh/ai-engineer curriculum — LLMs, prompting, RAG, agents, MCP, evals and more — distilled into focused lessons with runnable code and hands-on labs.",
+  "accent": "#e8590c",
+  "icon": "◐",
+  "source": { "label": "roadmap.sh/ai-engineer", "url": "https://roadmap.sh/ai-engineer" },
+  "labLanguages": ["python", "javascript"]
+}

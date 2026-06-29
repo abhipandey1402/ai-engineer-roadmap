@@ -45,5 +45,18 @@ export interface Section {
   topics: Topic[]
 }
 
+export interface Course {
+  id: string
+  order: number
+  title: string
+  tagline: string
+  description: string
+  accent: string
+  icon: string
+  source: { label: string; url: string }
+  labLanguages: Array<'python' | 'javascript'>
+  sections: Section[]
+}
+
 /** Globally-unique key for a topic (topic ids can repeat across sections). */
 export const topicKey = (sectionId: string, topicId: string) => `${sectionId}/${topicId}`
