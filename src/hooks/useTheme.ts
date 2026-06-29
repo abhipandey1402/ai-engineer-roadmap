@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 
 export type Theme = 'light' | 'dark'
 
-const THEME_KEY = 'aie-theme'
+const THEME_KEY = 'pathwise-theme'
 
 function load(): Theme {
-  const saved = localStorage.getItem(THEME_KEY)
+  const saved = localStorage.getItem(THEME_KEY) ?? localStorage.getItem('aie-theme')
   if (saved === 'light' || saved === 'dark') return saved
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }

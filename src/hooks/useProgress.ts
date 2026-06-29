@@ -9,19 +9,31 @@ export const STATUS_LABEL: Record<TopicStatus, string> = {
   skipped: 'Skipped',
 }
 
-const STATUS_KEY = 'aie-status'
-const LEGACY_PROGRESS_KEY = 'aie-progress'
-const LAST_KEY = 'aie-last-topic'
+const STATUS_KEY = 'pathwise-status'
+const LAST_KEY = 'pathwise-last'
+const LEGACY_STATUS_KEY = 'aie-status'
+const LEGACY_DONESET_KEY = 'aie-progress'
+const LEGACY_LAST_KEY = 'aie-last-topic'
+
+/** Pure helper: prefix every key in a status/flags map with `${courseId}/`. */
+export function namespaceKeys<T>(obj: Record<string, T>, courseId: string): Record<string, T> {
+  const out: Record<string, T> = {}
+  for (const k in obj) out[`${courseId}/${k}`] = obj[k]
+  return out
+}
 
 function load(): Record<string, TopicStatus> {
   try {
-    const raw = localStorage.getItem(STATUS_KEY)
-    if (raw) return JSON.parse(raw) as Record<string, TopicStatus>
-    // Migrate the old done-set format
-    const legacy = localStorage.getItem(LEGACY_PROGRESS_KEY)
-    if (legacy) {
+    const cur = localStorage.getItem(STATUS_KEY)
+    if (cur) return JSON.parse(cur) as Record<string, TopicStatus>
+    // Migrate the AI app's (section/topic)-keyed statuses under ai-engineer.
+    const legacy = localStorage.getItem(LEGACY_STATUS_KEY)
+    if (legacy) return namespaceKeys(JSON.parse(legacy) as Record<string, TopicStatus>, 'ai-engineer')
+    // Migrate the oldest done-set format.
+    const doneset = localStorage.getItem(LEGACY_DONESET_KEY)
+    if (doneset) {
       const migrated: Record<string, TopicStatus> = {}
-      for (const key of JSON.parse(legacy) as string[]) migrated[key] = 'done'
+      for (const key of JSON.parse(doneset) as string[]) migrated[`ai-engineer/${key}`] = 'done'
       return migrated
     }
     return {}
@@ -50,10 +62,24 @@ export function useStatuses() {
   return { statuses, setStatus }
 }
 
-export function saveLastTopic(key: string) {
-  localStorage.setItem(LAST_KEY, key)
+function lastMap(): Record<string, string> {
+  try {
+    const cur = localStorage.getItem(LAST_KEY)
+    if (cur) return JSON.parse(cur)
+    const legacy = localStorage.getItem(LEGACY_LAST_KEY)
+    if (legacy) return { 'ai-engineer': legacy }
+    return {}
+  } catch {
+    return {}
+  }
 }
 
-export function getLastTopic(): string | null {
-  return localStorage.getItem(LAST_KEY)
+export function saveLastTopic(courseId: string, key: string) {
+  const map = lastMap()
+  map[courseId] = key
+  localStorage.setItem(LAST_KEY, JSON.stringify(map))
+}
+
+export function getLastTopic(courseId: string): string | null {
+  return lastMap()[courseId] ?? null
 }

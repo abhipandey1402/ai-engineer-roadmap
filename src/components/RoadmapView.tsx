@@ -1,8 +1,9 @@
-import { sections, totalMinutes, totalTopics } from '../data'
-import { topicKey, type Section, type Topic } from '../types'
+import { courseMinutes, courseTopicCount } from '../data'
+import { topicKey, type Course, type Section, type Topic } from '../types'
 import type { TopicStatus } from '../hooks/useProgress'
 
 interface Props {
+  course: Course
   statuses: Record<string, TopicStatus>
   onOpenTopic: (sectionId: string, topicId: string) => void
   continueTarget: { sectionId: string; topicId: string; title: string } | null
@@ -24,28 +25,31 @@ function groupTopics(section: Section): Array<{ label: string | null; topics: To
   return groups
 }
 
-export function RoadmapView({ statuses, onOpenTopic, continueTarget }: Props) {
-  const all = Object.values(statuses)
-  const doneCount = all.filter((s) => s === 'done').length
-  const learningCount = all.filter((s) => s === 'learning').length
-  const pct = totalTopics ? Math.round((doneCount / totalTopics) * 100) : 0
+export function RoadmapView({ course, statuses, onOpenTopic, continueTarget }: Props) {
+  const total = courseTopicCount(course)
+  let doneCount = 0
+  let learningCount = 0
+  for (const s of course.sections) {
+    for (const t of s.topics) {
+      const st = statuses[topicKey(course.id, s.id, t.id)]
+      if (st === 'done') doneCount++
+      else if (st === 'learning') learningCount++
+    }
+  }
+  const pct = total ? Math.round((doneCount / total) * 100) : 0
 
   return (
     <div className="roadmap">
       <header className="hero">
-        <h1>AI Engineer</h1>
-        <p className="hero-sub">
-          An interactive, summarized learning path — every topic from the official roadmap,
-          distilled with its recommended articles, docs and code so you can learn in short
-          focused sessions.
-        </p>
+        <h1>{course.title}</h1>
+        <p className="hero-sub">{course.description}</p>
         <div className="hero-stats">
           <div className="stat">
-            <strong>{totalTopics}</strong>
+            <strong>{total}</strong>
             <span>topics</span>
           </div>
           <div className="stat">
-            <strong>~{Math.round(totalMinutes / 60)}h</strong>
+            <strong>~{Math.round(courseMinutes(course) / 60)}h</strong>
             <span>total reading</span>
           </div>
           <div className="stat">
@@ -73,8 +77,8 @@ export function RoadmapView({ statuses, onOpenTopic, continueTarget }: Props) {
       </header>
 
       <div className="timeline">
-        {sections.map((section, i) => {
-          const sectionStatuses = section.topics.map((t) => statuses[topicKey(section.id, t.id)])
+        {course.sections.map((section, i) => {
+          const sectionStatuses = section.topics.map((t) => statuses[topicKey(course.id, section.id, t.id)])
           const sectionDone = sectionStatuses.filter((s) => s === 'done').length
           const allFinished = sectionStatuses.every((s) => s === 'done' || s === 'skipped')
           return (
@@ -83,7 +87,7 @@ export function RoadmapView({ statuses, onOpenTopic, continueTarget }: Props) {
                 <div className={`timeline-node ${allFinished ? 'filled' : ''}`}>
                   {allFinished ? '✓' : String(i + 1).padStart(2, '0')}
                 </div>
-                {i < sections.length - 1 && <div className="timeline-line" />}
+                {i < course.sections.length - 1 && <div className="timeline-line" />}
               </div>
               <div className="timeline-card">
                 <div className="timeline-card-head">
@@ -98,7 +102,7 @@ export function RoadmapView({ statuses, onOpenTopic, continueTarget }: Props) {
                     {g.label && <div className="topic-group-label">{g.label}</div>}
                     <div className="topic-pills">
                       {g.topics.map((t) => {
-                        const status = statuses[topicKey(section.id, t.id)] ?? 'pending'
+                        const status = statuses[topicKey(course.id, section.id, t.id)] ?? 'pending'
                         const icon = PILL_ICON[status]
                         return (
                           <button

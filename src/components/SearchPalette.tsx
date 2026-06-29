@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { sections } from '../data'
-import { topicKey } from '../types'
+import { topicKey, type Course } from '../types'
 import type { TopicStatus } from '../hooks/useProgress'
 
 interface Props {
+  course: Course
   statuses: Record<string, TopicStatus>
   onClose: () => void
   onOpenTopic: (sectionId: string, topicId: string) => void
@@ -23,33 +23,39 @@ interface Hit {
   intro: string
 }
 
-const ALL: Hit[] = sections.flatMap((s) =>
-  s.topics.map((t) => ({
-    sectionId: s.id,
-    sectionTitle: s.title,
-    topicId: t.id,
-    title: t.title,
-    intro: t.intro,
-  })),
-)
-
-export function SearchPalette({ statuses, onClose, onOpenTopic }: Props) {
+export function SearchPalette({ course, statuses, onClose, onOpenTopic }: Props) {
   const [query, setQuery] = useState('')
   const [cursor, setCursor] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const all = useMemo<Hit[]>(
+    () =>
+      course.sections.flatMap((s) =>
+        s.topics.map((t) => ({
+          sectionId: s.id,
+          sectionTitle: s.title,
+          topicId: t.id,
+          title: t.title,
+          intro: t.intro,
+        })),
+      ),
+    [course],
+  )
 
   useEffect(() => inputRef.current?.focus(), [])
 
   const hits = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return ALL.slice(0, 12)
-    return ALL.filter(
-      (h) =>
-        h.title.toLowerCase().includes(q) ||
-        h.intro.toLowerCase().includes(q) ||
-        h.sectionTitle.toLowerCase().includes(q),
-    ).slice(0, 12)
-  }, [query])
+    if (!q) return all.slice(0, 12)
+    return all
+      .filter(
+        (h) =>
+          h.title.toLowerCase().includes(q) ||
+          h.intro.toLowerCase().includes(q) ||
+          h.sectionTitle.toLowerCase().includes(q),
+      )
+      .slice(0, 12)
+  }, [query, all])
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -75,20 +81,20 @@ export function SearchPalette({ statuses, onClose, onOpenTopic }: Props) {
             setQuery(e.target.value)
             setCursor(0)
           }}
-          placeholder="Search 170+ topics…"
+          placeholder={`Search ${all.length} topics…`}
         />
         <div className="palette-results">
           {hits.map((h, i) => (
             <button
-              key={topicKey(h.sectionId, h.topicId)}
+              key={topicKey(course.id, h.sectionId, h.topicId)}
               className={`palette-hit ${i === cursor ? 'cursor' : ''}`}
               onMouseEnter={() => setCursor(i)}
               onClick={() => onOpenTopic(h.sectionId, h.topicId)}
             >
               <span className="hit-title">
-                {HIT_ICON[statuses[topicKey(h.sectionId, h.topicId)] ?? 'pending'] && (
+                {HIT_ICON[statuses[topicKey(course.id, h.sectionId, h.topicId)] ?? 'pending'] && (
                   <span className="pill-check">
-                    {HIT_ICON[statuses[topicKey(h.sectionId, h.topicId)] ?? 'pending']}
+                    {HIT_ICON[statuses[topicKey(course.id, h.sectionId, h.topicId)] ?? 'pending']}
                   </span>
                 )}
                 {h.title}

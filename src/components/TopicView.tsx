@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { topicKey, type Section, type Topic } from '../types'
+import { topicKey, type Course, type Section, type Topic } from '../types'
 import { STATUS_LABEL, type TopicStatus } from '../hooks/useProgress'
 import { Inline } from './Inline'
 import { HandsOnLab } from './HandsOnLab'
 
 interface Props {
+  course: Course
   section: Section
   topic: Topic
   statuses: Record<string, TopicStatus>
@@ -56,6 +57,7 @@ function CodeBlock({ title, language, code }: { title: string; language: string;
 }
 
 export function TopicView({
+  course,
   section,
   topic,
   statuses,
@@ -64,7 +66,7 @@ export function TopicView({
   onNavigate,
   neighbors,
 }: Props) {
-  const key = topicKey(section.id, topic.id)
+  const key = topicKey(course.id, section.id, topic.id)
   const status: TopicStatus = statuses[key] ?? 'pending'
 
   useEffect(() => {
@@ -134,7 +136,9 @@ export function TopicView({
           <CodeBlock key={i} {...c} />
         ))}
 
-        {topic.handsOn && <HandsOnLab lab={topic.handsOn} topicKey={key} />}
+        {topic.handsOn && (
+          <HandsOnLab lab={topic.handsOn} topicKey={key} labLanguages={course.labLanguages} />
+        )}
 
         {topic.resources.length > 0 && (
           <div className="resources">

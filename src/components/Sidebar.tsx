@@ -1,10 +1,10 @@
-import { sections } from '../data'
-import { topicKey } from '../types'
+import { topicKey, type Course } from '../types'
 import type { TopicStatus } from '../hooks/useProgress'
 import type { Theme } from '../hooks/useTheme'
 import { Logo } from './Logo'
 
 interface Props {
+  course: Course
   activeSectionId: string | null
   statuses: Record<string, TopicStatus>
   onHome: () => void
@@ -15,6 +15,7 @@ interface Props {
 }
 
 export function Sidebar({
+  course,
   activeSectionId,
   statuses,
   onHome,
@@ -30,8 +31,8 @@ export function Sidebar({
           <Logo />
         </span>
         <span>
-          AI Engineer
-          <small>learning roadmap</small>
+          Pathwise
+          <small>{course.title}</small>
         </span>
       </button>
 
@@ -41,8 +42,8 @@ export function Sidebar({
       </button>
 
       <nav className="section-list">
-        {sections.map((s, i) => {
-          const sectionStatuses = s.topics.map((t) => statuses[topicKey(s.id, t.id)])
+        {course.sections.map((s, i) => {
+          const sectionStatuses = s.topics.map((t) => statuses[topicKey(course.id, s.id, t.id)])
           const done = sectionStatuses.filter((st) => st === 'done').length
           const hasLearning = sectionStatuses.some((st) => st === 'learning')
           const isFinished =
@@ -69,8 +70,8 @@ export function Sidebar({
       <footer className="sidebar-footer">
         <span>
           Based on{' '}
-          <a href="https://roadmap.sh/ai-engineer" target="_blank" rel="noreferrer">
-            roadmap.sh/ai-engineer
+          <a href={course.source.url} target="_blank" rel="noreferrer">
+            {course.source.label}
           </a>
         </span>
         <button

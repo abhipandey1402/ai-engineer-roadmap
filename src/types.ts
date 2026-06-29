@@ -58,5 +58,6 @@ export interface Course {
   sections: Section[]
 }
 
-/** Globally-unique key for a topic (topic ids can repeat across sections). */
-export const topicKey = (sectionId: string, topicId: string) => `${sectionId}/${topicId}`
+/** Globally-unique key for a topic, namespaced by course. */
+export const topicKey = (courseId: string, sectionId: string, topicId: string) =>
+  `${courseId}/${sectionId}/${topicId}`
