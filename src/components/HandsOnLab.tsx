@@ -4,12 +4,22 @@ import { Inline } from './Inline'
 
 type Lang = 'python' | 'javascript'
 
-const LANG_KEY = 'aie-lab-lang'
-const PRACTICE_KEY = 'aie-practice'
+const LANG_KEY = 'pathwise-lab-lang'
+const PRACTICE_KEY = 'pathwise-practice'
 
 function loadPractice(): Record<string, boolean> {
   try {
-    return JSON.parse(localStorage.getItem(PRACTICE_KEY) ?? '{}')
+    const cur = localStorage.getItem(PRACTICE_KEY)
+    if (cur) return JSON.parse(cur)
+    // Migrate legacy practice checks once, namespacing them under ai-engineer.
+    const legacy = localStorage.getItem('aie-practice')
+    if (legacy) {
+      const old = JSON.parse(legacy) as Record<string, boolean>
+      const migrated: Record<string, boolean> = {}
+      for (const k in old) migrated[`ai-engineer/${k}`] = old[k]
+      return migrated
+    }
+    return {}
   } catch {
     return {}
   }
@@ -38,15 +48,25 @@ function StepCode({ code, language }: { code: string; language: Lang }) {
   )
 }
 
-export function HandsOnLab({ lab, topicKey }: { lab: Lab; topicKey: string }) {
-  const [lang, setLang] = useState<Lang>(
-    () => (localStorage.getItem(LANG_KEY) as Lang) || 'python',
+export function HandsOnLab({
+  lab,
+  topicKey,
+  labLanguages = ['python', 'javascript'],
+}: {
+  lab: Lab
+  topicKey: string
+  labLanguages?: Lang[]
+}) {
+  const single = labLanguages.length <= 1
+  const only: Lang = labLanguages[0] ?? 'python'
+  const [lang, setLang] = useState<Lang>(() =>
+    single ? only : (localStorage.getItem(LANG_KEY) as Lang) || 'python',
   )
   const [practice, setPractice] = useState<Record<string, boolean>>(loadPractice)
 
   useEffect(() => {
-    localStorage.setItem(LANG_KEY, lang)
-  }, [lang])
+    if (!single) localStorage.setItem(LANG_KEY, lang)
+  }, [lang, single])
 
   const togglePractice = (i: number) => {
     const key = `${topicKey}:${i}`
@@ -68,17 +88,19 @@ export function HandsOnLab({ lab, topicKey }: { lab: Lab; topicKey: string }) {
             <Inline text={lab.goal} />
           </p>
         </div>
-        <div className="lang-toggle" role="group" aria-label="Code language">
-          {(['python', 'javascript'] as Lang[]).map((l) => (
-            <button
-              key={l}
-              className={lang === l ? 'active' : ''}
-              onClick={() => setLang(l)}
-            >
-              {l === 'python' ? 'Python' : 'JavaScript'}
-            </button>
-          ))}
-        </div>
+        {!single && (
+          <div className="lang-toggle" role="group" aria-label="Code language">
+            {labLanguages.map((l) => (
+              <button
+                key={l}
+                className={lang === l ? 'active' : ''}
+                onClick={() => setLang(l)}
+              >
+                {l === 'python' ? 'Python' : 'JavaScript'}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       <ol className="lab-steps">
