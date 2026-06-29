@@ -25,23 +25,27 @@ function coursePct(course: Course, statuses: Record<string, TopicStatus>): numbe
 export function HomePage({ courses, statuses, theme, onToggleTheme, onOpenCourse }: Props) {
   return (
     <div className="home">
-      <button
-        className="theme-toggle home-theme"
-        onClick={onToggleTheme}
-        title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-        aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-      >
-        {theme === 'dark' ? '☀' : '☾'}
-      </button>
-
-      <header className="home-hero">
+      <nav className="home-nav">
         <div className="home-brand">
-          <Logo size={40} />
+          <Logo size={28} />
           <span>Pathwise</span>
         </div>
+        <button
+          className="theme-toggle"
+          onClick={onToggleTheme}
+          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          {theme === 'dark' ? '☀' : '☾'}
+        </button>
+      </nav>
+
+      <header className="home-hero">
         <h1>Learn by building.</h1>
         <p>Interactive roadmaps with hands-on labs and runnable code.</p>
       </header>
+
+      <div className="home-tracks-label">Tracks</div>
 
       <div className="course-grid">
         {courses.map((course) => {
@@ -54,7 +58,6 @@ export function HomePage({ courses, statuses, theme, onToggleTheme, onOpenCourse
               style={{ '--card-accent': course.accent } as CSSProperties}
               onClick={() => onOpenCourse(course.id)}
             >
-              <div className="course-card-rail" />
               <div className="course-card-body">
                 <span className="course-card-icon">{course.icon}</span>
                 <h2>{course.title}</h2>

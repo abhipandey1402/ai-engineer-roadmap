@@ -26,7 +26,9 @@ export function Sidebar({
 }: Props) {
   return (
     <aside className="sidebar">
-      <button className="brand" onClick={onHome}>
+      <button className="back-home" onClick={onHome} aria-label="Back to home">←</button>
+
+      <div className="brand">
         <span className="brand-mark">
           <Logo />
         </span>
@@ -34,7 +36,7 @@ export function Sidebar({
           Pathwise
           <small>{course.title}</small>
         </span>
-      </button>
+      </div>
 
       <button className="search-trigger" onClick={onSearch}>
         <span>Search topics</span>
