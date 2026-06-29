@@ -51,8 +51,6 @@ export function SearchPalette({ statuses, onClose, onOpenTopic }: Props) {
     ).slice(0, 12)
   }, [query])
 
-  useEffect(() => setCursor(0), [query])
-
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
@@ -73,7 +71,10 @@ export function SearchPalette({ statuses, onClose, onOpenTopic }: Props) {
         <input
           ref={inputRef}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setCursor(0)
+          }}
           placeholder="Search 170+ topics…"
         />
         <div className="palette-results">
