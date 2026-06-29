@@ -4,10 +4,10 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Engineer — Interactive Learning Roadmap</title>
+    <title>Pathwise — Learn by building</title>
     <script>
       // Apply the saved theme before first paint to avoid a flash of the wrong theme.
-      const saved = localStorage.getItem('aie-theme')
+      const saved = localStorage.getItem('pathwise-theme') || localStorage.getItem('aie-theme')
       document.documentElement.dataset.theme =
         saved === 'light' || saved === 'dark'
           ? saved
