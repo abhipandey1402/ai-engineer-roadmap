@@ -1,0 +1,167 @@
+SECTION 6: Platforms, Ecosystem & APIs
+DESCRIPTION: Hugging Face, local model runners, routers, and the major provider SDKs.
+======================================================================
+
+
+### TOPIC: Hugging Face  (id: hugging-face)  [group: Platforms]
+
+# Hugging Face
+
+Hugging Face is a leading AI company and open-source platform that provides tools, models, and libraries for natural language processing (NLP), computer vision, and other machine learning tasks. It is best known for its "Transformers" library, which simplifies the use of pre-trained models like BERT, GPT, T5, and CLIP, making them accessible for tasks such as text classification, translation, summarization, and image recognition.
+
+Visit the following resources to learn more:
+
+- [@course@Hugging Face Official Video Course](https://www.youtube.com/watch?v=00GKzGyWFEs&list=PLo2EIpI_JMQvWfQndUesu0nPBAtZ9gP1o)
+- [@official@Hugging Face](https://huggingface.co)
+- [@video@What is Hugging Face? - Machine Learning Hub Explained](https://www.youtube.com/watch?v=1AUjKfpRZVo)
+
+----------------------------------------------------------------------
+
+### TOPIC: Hugging Face Tasks  (id: hugging-face-tasks)  [group: Platforms]
+
+# Hugging Face Tasks
+
+Hugging Face supports text classification, named entity recognition, question answering, summarization, and translation. It also extends to multimodal tasks that involve both text and images, such as visual question answering (VQA) and image-text matching. Each task is done by various pre-trained models that can be easily accessed and fine-tuned through the Hugging Face library.
+
+Visit the following resources to learn more:
+
+- [@official@Task and Model](https://huggingface.co/learn/computer-vision-course/en/unit4/multimodal-models/tasks-models-part1)
+- [@official@Task Summary](https://huggingface.co/docs/transformers/v4.14.1/en/task_summary)
+- [@official@Task Manager](https://huggingface.co/docs/optimum/en/exporters/task_manager)
+
+----------------------------------------------------------------------
+
+### TOPIC: Hugging Face Hub  (id: hugging-face-hub)  [group: Platforms]
+
+# Hugging Face Hub
+
+The Hugging Face Hub is a central platform where users can discover, share, and collaborate on pre-trained models, datasets, and demos for machine learning. It hosts a vast repository of resources contributed by the community, allowing users to easily access and integrate these assets into their AI projects. The Hub provides tools for version control, model card documentation, and even web-based deployment, simplifying the process of leveraging existing AI models and contributing back to the open-source community.
+
+Visit the following resources to learn more:
+
+- [@course@The Hugging Face Hub (LLM Course)](https://huggingface.co/learn/nlp-course/en/chapter4/1)
+- [@official@Hugging Face Documentation](https://huggingface.co/docs/hub/en/index)
+
+----------------------------------------------------------------------
+
+### TOPIC: Transformers.js  (id: transformers-js)  [group: Platforms]
+
+# Transformers.js
+
+Transformers.js is a JavaScript library that enables transformer models, like those from Hugging Face, to run directly in the browser or Node.js, without needing cloud services. It supports tasks such as text generation, sentiment analysis, and translation within web apps or server-side scripts. Using WebAssembly (Wasm) and efficient JavaScript, Transformers.js offers powerful NLP capabilities with low latency, enhanced privacy, and offline functionality, making it ideal for real-time, interactive applications where local processing is essential for performance and security.
+
+Visit the following resources to learn more:
+
+- [@official@Transformers.js on Hugging Face](https://huggingface.co/docs/transformers.js/en/index)
+- [@video@How Transformer.js Can Help You Create Smarter AI In Your Browser](https://www.youtube.com/watch?v=MNJHu9zjpqg)
+
+----------------------------------------------------------------------
+
+### TOPIC: Ollama  (id: ollama)  [group: Local Runners]
+
+# Ollama
+
+Ollama is a platform that offers large language models (LLMs) designed to run locally on personal devices, enabling AI functionality without relying on cloud services. It focuses on privacy, performance, and ease of use by allowing users to deploy models directly on laptops, desktops, or edge devices, providing fast, offline AI capabilities. With tools like the Ollama SDK, developers can integrate these models into their applications for tasks such as text generation, summarization, and more, benefiting from reduced latency, greater data control, and seamless local processing.
+
+Visit the following resources to learn more:
+
+- [@official@Ollama](https://ollama.com/)
+- [@article@Ollama: Easily run LLMs locally](https://klu.ai/glossary/ollama)
+- [@video@What is Ollama? Running Local LLMs Made Simple](https://www.youtube.com/watch?v=5RIOQuHOihY)
+
+----------------------------------------------------------------------
+
+### TOPIC: LM Studio  (id: lm-studio)  [group: Local Runners]
+
+# LM Studio
+
+LM Studio is a desktop application designed for discovering, downloading, and running large language models (LLMs) locally on your computer. It provides a user-friendly interface to experiment with different open-source LLMs without needing extensive technical knowledge or cloud infrastructure. Essentially, it helps you manage and interact with LLMs directly on your machine.
+
+Visit the following resources to learn more:
+
+- [@official@LMStudio](https://lmstudio.ai/)
+- [@video@LM Studio Tutorial: Run Large Language Models (LLM) on Your Laptop](https://www.youtube.com/watch?v=ygUEbCpOOLg)
+
+----------------------------------------------------------------------
+
+### TOPIC: OpenRouter  (id: openrouter)  [group: Local Runners]
+
+# OpenRouter
+
+OpenRouter acts as a unified API, providing access to various large language models (LLMs) from different providers like OpenAI, Cohere, and Anthropic through a single platform. This allows developers to easily switch between models, compare their performance, and optimize their applications without needing to manage multiple API keys or integration processes. It essentially streamlines the process of experimenting with and deploying different AI models.
+
+Visit the following resources to learn more:
+
+- [@official@OpenRouter](https://openrouter.ai/)
+- [@article@What is OpenRouter? A Guide with Practical Examples](https://www.codecademy.com/article/what-is-openrouter)
+- [@video@What is Open Router ?](https://www.youtube.com/watch?v=pfT6l0yMsB0)
+
+----------------------------------------------------------------------
+
+### TOPIC: OpenAI Responses API  (id: openai-responses-api)  [group: APIs & SDKs]
+
+# OpenAI Response API
+
+The OpenAI Response API allows developers to interact with various AI models offered by OpenAI. It provides a structured way to send requests to these models and receive generated text, code, or other outputs. You can control aspects like the prompt, temperature, maximum length, and other parameters to tailor the response to your specific needs. It is intended to eventually replace the Assistants API and the Chat Completions API for new projects.
+
+Visit the following resources to learn more:
+
+- [@official@Responses API](https://developers.openai.com/api/reference/resources/responses/)
+- [@opensource@Why we built the Responses API](https://developers.openai.com/blog/responses-api/)
+- [@video@OpenAI Responses API Tutorial (2025)](https://www.youtube.com/playlist?list=PL4HikwTaYE0EWV3qieOYooyxb9osQLgou)
+
+----------------------------------------------------------------------
+
+### TOPIC: Claude Messages API  (id: claude-messages-api)  [group: APIs & SDKs]
+
+# Claude Messages API
+
+The Claude Messages API provides a structured way to interact with the Claude AI model. It allows developers to send a series of messages to Claude, mimicking a conversation. These messages can include text, images, and even structured data, enabling you to build complex interactions and extract specific insights from the model's responses through structured inputs and outputs.
+
+Visit the following resources to learn more:
+
+- [@official@Messages API](https://platform.claude.com/docs/en/api/messages)
+- [@official@Using the Messages API](https://platform.claude.com/docs/en/build-with-claude/working-with-messages)
+- [@article@Claude API: How to get a key and use the API](https://zapier.com/blog/claude-api/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Google Gemini API  (id: google-gemini-api)  [group: APIs & SDKs]
+
+# Google Gemini API
+
+The Google Gemini API provides developers with programmatic access to Google's Gemini family of multimodal AI models. It allows applications to understand and generate content across text, images, audio, and video. Developers can use this API to build features like conversational interfaces, content creation tools, and systems that can analyze and respond to complex multi-sensory data.
+
+Visit the following resources to learn more:
+
+- [@official@Gemini API](https://ai.google.dev/gemini-api/docs)
+- [@article@Everything you need to know about the Gemini API as a developer in less than 5 minutes](https://medium.com/around-the-prompt/everything-you-need-to-know-about-the-gemini-api-as-a-developer-in-less-than-5-minutes-5e75343ccff9)
+- [@video@Introduction to Gemini APIs and AI Studio](https://www.youtube.com/watch?v=4oyqd7CB09c)
+
+----------------------------------------------------------------------
+
+### TOPIC: Hugging Face Inference SDK  (id: hugging-face-inference-sdk)  [group: APIs & SDKs]
+
+# Inference SDK
+
+The Hugging Face Inference SDK is a powerful tool that allows developers to easily integrate and run inference on large language models hosted on the Hugging Face Hub. By using the `InferenceClient`, users can make API calls to various models for tasks such as text generation, image creation, and more. The SDK supports both synchronous and asynchronous operations, thus compatible with existing workflows.
+
+Visit the following resources to learn more:
+
+- [@official@Inference](https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client)
+- [@article@Endpoint Setup](https://www.npmjs.com/package/@huggingface/inference)
+
+----------------------------------------------------------------------
+
+### TOPIC: OpenAI-compatible APIs  (id: openai-compatible-apis)  [group: APIs & SDKs]
+
+# OpenAI-compatible APIs
+
+OpenAI-compatible APIs are interfaces that mimic the structure and functionality of OpenAI's API. These APIs allow developers to switch between different language models or providers with minimal code changes. This is particularly useful for testing different models, mitigating vendor lock-in, or building fallback mechanisms in case of service disruptions.
+
+Visit the following resources to learn more:
+
+- [@article@OpenAI-compatible API](https://bentoml.com/llm/llm-inference-basics/openai-compatible-api)
+- [@article@OpenAI compatibility - Gemini](https://ai.google.dev/gemini-api/docs/openai)
+
+----------------------------------------------------------------------

@@ -1,0 +1,110 @@
+{
+  "id": "introduction",
+  "title": "Introduction",
+  "description": "What an AI Engineer is, what they do, and how the role differs from ML engineering.",
+  "topics": [
+    {
+      "id": "what-is-an-ai-engineer",
+      "title": "What is an AI Engineer?",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "An AI Engineer builds production software on top of AI models, turning capabilities like reasoning, language, and vision into reliable product features.",
+      "summary": [
+        "An AI Engineer designs, develops, and ships systems that use artificial intelligence to perform tasks that normally require human judgment: answering questions, summarizing documents, classifying content, making decisions, and automating workflows. In the current era (post-ChatGPT), the term has narrowed to mean something quite specific: an engineer who builds applications on top of foundation models such as GPT-5.x, Claude Opus and Sonnet 4.x, Gemini 2.5/3, or open-weight models like Llama 4 and DeepSeek V3/R1, rather than someone who trains models from scratch.",
+        "The day-to-day work looks much more like software engineering than data science. You integrate model APIs, write and iterate on prompts, build RAG pipelines so models can use your company's data, orchestrate agents and tool calls, and wrap everything in evaluation, monitoring, and guardrails so it behaves predictably in production. The math-heavy parts (architectures, backpropagation, training infrastructure) are handled by model providers; your leverage comes from knowing how to apply those models well, control cost and latency, and ship features users trust.",
+        "This is why the role is one of the most accessible transitions for experienced software engineers, and also why people coming from data science describe the move as a shift in mindset: less notebook experimentation and offline metrics, more APIs, system design, latency budgets, and product thinking. Demand and compensation are strong because nearly every industry is embedding AI into products, and the bottleneck is rarely the model itself; it is engineers who can integrate it reliably."
+      ],
+      "keyPoints": [
+        "Modern AI Engineers primarily apply pre-trained foundation models via APIs; they rarely train models from scratch.",
+        "Core skill set: a programming language (usually Python or TypeScript), API integration, prompt and context engineering, RAG, agents, and evaluation.",
+        "The role sits closer to software engineering and product than to research; system design and reliability matter more than calculus.",
+        "Deep ML theory is optional to start, but understanding tokens, embeddings, and sampling makes you far more effective at debugging model behavior.",
+        "It is a high-demand, well-paid role precisely because companies have model access but lack people who can productionize it.",
+        "Strong transition paths exist from backend/full-stack engineering and from data science; each brings different gaps to fill."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "How to Become an AI Engineer: Duties, Skills, and Salary", "url": "https://www.simplilearn.com/tutorials/artificial-intelligence-tutorial/how-to-become-an-ai-engineer", "type": "article"},
+        {"title": "AI Engineers: What they do and how to become one", "url": "https://www.techtarget.com/whatis/feature/How-to-become-an-artificial-intelligence-engineer", "type": "article"},
+        {"title": "I Transitioned from Data Science to AI Engineering: Here's Everything You Need to Know", "url": "https://towardsdatascience.com/i-transitioned-from-data-science-to-ai-engineering-heres-everything-you-need-to-know/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration", "type": "article"}
+      ]
+    },
+    {
+      "id": "roles-and-responsibilities",
+      "title": "Roles and Responsibilities",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "AI Engineers own the full lifecycle of AI features: data and prompts in, evaluated and monitored model behavior out.",
+      "summary": [
+        "Job descriptions for AI Engineers converge on a consistent set of duties: design and build AI-powered features, prepare and manage the data those features depend on, integrate models into existing software and platforms, and keep everything performing well in production. In LLM-centric teams this translates concretely to designing prompts and context pipelines, building retrieval over company data, wiring up tool-calling agents, and writing the glue services that connect models to the rest of the stack.",
+        "A large and underrated share of the job is quality and operations. Models are probabilistic, so AI Engineers build evaluation suites (golden datasets, LLM-as-judge scoring, regression tests for prompts), monitor latency, cost, and output quality in production, and troubleshoot failure modes like hallucinations, prompt injection, or drift after a model version upgrade. Scaling concerns such as caching, batching, rate limits, and choosing between model tiers (a frontier model vs a cheap fast one) are everyday decisions.",
+        "Finally, the role is heavily collaborative. AI Engineers work with data scientists and ML engineers on model selection, with product managers to scope what AI can realistically do, with security and legal teams on privacy and responsible-AI requirements, and with platform teams on deployment. Aligning AI projects with business goals, and being honest about where AI is the wrong tool, is part of the job description, not an extra."
+      ],
+      "keyPoints": [
+        "Typical responsibilities: build AI features, manage data pipelines, integrate models into products, and monitor them in production.",
+        "Evaluation is a first-class duty: golden test sets, automated scoring, and regression testing of prompts before every change.",
+        "Cost and latency engineering (model tier selection, caching, batching, streaming) is a daily concern, not an afterthought.",
+        "Expect to debug probabilistic failures: hallucinations, injection attacks, and behavior changes after provider model updates.",
+        "Cross-functional collaboration with product, data science, security, and legal is explicitly part of the role.",
+        "Ethical and responsible AI practices (bias checks, privacy, transparency) increasingly appear as hard requirements in job postings."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "AI Engineer Job Description", "url": "https://resources.workable.com/ai-engineer-job-description", "type": "article"},
+        {"title": "How To Become an AI Engineer (Plus Job Duties and Skills)", "url": "https://www.indeed.com/career-advice/finding-a-job/ai-engineer", "type": "article"}
+      ]
+    },
+    {
+      "id": "impact-on-product-development",
+      "title": "Impact on Product Development",
+      "subsection": null,
+      "minutes": 3,
+      "intro": "AI changes both what products can do (personalization, prediction, natural language UX) and how fast teams can build them.",
+      "summary": [
+        "AI reshapes product development on two axes. First, it changes the product itself: features that were previously impossible or prohibitively expensive, like conversational interfaces, semantic search, hyper-personalized recommendations, and predictive maintenance, become standard. The classic case studies are instructive: Netflix's recommendation engine drives the majority of what users watch and is credited with saving the company over a billion dollars a year in retention; BMW uses AI for automated quality control and predictive maintenance on production lines; PepsiCo uses it to analyze consumer signals and accelerate new product formulation.",
+        "Second, AI compresses the development cycle. Teams use models to prototype faster, generate and test design variants, synthesize user research, and automate QA. This shortens the loop from idea to validated feature, which means companies that integrate AI well ship faster and learn faster than competitors. For founders and product leaders, this is the real fascination: AI is simultaneously a feature, a differentiator, and a force multiplier on engineering velocity.",
+        "For the AI Engineer, the practical implication is that you are often the person translating these possibilities into scoped, shippable features. That requires judgment about where AI genuinely adds value (high-volume, fuzzy, language- or pattern-heavy tasks) versus where deterministic software is cheaper and more reliable, and about the new costs AI introduces: inference spend, evaluation overhead, and user trust when the model is wrong."
+      ],
+      "keyPoints": [
+        "AI enables product categories that did not exist before: conversational UX, semantic search, real-time personalization, predictive maintenance.",
+        "Netflix's recommender is the canonical example: most viewing comes from recommendations, worth an estimated $1B+ per year in retention.",
+        "AI also accelerates the building process itself: faster prototyping, automated QA, synthesized user research.",
+        "Best AI use cases share traits: high volume, tolerance for occasional error, fuzzy inputs, and pattern- or language-heavy work.",
+        "AI features carry recurring inference costs and evaluation overhead; budget for them like infrastructure, not a one-time build.",
+        "Competitive advantage comes from integration quality and iteration speed, not from access to models everyone can call."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "AI in Product Development: Netflix, BMW, and PepsiCo", "url": "https://www.virtasant.com/ai-today/ai-in-product-development-netflix-bmw#:~:text=AI%20can%20help%20make%20product,and%20gain%20a%20competitive%20edge.", "type": "article"},
+        {"title": "AI Product Development: Why Are Founders So Fascinated By The Potential?", "url": "https://www.techmagic.co/blog/ai-product-development/", "type": "article"}
+      ]
+    },
+    {
+      "id": "ai-engineer-vs-ml-engineer",
+      "title": "AI Engineer vs ML Engineer",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "AI Engineers apply pre-trained foundation models to build products; ML Engineers train, tune, and deploy custom models from data.",
+      "summary": [
+        "The cleanest way to draw the line: an ML Engineer's unit of work is the model, while an AI Engineer's unit of work is the product. ML Engineers collect and prepare training data, choose architectures, train and tune models (often with frameworks like PyTorch), and build the MLOps infrastructure to serve and retrain them. AI Engineers start from models that already exist (GPT-5.x, Claude 4.x, Gemini, Llama, DeepSeek) and focus on prompting, retrieval, tool use, orchestration, and evaluation to turn those capabilities into features.",
+        "The skill profiles differ accordingly. ML engineering leans on statistics, optimization, feature engineering, and training infrastructure; AI engineering leans on API design, system architecture, prompt and context engineering, and product sense. There is real overlap: both need solid software engineering, both care about evaluation and monitoring, and both increasingly share tools (vector stores, observability platforms). Fine-tuning sits in the overlap zone: AI Engineers may run light fine-tunes via provider APIs or LoRA, while ML Engineers handle serious custom training.",
+        "Neither role is 'above' the other; they solve different problems. If your company's edge is a proprietary model trained on unique data (fraud scoring, demand forecasting, recommendation at scale), you need ML Engineers. If your edge is shipping AI-powered product experiences quickly on top of foundation models, you need AI Engineers. Many teams need both, with AI Engineers consuming what ML Engineers and model providers produce. Also keep the broader vocabulary straight: AI is the umbrella field, ML is the subset of AI where systems learn from data, and deep learning is the subset of ML behind modern LLMs."
+      ],
+      "keyPoints": [
+        "ML Engineer: builds and trains models from data. AI Engineer: builds products from pre-trained models.",
+        "AI engineering typically does not require deep math; ML engineering does (statistics, optimization, model architecture).",
+        "Both roles share core software engineering, evaluation, and monitoring responsibilities; the boundary is fuzzy at fine-tuning.",
+        "Hierarchy of terms: AI is the broad field, ML is learning from data, deep learning powers today's LLMs.",
+        "Choose the ML path if the differentiator is a custom model on proprietary data; the AI path if it is fast product integration of foundation models.",
+        "Job titles are inconsistent in the wild; read the responsibilities in a posting, not the title."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "What does an AI Engineer do?", "url": "https://www.codecademy.com/resources/blog/what-does-an-ai-engineer-do/", "type": "article"},
+        {"title": "What is an ML Engineer?", "url": "https://www.coursera.org/articles/what-is-machine-learning-engineer", "type": "article"},
+        {"title": "Machine Learning vs AI Engineer: What Are the Differences?", "url": "https://towardsdatascience.com/machine-learning-vs-ai-engineer-no-confusing-jargon/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration", "type": "article"},
+        {"title": "AI vs ML", "url": "https://www.youtube.com/watch?v=4RixMPF4xis", "type": "video"}
+      ]
+    }
+  ]
+}

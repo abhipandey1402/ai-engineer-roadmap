@@ -1,0 +1,173 @@
+SECTION 3: Prompt Engineering
+DESCRIPTION: Techniques for writing effective prompts: shot strategies, reasoning patterns, structure, and API features.
+======================================================================
+
+
+### TOPIC: System Prompting  (id: system-prompting)  [group: Prompt Fundamentals]
+
+# System Prompting
+
+System prompting sets the overall context, purpose, and operational guidelines for LLMs. It defines the model's role, behavioral constraints, output format requirements, and safety guardrails. System prompts provide foundational parameters that influence all subsequent interactions, ensuring consistent, controlled, and structured AI responses throughout the session.
+
+Visit the following resources to learn more:
+
+- [@article@User prompts vs. system prompts: What’s the difference?](https://www.regie.ai/blog/user-prompts-vs-system-prompts)
+- [@video@System Prompt Fundamentals](https://www.youtube.com/watch?v=RMR0Y8esSmE)
+
+----------------------------------------------------------------------
+
+### TOPIC: Role & Behavior  (id: role-behavior)  [group: Prompt Fundamentals]
+
+# Role & Behavior
+
+System prompting involves crafting instructions that define the AI model's role, personality, and overall behavior when interacting with users. This allows you to shape the AI's responses, ensuring they are consistent with desired guidelines, such as adopting a specific persona (e.g., a helpful assistant, an expert) or adhering to constraints on tone and style. By carefully defining these aspects, you can significantly influence the AI's output and guide it towards more relevant and effective interactions.
+
+Visit the following resources to learn more:
+
+- [@article@Beyond Basics: Contextual & Role Prompting That Actually Works](https://medium.com/@the_manoj_desai/beyond-basics-contextual-role-prompting-that-actually-works-bd75a0c5086b)
+
+----------------------------------------------------------------------
+
+### TOPIC: Context  (id: context)  [group: Prompt Fundamentals]
+
+# Contextual prompting
+
+Contextual prompting provides specific background information or situational details relevant to the current task, helping LLMs understand nuances and tailor responses accordingly. Unlike system or role prompts, contextual prompts supply immediate, task-specific information that's dynamic and changes based on the situation. For example: "Context: You are writing for a blog about retro 80's arcade video games. Suggest 3 topics to write articles about." This technique ensures responses are relevant, accurate, and appropriately framed for the specific context provided.
+
+----------------------------------------------------------------------
+
+### TOPIC: Constraints  (id: constraints)  [group: Prompt Fundamentals]
+
+# Constraining Prompts
+
+Constraining system prompts involves explicitly defining boundaries and limitations within the instructions given to a large language model (LLM). This technique focuses on guiding the LLM to operate within a specific scope, preventing it from generating irrelevant, harmful, or factually incorrect responses by setting rules and restrictions on its behavior and output format.
+
+Visit the following resources to learn more:
+
+- [@article@Introduction: The Power of Clear Instructions](https://codesignal.com/learn/courses/prompting-foundations/lessons/defining-constraints-and-requirements-for-effective-prompts)
+
+----------------------------------------------------------------------
+
+### TOPIC: Input Format  (id: input-format)  [group: Prompt Fundamentals]
+
+# Input Format
+
+Input format in prompt engineering deals with how you structure and present your prompt to a large language model (LLM). This includes the specific words used, the overall layout, and the inclusion of any examples or instructions. A well-defined input format guides the LLM towards generating the desired output, improving the relevance, accuracy, and consistency of its responses. Effective input formatting is key to unlocking the full potential of LLMs for specific tasks.
+
+Visit the following resources to learn more:
+
+- [@article@Elements of a Prompt](https://www.promptingguide.ai/introduction/elements)
+- [@article@Does Prompt Formatting Have Any Impact on LLM Performance?](https://arxiv.org/html/2411.10541v1)
+
+----------------------------------------------------------------------
+
+### TOPIC: Zero-Shot Prompting  (id: zero-shot-prompting)  [group: Prompting Techniques]
+
+# Zero Shot Prompting
+
+Zero-shot prompting is a prompt engineering method that relies on the pretraining of a large language model (LLM) to infer an appropriate response. In contrast to other prompt engineering methods, such as few-shot prompting, models aren’t provided with examples of output when prompting with the zero-shot technique.
+
+Visit the following resources to learn more:
+
+- [@article@What is zero-shot prompting?](https://www.ibm.com/think/topics/zero-shot-prompting)
+- [@article@Zero-Shot Prompting](https://www.promptingguide.ai/techniques/zeroshot)
+- [@video@Zero-shot, One-shot and Few-shot Prompting Explained | Prompt Engineering 101](https://www.youtube.com/watch?v=sW5xoicq5TY)
+
+----------------------------------------------------------------------
+
+### TOPIC: Few-Shot Prompting  (id: few-shot-prompting)  [group: Prompting Techniques]
+
+# Few-Shot Prompting
+
+Few-shot prompting is a technique used with large language models (LLMs) where you provide a small number of example input-output pairs in the prompt itself. These examples demonstrate the desired behavior of the LLM for a specific task. By seeing these "few shots" of correct answers, the LLM can better understand the pattern and generate accurate and relevant responses for new, unseen inputs.
+
+Visit the following resources to learn more:
+
+- [@article@Few-Shot Prompting](https://www.promptingguide.ai/techniques/fewshot)
+- [@article@What is few shot prompting?](https://www.ibm.com/think/topics/few-shot-prompting)
+- [@video@Discover Few-Shot Prompting | Google AI Essentials](https://www.youtube.com/watch?v=9qdgEBVkWR4)
+
+----------------------------------------------------------------------
+
+### TOPIC: Chain of Thought (CoT)  (id: chain-of-thought-cot)  [group: Prompting Techniques]
+
+# Chain-of-Thought Prompting
+
+Chain of Thought (CoT) is a way for an AI agent to think out loud. Before giving its final answer, the agent writes short notes that show each step it takes. These notes can list facts, name sub-tasks, or do small bits of math. By seeing the steps, the agent stays organized and is less likely to make a mistake. People who read the answer can also check the logic and spot any weak points. The same written steps can be fed back into the agent so it can plan, reflect, or fix itself. Because it is easy to use and boosts trust, CoT is one of the most common designs for language-based agents today.
+
+Visit the following resources to learn more:
+
+- [@article@What is chain of thought (CoT) prompting?](https://www.ibm.com/think/topics/chain-of-thoughts)
+- [@article@Chain-of-Thought Prompting Elicits Reasoning in Large Language Models](https://arxiv.org/abs/2201.11903)
+- [@article@Evoking Chain of Thought Reasoning in LLMs - Prompting Guide](https://www.promptingguide.ai/techniques/cot)
+- [@video@ChatGPT Prompt Engineering Principles: Chain of Thought Prompting](https://www.youtube.com/watch?v=Kar2qfLDQ2c)
+
+----------------------------------------------------------------------
+
+### TOPIC: ReAct  (id: react)  [group: Prompting Techniques]
+
+# ReAct
+
+ReAct (Reason and Act) prompting enables LLMs to solve complex tasks by combining reasoning with external tool interactions. It follows a thought-action-observation loop: analyze the problem, perform actions using external APIs, review results, and iterate until solved. Useful for research, multi-step problems, and tasks requiring current data.
+
+Visit the following resources to learn more:
+
+- [@article@ReAct Prompting](https://www.promptingguide.ai/techniques/react)
+- [@video@4 Methods of Prompt Engineering](https://youtu.be/vD0E3EUb8-8?si=Y6MCLPzjmhMB4jSu&t=203)
+
+----------------------------------------------------------------------
+
+### TOPIC: Function Calling  (id: function-calling)  [group: API Features]
+
+# Function Calling
+
+Function calling allows Large Language Models (LLMs) to interact with external tools and APIs. Instead of just generating text, the LLM can be instructed to recognize when a specific function should be called based on the user's input, and then output the arguments needed to execute that function. This enables the LLM to perform actions beyond its training data, such as retrieving real-time information or automating tasks.
+
+Visit the following resources to learn more:
+
+- [@article@A Comprehensive Guide to Function Calling in LLMs](https://thenewstack.io/a-comprehensive-guide-to-function-calling-in-llms/)
+- [@article@Function Calling with LLMs | Prompt Engineering Guide](https://www.promptingguide.ai/applications/function_calling)
+- [@video@LLM Function Calling - AI Tools Deep Dive](https://www.youtube.com/watch?v=gMeTK6zzaO4)
+
+----------------------------------------------------------------------
+
+### TOPIC: Structured Output  (id: structured-output)  [group: API Features]
+
+# Structured Outputs
+
+Structured output in system prompting refers to designing prompts that guide a Large Language Model (LLM) to generate responses in a predefined format, such as JSON, XML, or a specific text-based structure. This approach focuses on crafting system prompts to elicit predictable and parseable outputs, making it easier to integrate LLM responses into downstream applications and workflows. By providing clear instructions and examples of the desired output structure, we can reliably extract information and automate processes.
+
+Visit the following resources to learn more:
+
+- [@article@Structured Output](https://abdullin.com/structured-output/)
+- [@article@Generating Structured Outputs from LLMs](https://towardsdatascience.com/generating-structured-outputs-from-llms/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+- [@article@How do Structured Outputs Work?](https://docs.cohere.com/docs/structured-outputs)
+
+----------------------------------------------------------------------
+
+### TOPIC: Prompt Caching  (id: prompt-caching)  [group: API Features]
+
+# Prompt Caching
+
+Prompt caching is a technique that stores the results of previous LLM prompts, allowing you to quickly retrieve and reuse them instead of re-running the prompt every time. This can significantly improve efficiency and reduce costs when dealing with frequently used or computationally expensive prompts.
+
+Visit the following resources to learn more:
+
+- [@article@What is Prompt Caching?](https://www.ibm.com/think/topics/prompt-caching)
+- [@video@What is Prompt Caching? Optimize LLM Latency with AI Transformers](https://www.youtube.com/watch?v=u57EnkQaUTY)
+
+----------------------------------------------------------------------
+
+### TOPIC: Streaming Responses  (id: streaming-responses)  [group: API Features]
+
+# Streaming Responses
+
+Streamed responses is one of the techniques an AI agent can use to send its answer to the user. With a streamed response, the agent starts sending words as soon as it generates them. The user sees the text grow on the screen in real time. This feels fast and lets the user stop or change the request early. It is useful for long answers and chat-like apps. By contrast, an unstreamed response waits until the whole answer is ready, then sends it all at once. This makes the code on the client side simpler and is easier to cache or log, but the user must wait longer, especially for big outputs.
+
+Visit the following resources to learn more:
+
+- [@article@Streaming Responses in AI: How AI Outputs Are Generated in Real Time](https://dev.to/pranshu_kabra_fe98a73547a/streaming-responses-in-ai-how-ai-outputs-are-generated-in-real-time-18kb)
+- [@article@Streaming vs Non-Streaming LLM Responses](https://medium.com/@vasanthancomrads/streaming-vs-non-streaming-llm-responses-db297ba5467e)
+- [@article@AI for Web Devs: Faster Responses with HTTP Streaming](https://austingil.com/ai-for-web-devs-streaming/)
+
+----------------------------------------------------------------------

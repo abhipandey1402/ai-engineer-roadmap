@@ -1,0 +1,200 @@
+SECTION 14: Multimodal AI
+DESCRIPTION: Models that work across text, images, audio, and video — tasks and APIs.
+======================================================================
+
+
+### TOPIC: What is Multimodal AI?  (id: what-is-multimodal-ai)  [group: Fundamentals]
+
+# Multimodal AI
+
+Multimodal AI is an approach that combines and processes data from multiple sources, such as text, images, audio, and video, to understand and generate responses. By integrating different data types, it enables more comprehensive and accurate AI systems, allowing for tasks like visual question answering, interactive virtual assistants, and enhanced content understanding. This capability helps create richer, more context-aware applications that can analyze and respond to complex, real-world scenarios.
+
+Visit the following resources to learn more:
+
+- [@article@A Multimodal World - Hugging Face](https://huggingface.co/learn/computer-vision-course/en/unit4/multimodal-models/a_multimodal_world)
+- [@article@Multimodal AI - Google](https://cloud.google.com/use-cases/multimodal-ai?hl=en)
+- [@article@What Is Multimodal AI? A Complete Introduction](https://www.splunk.com/en_us/blog/learn/multimodal-ai.html)
+
+----------------------------------------------------------------------
+
+### TOPIC: Multimodal Use Cases  (id: multimodal-use-cases)  [group: Fundamentals]
+
+# Multimodal AI Usecases
+
+Multimodal AI powers applications like visual question answering, content moderation, and enhanced search engines. It drives smarter virtual assistants and interactive AR apps, combining text, images, and audio for richer, more intuitive user experiences across e-commerce, accessibility, and entertainment.
+
+Visit the following resources to learn more:
+
+- [@official@Hugging Face Multimodal Models](https://huggingface.co/learn/computer-vision-course/en/unit4/multimodal-models/a_multimodal_world)
+
+----------------------------------------------------------------------
+
+### TOPIC: Image Understanding  (id: image-understanding)  [group: Multimodal Tasks]
+
+# Image Understanding
+
+Multimodal AI enhances image understanding by integrating visual data with other types of information, such as text or audio. By combining these inputs, AI models can interpret images more comprehensively, recognizing objects, scenes, and actions, while also understanding context and related concepts. For example, an AI system could analyze an image and generate descriptive captions, or provide explanations based on both visual content and accompanying text.
+
+Visit the following resources to learn more:
+
+- [@article@Low or High Fidelity Image Understanding - OpenAI](https://platform.openai.com/docs/guides/images)
+
+----------------------------------------------------------------------
+
+### TOPIC: Image Generation  (id: image-generation)  [group: Multimodal Tasks]
+
+# Image Generation
+
+Image generation is a process in artificial intelligence where models create new images based on input prompts or existing data. It involves using generative models like GANs (Generative Adversarial Networks), VAEs (Variational Autoencoders), or more recently, transformer-based models like DALL-E and Stable Diffusion.
+
+Visit the following resources to learn more:
+
+- [@official@DALL-E](https://openai.com/index/dall-e-2/)
+- [@article@How DALL-E 2 Actually Works](https://www.assemblyai.com/blog/how-dall-e-2-actually-works/)
+- [@video@How AI Image Generators Work (Stable Diffusion / Dall-E)](https://www.youtube.com/watch?v=1CIpzeNxIhU)
+
+----------------------------------------------------------------------
+
+### TOPIC: Video Understanding  (id: video-understanding)  [group: Multimodal Tasks]
+
+# Video Understanding
+
+Video understanding with multimodal AI involves analyzing and interpreting both visual and audio content to provide a more comprehensive understanding of videos. Common use cases include video summarization, where AI extracts key scenes and generates summaries; content moderation, where the system detects inappropriate visuals or audio; and video indexing for easier search and retrieval of specific moments within a video. Other applications include enhancing video-based recommendations, security surveillance, and interactive entertainment, where video and audio are processed together for real-time user interaction.
+
+Visit the following resources to learn more:
+
+- [@opensource@Awesome LLM for Video Understanding](https://github.com/yunlong10/Awesome-LLMs-for-Video-Understanding)
+- [@article@Video Understanding](https://dl.acm.org/doi/10.1145/3503161.3551600)
+
+----------------------------------------------------------------------
+
+### TOPIC: Audio Processing  (id: audio-processing)  [group: Multimodal Tasks]
+
+# Audio Processing
+
+Audio processing in multimodal AI enables a wide range of use cases by combining sound with other data types, such as text, images, or video, to create more context-aware systems. Use cases include speech recognition paired with real-time transcription and visual analysis in meetings or video conferencing tools, voice-controlled virtual assistants that can interpret commands in conjunction with on-screen visuals, and multimedia content analysis where audio and visual elements are analyzed together for tasks like content moderation or video indexing.
+
+Visit the following resources to learn more:
+
+- [@article@The State of Audio Processing](https://appwrite.io/blog/post/state-of-audio-processing)
+- [@video@Audio Signal Processing for Machine Learning](https://www.youtube.com/watch?v=iCwMQJnKk2c)
+
+----------------------------------------------------------------------
+
+### TOPIC: Text-to-Speech  (id: text-to-speech)  [group: Multimodal Tasks]
+
+# Text-to-Speech
+
+In the context of multimodal AI, text-to-speech (TTS) technology converts written text into natural-sounding spoken language, allowing AI systems to communicate verbally. When integrated with other modalities, such as visual or interactive elements, TTS can enhance user experiences in applications like virtual assistants, educational tools, and accessibility features. For example, a multimodal AI could read aloud text from an on-screen document while highlighting relevant sections, or narrate information about objects recognized in an image. By combining TTS with other forms of data processing, multimodal AI creates more engaging, accessible, and interactive systems for users.
+
+Visit the following resources to learn more:
+
+- [@article@What is Text-to-Speech?](https://aws.amazon.com/polly/what-is-text-to-speech/)
+- [@article@From Text to Speech: The Evolution of Synthetic Voices](https://ignitetech.ai/about/blogs/text-speech-evolution-synthetic-voices)
+
+----------------------------------------------------------------------
+
+### TOPIC: Speech-to-Text  (id: speech-to-text)  [group: Multimodal Tasks]
+
+# Speech-to-Text
+
+In the context of multimodal AI, speech-to-text technology converts spoken language into written text, enabling seamless integration with other data types like images and text. This allows AI systems to process audio input and combine it with visual or textual information, enhancing applications such as virtual assistants, interactive chatbots, and multimedia content analysis. For example, a multimodal AI can transcribe a video’s audio while simultaneously analyzing on-screen visuals and text, providing richer and more context-aware insights.
+
+Visit the following resources to learn more:
+
+- [@article@What is Speech to Text?](https://aws.amazon.com/what-is/speech-to-text/)
+- [@article@Turn Speech into Text using Google AI](https://cloud.google.com/speech-to-text)
+- [@article@How is Speech to Text Used?](https://h2o.ai/wiki/speech-to-text/)
+
+----------------------------------------------------------------------
+
+### TOPIC: OpenAI Vision API  (id: openai-vision-api)  [group: Implementing Multimodal AI]
+
+# OpenAI Vision API
+
+The OpenAI Vision API enables models to analyze and understand images, allowing them to identify objects, recognize text, and interpret visual content. It integrates image processing with natural language capabilities, enabling tasks like visual question answering, image captioning, and extracting information from photos. This API can be used for applications in accessibility, content moderation, and automation, providing a seamless way to combine visual understanding with text-based interactions.
+
+Visit the following resources to learn more:
+
+- [@official@Vision](https://platform.openai.com/docs/guides/vision)
+- [@video@OpenAI Vision API Crash Course](https://www.youtube.com/watch?v=ZjkS11DSeEk)
+
+----------------------------------------------------------------------
+
+### TOPIC: DALL-E API  (id: dall-e-api)  [group: Implementing Multimodal AI]
+
+# DALL-E API
+
+The DALL-E API is a tool provided by OpenAI that allows developers to integrate the DALL-E image generation model into applications. DALL-E is an AI model designed to generate images from textual descriptions, capable of producing highly detailed and creative visuals. The API enables users to provide a descriptive prompt, and the model generates corresponding images, opening up possibilities in fields like design, advertising, content creation, and art.
+
+Visit the following resources to learn more:
+
+- [@official@OpenAI Image Generation](https://platform.openai.com/docs/guides/images)
+- [@video@DALL E API - Introduction (Generative AI Pictures from OpenAI)](https://www.youtube.com/watch?v=Zr6vAWwjHN0)
+
+----------------------------------------------------------------------
+
+### TOPIC: NanoBanana (Gemini Image) API  (id: nanobanana-gemini-image-api)  [group: Implementing Multimodal AI]
+
+# NanoBanana API
+
+The NanoBanana API is a tool designed to facilitate the integration and processing of data from multiple modalities, such as text, images, and audio. It provides a unified interface for managing diverse data types, enabling developers to build AI systems that can understand and reason about information from various sources simultaneously. This API typically includes functionalities for data ingestion, feature extraction, fusion techniques, and output generation tailored for multimodal applications.
+
+Visit the following resources to learn more:
+
+- [@official@NanoBanana API](https://nanobananaapi.ai/)
+- [@article@Generating Consistent Imagery with Gemini](https://towardsdatascience.com/generating-consistent-imagery-with-gemini/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+
+----------------------------------------------------------------------
+
+### TOPIC: Whisper API  (id: whisper-api)  [group: Implementing Multimodal AI]
+
+# Whisper API
+
+The Whisper API by OpenAI enables developers to integrate speech-to-text capabilities into their applications. It uses OpenAI's Whisper model, a powerful speech recognition system, to convert spoken language into accurate, readable text. The API supports multiple languages and can handle various accents, making it ideal for tasks like transcription, voice commands, and automated captions. With the ability to process audio in real time or from pre-recorded files, the Whisper API simplifies adding robust speech recognition features to applications, enhancing accessibility and enabling new interactive experiences.
+
+Visit the following resources to learn more:
+
+- [@official@OpenAI Whisper](https://openai.com/index/whisper/)
+- [@opensource@Whisper on GitHub](https://github.com/openai/whisper)
+
+----------------------------------------------------------------------
+
+### TOPIC: Hugging Face Multimodal Models  (id: hugging-face-multimodal-models)  [group: Implementing Multimodal AI]
+
+# Hugging Face Models
+
+Hugging Face models are a collection of pre-trained machine learning models available through the Hugging Face platform, covering a wide range of tasks like natural language processing, computer vision, and audio processing. The platform includes models for tasks such as text classification, translation, summarization, question answering, and more, with popular models like BERT, GPT, T5, and CLIP. Hugging Face provides easy-to-use tools and APIs that allow developers to access, fine-tune, and deploy these models, fostering a collaborative community where users can share, modify, and contribute models to improve AI research and application development.
+
+Visit the following resources to learn more:
+
+- [@official@Hugging Face Models](https://huggingface.co/models)
+- [@video@How to Use Pretrained Models from Hugging Face in a Few Lines of Code](https://www.youtube.com/watch?v=ntz160EnWIc)
+
+----------------------------------------------------------------------
+
+### TOPIC: LangChain for Multimodal Apps  (id: langchain-for-multimodal-apps)  [group: Implementing Multimodal AI]
+
+# LangChain for Multimodal Apps
+
+LangChain is a framework designed to build applications that integrate multiple AI models, especially those focusing on language understanding, generation, and multimodal capabilities. For multimodal apps, LangChain facilitates seamless interaction between text, image, and even audio models, enabling developers to create complex workflows that can process and analyze different types of data.
+
+Visit the following resources to learn more:
+
+- [@official@LangChain](https://www.langchain.com/)
+- [@video@Build a Multimodal GenAI App with LangChain and Gemini LLMs](https://www.youtube.com/watch?v=bToMzuiOMhg)
+
+----------------------------------------------------------------------
+
+### TOPIC: LlamaIndex for Multimodal Apps  (id: llamaindex-for-multimodal-apps)  [group: Implementing Multimodal AI]
+
+# LlamaIndex for Multi-modal Apps
+
+LlamaIndex enables multi-modal apps by linking language models (LLMs) to diverse data sources, including text and images. It indexes and retrieves information across formats, allowing LLMs to process and integrate data from multiple modalities. This supports applications like visual question answering, content summarization, and interactive systems by providing structured, context-aware inputs from various content types.
+
+Visit the following resources to learn more:
+
+- [@official@LlamaIndex Multi-modal](https://docs.llamaindex.ai/en/stable/use_cases/multimodal/)
+- [@video@Multi-modal Retrieval Augmented Generation with LlamaIndex](https://www.youtube.com/watch?v=35RlrrgYDyU)
+
+----------------------------------------------------------------------

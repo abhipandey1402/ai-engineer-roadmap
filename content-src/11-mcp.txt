@@ -1,0 +1,141 @@
+SECTION 11: Model Context Protocol (MCP)
+DESCRIPTION: The open standard for connecting LLMs to tools and data: architecture, servers, clients, and transports.
+======================================================================
+
+
+### TOPIC: What is MCP?  (id: what-is-mcp)  [group: Fundamentals]
+
+# Model Context Protocol (MCP)
+
+Model Context Protocol (MCP) provides a standardized way for AI agents to manage and share contextual information. It defines a structure for representing the agent's current understanding of the environment, user, and goals, enabling more effective communication and collaboration between different components of an AI system or across multiple agents. This protocol facilitates the seamless transfer of relevant data, ensuring that each agent has the necessary information to make informed decisions and perform its tasks efficiently.
+
+Visit the following resources to learn more:
+
+- [@course@Model Context Protocol (MCP) Course](https://huggingface.co/learn/mcp-course/en/unit0/introduction)
+- [@official@Model Context Protocol](https://modelcontextprotocol.io/)
+- [@opensource@Model Context Protocol](https://github.com/modelcontextprotocol)
+- [@article@Discover more aritlces on MCP](https://towardsdatascience.com/tag/mcp/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+
+----------------------------------------------------------------------
+
+### TOPIC: MCP Host  (id: mcp-host)  [group: Core Components]
+
+# MCP Host
+
+The MCP Host is a central component within the Model Context Protocol (MCP) framework, responsible for managing and coordinating interactions between AI agents and the environment. It acts as a bridge, providing a standardized interface for agents to access and utilize contextual information, tools, and resources. The host handles requests from agents, ensures proper authorization and security, and facilitates communication with external systems or data sources.
+
+Visit the following resources to learn more:
+
+- [@course@Model Context Protocol (MCP) Course](https://huggingface.co/learn/mcp-course/en/unit0/introduction)
+- [@official@Concepts of MCP](https://modelcontextprotocol.io/docs/learn/architecture#concepts-of-mcp)
+
+----------------------------------------------------------------------
+
+### TOPIC: MCP Client  (id: mcp-client)  [group: Core Components]
+
+# MCP Client
+
+The MCP Client is a software component that allows AI agents to interact with a Model Context Protocol (MCP) server. It handles the communication, serialization, and deserialization of data exchanged between the agent and the server, enabling the agent to access and manage contextual information relevant to its tasks. This client simplifies the process of integrating agents with the MCP ecosystem.
+
+Visit the following resources to learn more:
+
+- [@course@Model Context Protocol (MCP) Course](https://huggingface.co/learn/mcp-course/en/unit0/introduction)
+- [@official@Understanding MCP clients](https://modelcontextprotocol.io/docs/learn/client-concepts#understanding-mcp-clients)
+- [@video@The Complete Guide to Building AI Agents for Beginners](https://youtu.be/MOyl58VF2ak?si=-QjRD_5y3iViprJX)
+
+----------------------------------------------------------------------
+
+### TOPIC: MCP Server  (id: mcp-server)  [group: Core Components]
+
+# MCP Server
+
+The MCP Server acts as a central hub for managing and serving contextual information to AI agents. It's responsible for receiving requests from agents, retrieving relevant context from various data sources, and delivering that context in a standardized format. This allows agents to make more informed decisions by leveraging external knowledge and data.
+
+Visit the following resources to learn more:
+
+- [@course@Model Context Protocol (MCP) Course](https://huggingface.co/learn/mcp-course/en/unit0/introduction)
+- [@official@Understanding MCP Servers](https://modelcontextprotocol.io/docs/learn/server-concepts#understanding-mcp-servers)
+- [@article@Awesome MCP Servers](https://mcpservers.org/)
+- [@video@The Complete Guide to Building AI Agents for Beginners](https://youtu.be/MOyl58VF2ak?si=-QjRD_5y3iViprJX)
+
+----------------------------------------------------------------------
+
+### TOPIC: Data Layer  (id: data-layer)  [group: Core Components]
+
+# Data Layer in Model Context Protocol
+
+The Data Layer within the Model Context Protocol (MCP) is responsible for managing and providing access to the data that AI agents use to reason, learn, and make decisions. It acts as an intermediary between the agent and various data sources, ensuring data is readily available, properly formatted, and securely accessed. This layer handles data storage, retrieval, caching, and transformation, enabling agents to efficiently utilize relevant information from diverse sources.
+
+Visit the following resources to learn more:
+
+- [@official@Layer](https://modelcontextprotocol.io/docs/learn/architecture#layers)
+
+----------------------------------------------------------------------
+
+### TOPIC: Transport Layer  (id: transport-layer)  [group: Core Components]
+
+# Transport Layer in Model Context Protocol (MCP)
+
+The Transport Layer in the Model Context Protocol (MCP) is responsible for reliably and efficiently moving data between different components of an AI agent system. It defines how messages are packaged, addressed, and transmitted across a network or within a single machine, ensuring that information reaches its intended destination without errors or loss. This layer handles the underlying communication mechanisms, abstracting away the complexities of network protocols and hardware.
+
+Visit the following resources to learn more:
+
+- [@official@Layer](https://modelcontextprotocol.io/docs/learn/architecture#layers)
+
+----------------------------------------------------------------------
+
+### TOPIC: Building an MCP Server  (id: building-an-mcp-server)  [group: Hands-On]
+
+# Building an MCP Server
+
+An MCP (Model Context Protocol) server acts as an intermediary between AI agents and various data sources or tools. It provides a standardized way for agents to access and interact with external information, enabling them to perform tasks that require context beyond their internal knowledge. Building an MCP server involves defining the API endpoints, handling requests from agents, retrieving data from relevant sources, and formatting the responses in a way that the agents can understand.
+
+Visit the following resources to learn more:
+
+- [@official@Build an MCP server](https://modelcontextprotocol.io/docs/develop/build-server#build-an-mcp-server)
+- [@article@MCP server: A step-by-step guide to building from scratch](https://composio.dev/blog/mcp-server-step-by-step-guide-to-building-from-scrtch)
+- [@video@Build and Ship Any MCP Server in MINUTES (Full Guide)](https://www.youtube.com/watch?v=Zw3sfAIpeH8)
+
+----------------------------------------------------------------------
+
+### TOPIC: Building an MCP Client  (id: building-an-mcp-client)  [group: Hands-On]
+
+# Building an MCP Client
+
+Building an MCP (Model Context Protocol) client involves creating software that can interact with AI models using a standardized protocol. This client acts as an intermediary, formatting requests for the model, sending them, and then processing the model's responses into a usable format for other applications or systems. Essentially, it's the piece of software that allows you to communicate with and leverage the capabilities of an AI model in a structured and consistent way.
+
+Visit the following resources to learn more:
+
+- [@official@Build an MCP client](https://modelcontextprotocol.io/docs/develop/build-client)
+- [@article@MCP Client - Step by Step Guide to Building from Scratch](https://composio.dev/blog/mcp-client-step-by-step-guide-to-building-from-scratch)
+- [@video@Create an MCP Client in Python - FastAPI Tutorial](https://www.youtube.com/watch?v=mhdGVbJBswA)
+
+----------------------------------------------------------------------
+
+### TOPIC: Connect to a Local Server  (id: connect-to-a-local-server)  [group: Hands-On]
+
+# Connect to Local Server
+
+A Local Desktop deployment means running the MCP server directly on your own computer instead of a remote cloud or server. You install the MCP software, needed runtimes, and model files onto your desktop or laptop. The server then listens on a local address like `127.0.0.1:8000`, accessible only from the same machine unless you open ports manually. This setup is great for fast tests, personal demos, or private experiments since you keep full control and avoid cloud costs. However, it's limited by your hardware's speed and memory, and others cannot access it without tunneling tools like ngrok or local port forwarding.
+
+Visit the following resources to learn more:
+
+- [@official@Connect to local MCP servers](https://modelcontextprotocol.io/docs/develop/connect-local-servers)
+- [@article@How to Build and Host Your Own MCP Servers in Easy Steps](ttps://collabnix.com/how-to-build-and-host-your-own-mcp-servers-in-easy-steps/)
+- [@video@Local MCP Servers for Cursor (Step by step)](https://www.youtube.com/watch?v=_Qr0WTgR5EM)
+
+----------------------------------------------------------------------
+
+### TOPIC: Connect to a Remote Server  (id: connect-to-a-remote-server)  [group: Hands-On]
+
+# Connect to Remote Server
+
+Remote or cloud deployment places the MCP server on a cloud provider instead of a local machine. You package the server as a container or virtual machine, choose a service like AWS, Azure, or GCP, and give it compute, storage, and a public HTTPS address. A load balancer spreads traffic, while auto-scaling adds or removes copies of the server as demand changes. You secure the endpoint with TLS, API keys, and firewalls, and you send logs and metrics to the provider’s monitoring tools. This setup lets the server handle many users, updates are easier, and you avoid local hardware limits, though you must watch costs and protect sensitive data.
+
+Visit the following resources to learn more:
+
+- [@official@Connect to remote MCP Servers](https://modelcontextprotocol.io/docs/develop/connect-remote-servers)
+- [@article@Remote MCP Servers](https://mcpservers.org/remote-mcp-servers)
+- [@video@Deploy Remote MCP Servers in Python (Step by Step)](https://www.youtube.com/watch?v=wXAqv8uvY0M)
+
+----------------------------------------------------------------------

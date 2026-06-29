@@ -1,0 +1,135 @@
+SECTION 12: AI Safety and Ethics
+DESCRIPTION: Security threats, bias, moderation, and the best practices for shipping AI responsibly.
+======================================================================
+
+
+### TOPIC: AI Safety and Ethics Overview  (id: ai-safety-and-ethics-overview)  [group: Understanding AI Safety Issues]
+
+# AI Safety and Ethics
+
+AI safety and ethics involve establishing guidelines and best practices to ensure that artificial intelligence systems are developed, deployed, and used in a manner that prioritizes human well-being, fairness, and transparency. This includes addressing risks such as bias, privacy violations, unintended consequences, and ensuring that AI operates reliably and predictably, even in complex environments. Ethical considerations focus on promoting accountability, avoiding discrimination, and aligning AI systems with human values and societal norms. Frameworks like explainability, human-in-the-loop design, and robust monitoring are often used to build systems that not only achieve technical objectives but also uphold ethical standards and mitigate potential harms.
+
+Visit the following resources to learn more:
+
+- [@article@Understanding Artificial Intelligence Ethics and Safety](https://www.turing.ac.uk/news/publications/understanding-artificial-intelligence-ethics-and-safety)
+- [@article@The Hidden Security Risks of LLMs](https://towardsdatascience.com/the-hidden-security-risks-of-llms/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+- [@video@What is AI Ethics?](https://www.youtube.com/watch?v=aGwYtUzMQUk)
+
+----------------------------------------------------------------------
+
+### TOPIC: Prompt Injection Attacks  (id: prompt-injection-attacks)  [group: Understanding AI Safety Issues]
+
+# Prompt Injection Attacks
+
+Prompt injection attacks are a type of security vulnerability where malicious inputs are crafted to manipulate or exploit AI models, like language models, to produce unintended or harmful outputs. These attacks involve injecting deceptive or adversarial content into the prompt to bypass filters, extract confidential information, or make the model respond in ways it shouldn't. For instance, a prompt injection could trick a model into revealing sensitive data or generating inappropriate responses by altering its expected behavior.
+
+Visit the following resources to learn more:
+
+- [@article@Prompt Injection in LLMs](https://www.promptingguide.ai/prompts/adversarial-prompting/prompt-injection)
+- [@article@What is a Prompt Injection Attack?](https://www.wiz.io/academy/prompt-injection-attack)
+
+----------------------------------------------------------------------
+
+### TOPIC: Security and Privacy Concerns  (id: security-and-privacy-concerns)  [group: Understanding AI Safety Issues]
+
+# Security and Privacy Concerns
+
+Security and privacy concerns in AI revolve around the protection of data and the responsible use of models. Key issues include ensuring that sensitive data, such as personal information, is handled securely during collection, processing, and storage, to prevent unauthorized access and breaches. AI models can also inadvertently expose sensitive data if not properly designed, leading to privacy risks through data leakage or misuse. Additionally, there are concerns about model bias, data misuse, and ensuring transparency in how AI decisions are made.
+
+Visit the following resources to learn more:
+
+- [@article@Examining Privacy Risks in AI Systems](https://transcend.io/blog/ai-and-privacy)
+- [@video@AI Is Dangerous, but Not for the Reasons You Think | Sasha Luccioni | TED](https://www.youtube.com/watch?v=eXdVDhOGqoE)
+
+----------------------------------------------------------------------
+
+### TOPIC: Bias and Fairness  (id: bias-and-fairness)  [group: Understanding AI Safety Issues]
+
+# Bias and Fairness
+
+Bias and fairness in AI refer to the challenges of ensuring that machine learning models do not produce discriminatory or skewed outcomes. Bias can arise from imbalanced training data, flawed assumptions, or biased algorithms, leading to unfair treatment of certain groups based on race, gender, or other factors. Fairness aims to address these issues by developing techniques to detect, mitigate, and prevent biases in AI systems. Ensuring fairness involves improving data diversity, applying fairness constraints during model training, and continuously monitoring models in production to avoid unintended consequences, promoting ethical and equitable AI use.
+
+Visit the following resources to learn more:
+
+- [@article@What Do We Do About the Biases in AI?](https://hbr.org/2019/10/what-do-we-do-about-the-biases-in-ai)
+- [@article@AI Bias - What Is It and How to Avoid It?](https://levity.ai/blog/ai-bias-how-to-avoid)
+- [@article@What about fairness, bias and discrimination?](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/artificial-intelligence/guidance-on-ai-and-data-protection/how-do-we-ensure-fairness-in-ai/what-about-fairness-bias-and-discrimination/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Content Moderation APIs  (id: content-moderation-apis)  [group: Safety Best Practices]
+
+# Content Moderation APIs
+
+Content Moderation APIs are tools that automatically analyze text, images, video, and audio to detect potentially harmful or inappropriate content. These APIs use machine learning models to identify violations of predefined policies related to areas like hate speech, violence, self-harm, and sexually suggestive material. The results allow developers to filter or take action against problematic user-generated content.
+
+Visit the following resources to learn more:
+
+- [@official@Moderation API](https://platform.openai.com/docs/guides/moderation)
+- [@article@How to use the moderation API](https://cookbook.openai.com/examples/how_to_use_moderation)
+- [@article@Content moderation: What it is, how it works, and the best APIs](https://www.assemblyai.com/blog/content-moderation-what-it-is-how-it-works-best-apis-2)
+
+----------------------------------------------------------------------
+
+### TOPIC: Adding End-User IDs in Prompts  (id: adding-end-user-ids-in-prompts)  [group: Safety Best Practices]
+
+# Adding end-user IDs in prompts
+
+Sending end-user IDs in your requests can be a useful tool to help OpenAI monitor and detect abuse. This allows OpenAI to provide your team with more actionable feedback in the event that we detect any policy violations in your application.
+
+Visit the following resources to learn more:
+
+- [@official@Sending End-user IDs - OpenAI](https://platform.openai.com/docs/guides/safety-best-practices/end-user-ids)
+
+----------------------------------------------------------------------
+
+### TOPIC: Adversarial Testing  (id: adversarial-testing)  [group: Safety Best Practices]
+
+# Conducting adversarial testing
+
+Adversarial testing involves intentionally exposing machine learning models to deceptive, perturbed, or carefully crafted inputs to evaluate their robustness and identify vulnerabilities. The goal is to simulate potential attacks or edge cases where the model might fail, such as subtle manipulations in images, text, or data that cause the model to misclassify or produce incorrect outputs. This type of testing helps to improve model resilience, particularly in sensitive applications like cybersecurity, autonomous systems, and finance.
+
+Visit the following resources to learn more:
+
+- [@article@Adversarial Testing for Generative AI](https://developers.google.com/machine-learning/resources/adv-testing)
+- [@article@Adversarial Testing: Definition, Examples and Resources](https://www.leapwork.com/blog/adversarial-testing)
+
+----------------------------------------------------------------------
+
+### TOPIC: Robust Prompt Engineering  (id: robust-prompt-engineering)  [group: Safety Best Practices]
+
+# Robust prompt engineering
+
+Robust prompt engineering involves carefully crafting inputs to guide AI models toward producing accurate, relevant, and reliable outputs. It focuses on minimizing ambiguity and maximizing clarity by providing specific instructions, examples, or structured formats. Effective prompts anticipate potential issues, such as misinterpretation or inappropriate responses, and address them through testing and refinement. This approach enhances the consistency and quality of the model's behavior, making it especially useful for complex tasks like multi-step reasoning, content generation, and interactive systems.
+
+Visit the following resources to learn more:
+
+- [@article@Building Robust Prompt Engineering Capability](https://aimresearch.co/product/building-robust-prompt-engineering-capability)
+- [@article@Effective Prompt Engineering: A Comprehensive Guide](https://medium.com/@nmurugs/effective-prompt-engineering-a-comprehensive-guide-803160c571ed)
+
+----------------------------------------------------------------------
+
+### TOPIC: Know Your Customers / Use Cases  (id: know-your-customers-use-cases)  [group: Safety Best Practices]
+
+# Know your Customers / Usecases
+
+To know your customer means deeply understanding the needs, behaviors, and expectations of your target users. This ensures the tools you create are tailored precisely for their intended purpose, while also being designed to prevent misuse or unintended applications. By clearly defining the tool’s functionality and boundaries, you can align its features with the users’ goals while incorporating safeguards that limit its use in contexts it wasn’t designed for. This approach enhances both the tool’s effectiveness and safety, reducing the risk of improper use.
+
+Visit the following resources to learn more:
+
+- [@article@Assigning Roles](https://learnprompting.org/docs/basics/roles)
+
+----------------------------------------------------------------------
+
+### TOPIC: Constraining Outputs and Inputs  (id: constraining-outputs-and-inputs)  [group: Safety Best Practices]
+
+# Constraining outputs and inputs
+
+Constraining outputs and inputs in AI models refers to implementing limits or rules that guide both the data the model processes (inputs) and the results it generates (outputs). Input constraints ensure that only valid, clean, and well-formed data enters the model, which helps to reduce errors and improve performance. This can include setting data type restrictions, value ranges, or specific formats. Output constraints, on the other hand, ensure that the model produces appropriate, safe, and relevant results, often by limiting output length, specifying answer formats, or applying filters to avoid harmful or biased responses. These constraints are crucial for improving model safety, alignment, and utility in practical applications.
+
+Visit the following resources to learn more:
+
+- [@article@Preventing Prompt Injection](https://learnprompting.org/docs/prompt_hacking/defensive_measures/introduction)
+- [@article@Introducing Structured Outputs in the API - OpenAI](https://openai.com/index/introducing-structured-outputs-in-the-api/)
+
+----------------------------------------------------------------------

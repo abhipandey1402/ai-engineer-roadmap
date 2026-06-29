@@ -1,0 +1,615 @@
+{
+  "id": "vector-databases",
+  "title": "Vector Databases",
+  "description": "Storing and searching embeddings: the major vector DBs and how similarity search works.",
+  "topics": [
+    {
+      "id": "vector-databases-overview",
+      "title": "Vector Databases Overview",
+      "subsection": "Fundamentals",
+      "minutes": 6,
+      "intro": "Vector databases are storage systems purpose-built to index high-dimensional embeddings and answer 'find the most similar vectors' queries fast, even over millions of items.",
+      "summary": [
+        "A traditional database answers exact questions: `WHERE id = 42`, `WHERE price < 100`. A vector database answers a fuzzier one: 'given this query vector, which stored vectors are nearest?' That operation — k-nearest-neighbor (kNN) search — is the backbone of semantic search, RAG retrieval, recommendations, and deduplication. Comparing a query against every stored vector (brute force) is exact but O(n) per query; at millions of vectors and real-time latency budgets that breaks down, so vector DBs use Approximate Nearest Neighbor (ANN) indexes that trade a sliver of recall (returning, say, 95-99% of the true neighbors) for orders-of-magnitude speedups.",
+        "The dominant index is HNSW (Hierarchical Navigable Small World): a layered graph where each vector links to its near neighbors, and search greedily hops from a coarse top layer down to precise bottom layers — logarithmic-ish search at the cost of significant RAM. Alternatives include IVF (cluster vectors into buckets, search only the closest buckets) and disk-friendly designs like DiskANN; product quantization (PQ) and scalar/binary quantization compress vectors to shrink memory 4-64x. Distance metrics are cosine, dot product, or Euclidean — pick the one your embedding model was trained for (cosine/dot for virtually all text models).",
+        "Beyond the index, a real vector database adds database things: CRUD on vectors with attached metadata, filtered search ('nearest neighbors WHERE lang = en'), hybrid keyword+vector queries, persistence, replication, and scaling. The ecosystem spans dedicated engines (Pinecone, Weaviate, Qdrant, Milvus, Chroma, LanceDB), libraries you embed in your own service (FAISS, hnswlib), and extensions to databases you already run (pgvector in Postgres, Atlas Vector Search in MongoDB, Elasticsearch/OpenSearch kNN). The right choice is mostly an ops question, not an algorithm question — they all implement similar ANN under the hood."
+      ],
+      "keyPoints": [
+        "Core operation: k-nearest-neighbor search over embeddings; ANN indexes make it fast by accepting ~95-99% recall instead of 100%.",
+        "HNSW is the default index almost everywhere — fast and accurate, but memory-hungry; IVF and quantization trade accuracy/RAM differently.",
+        "Match the distance metric to your embedding model — cosine or dot product for nearly all text embeddings.",
+        "Three deployment families: dedicated DBs (Pinecone/Qdrant/Weaviate/Milvus), embedded libraries (FAISS/Chroma/LanceDB), and extensions (pgvector, Atlas).",
+        "Metadata filtering combined with vector search is essential in practice — check how well a DB handles filtered ANN before committing.",
+        "Rule of thumb: under ~1M vectors, almost anything works (even brute force with numpy is ~ms); architecture choices start mattering at 10M+."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Vector Databases",
+          "url": "https://developers.cloudflare.com/vectorize/reference/what-is-a-vector-database/",
+          "type": "article"
+        },
+        {
+          "title": "What are Vector Databases?",
+          "url": "https://www.mongodb.com/resources/basics/databases/vector-databases",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "purpose-and-functionality",
+      "title": "Purpose and Functionality",
+      "subsection": "Fundamentals",
+      "minutes": 5,
+      "intro": "Vector databases exist to make similarity a first-class query primitive — but they're a complement to, not a replacement for, your relational store, and not every project needs one.",
+      "summary": [
+        "Functionally, a vector DB does four jobs: ingest vectors with IDs and metadata (upsert), build and maintain an ANN index over them, answer top-k similarity queries (optionally filtered by metadata), and handle the operational lifecycle — updates, deletes, persistence, scaling. The metadata side matters more than beginners expect: real queries are 'find similar support tickets from the last 30 days for customer X', which requires the engine to combine structured filters with vector search efficiently (pre-filtering vs post-filtering — naive post-filtering can return fewer than k results or scan far more than needed).",
+        "Use cases map to one pattern: anything where 'similar' beats 'equal'. Semantic search and RAG retrieval, recommendations, duplicate and near-duplicate detection, image/audio similarity, anomaly detection (distance to neighbors as outlier score), and long-term memory for AI agents. In a RAG stack the vector DB is the retrieval layer: documents are chunked, embedded, and indexed offline; at query time the user question is embedded and the top-k chunks are fetched and stuffed into the LLM prompt.",
+        "Equally important is knowing when not to use one — a point the TDS article drives home. If your data fits in memory (tens or hundreds of thousands of vectors), numpy or FAISS in-process is simpler and faster than running a service. If you already run Postgres, pgvector handles millions of vectors and keeps vectors transactionally consistent with your relational data — one less system to operate. If your queries are mostly exact lookups and filters with occasional fuzziness, full-text search (BM25) may be all you need. Dedicated vector DBs earn their keep at large scale (10M+ vectors), high QPS, or when you need their built-in hybrid search, multi-tenancy, and embedding integrations."
+      ],
+      "keyPoints": [
+        "Four core functions: upsert vectors+metadata, maintain ANN index, top-k (filtered) similarity query, lifecycle ops.",
+        "Filtered vector search is a key differentiator — pre- vs post-filtering behavior varies widely between engines.",
+        "In RAG, the vector DB is the retrieval layer between your document corpus and the LLM prompt.",
+        "Don't over-engineer: <100k vectors fits in numpy/FAISS in-process; millions fit comfortably in pgvector.",
+        "Reach for a dedicated vector DB at ~10M+ vectors, high QPS, or when you need managed scaling and hybrid search.",
+        "Vector DBs complement — not replace — your system of record; keep source data in your primary DB and treat the index as rebuildable."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "What is a Vector Database? Top 12 Use Cases",
+          "url": "https://lakefs.io/blog/what-is-vector-databases/",
+          "type": "article"
+        },
+        {
+          "title": "Vector Databases: Intro, Use Cases",
+          "url": "https://www.v7labs.com/blog/vector-databases",
+          "type": "article"
+        },
+        {
+          "title": "When (Not) to Use Vector DB",
+          "url": "https://towardsdatascience.com/when-not-to-use-vector-db/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "chroma",
+      "title": "Chroma",
+      "subsection": "Popular Vector DBs",
+      "minutes": 5,
+      "intro": "Chroma is the open-source, developer-friendly 'AI-native' embedding database — `pip install chromadb` and you have a working vector store for prototypes and small-to-mid RAG apps in minutes.",
+      "summary": [
+        "Chroma optimizes for getting started fast. It runs embedded in your Python process (persisting to disk with `PersistentClient`) or as a lightweight client-server, and its API is built around collections of documents: you `add` documents with IDs and metadata, and Chroma can embed them for you automatically using a default sentence-transformers model (`all-MiniLM-L6-v2`) — or you plug in OpenAI, Cohere, or any embedding function. Querying with `query(query_texts=[...], n_results=5)` embeds the query and returns nearest documents, distances, and metadata in one call.",
+        "Under the hood Chroma uses an HNSW index (cosine, L2, or inner product) and supports metadata filtering via `where` clauses plus document-content filtering via `where_document`, and full-text search alongside vectors. Recent versions are backed by a Rust core for performance. Its sweet spot is local development, notebooks, tests, and production apps in the thousands-to-low-millions of vectors range; for massive horizontal scale you'd historically graduate to Qdrant/Milvus/Pinecone, though Chroma Cloud now offers a managed, serverless distributed tier.",
+        "Chroma is Apache-2.0 licensed and deeply integrated with LangChain and LlamaIndex, which is why most RAG tutorials use it as the default store. The pragmatic take: it's the SQLite of vector databases — embedded, zero-config, perfect to start with, and easy to swap out later because your embeddings and documents port to any other store."
+      ],
+      "keyPoints": [
+        "Embedded-first: `pip install chromadb`, `PersistentClient(path=...)` — no server required to start.",
+        "Embeds documents for you by default (`all-MiniLM-L6-v2`), or accepts custom embedding functions (OpenAI, Cohere, HF).",
+        "HNSW index with cosine/L2/IP metrics; `where` metadata filters and `where_document` content filters.",
+        "Apache-2.0, open source, with Chroma Cloud as the managed serverless option.",
+        "Default store in most LangChain/LlamaIndex tutorials — ideal for prototypes and small-to-mid production.",
+        "Think 'SQLite of vector DBs': start here, migrate only if scale demands it."
+      ],
+      "code": [
+        {
+          "title": "Chroma quickstart: add and query",
+          "language": "python",
+          "code": "import chromadb\n\nclient = chromadb.PersistentClient(path=\"./chroma_db\")\ncol = client.get_or_create_collection(\"docs\")  # embeds with MiniLM by default\n\ncol.add(\n    ids=[\"1\", \"2\", \"3\"],\n    documents=[\n        \"Postgres supports vector search via pgvector.\",\n        \"HNSW is a graph-based ANN index.\",\n        \"Sourdough needs a mature starter.\",\n    ],\n    metadatas=[{\"topic\": \"db\"}, {\"topic\": \"algo\"}, {\"topic\": \"baking\"}],\n)\n\nres = col.query(\n    query_texts=[\"how does approximate nearest neighbor work?\"],\n    n_results=2,\n    where={\"topic\": {\"$ne\": \"baking\"}},\n)\nprint(res[\"documents\"][0])"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Chroma",
+          "url": "https://www.trychroma.com/",
+          "type": "official"
+        },
+        {
+          "title": "Chroma Tutorials",
+          "url": "https://lablab.ai/tech/chroma",
+          "type": "article"
+        },
+        {
+          "title": "Chroma - Vector Database for LLM Applications",
+          "url": "https://youtu.be/Qs_y0lTJAp0?si=Z2-eSmhf6PKrEKCW",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Stand up a persistent Chroma collection, then run the full CRUD loop: add documents with metadata, query with where-filters, update, and delete.",
+        "steps": [
+          {
+            "title": "Install and connect a persistent client",
+            "explanation": "Python talks to Chroma in-process via `PersistentClient`, writing straight to a local folder. JavaScript uses a client/server model: start the server with `chroma run --path ./chroma-db` in one terminal, then connect with the `chromadb` npm client.",
+            "python": "# pip install chromadb\n\nimport chromadb\n\nclient = chromadb.PersistentClient(path=\"./chroma-db\")\ncollection = client.get_or_create_collection(\n    name=\"articles\",\n    metadata={\"hnsw:space\": \"cosine\"},\n)\nprint(\"collection ready, count =\", collection.count())",
+            "javascript": "// npm install chromadb chromadb-default-embed\n// Terminal 1: pip install chromadb && chroma run --path ./chroma-db\n\nimport { ChromaClient } from \"chromadb\";\n\nconst client = new ChromaClient({ path: \"http://localhost:8000\" });\nconst collection = await client.getOrCreateCollection({\n  name: \"articles\",\n  metadata: { \"hnsw:space\": \"cosine\" },\n});\nconsole.log(\"collection ready, count =\", await collection.count());"
+          },
+          {
+            "title": "Add documents with metadata",
+            "explanation": "Each record needs a unique `id`, a document string, and optional metadata. Chroma embeds the text for you with its default local model (all-MiniLM-L6-v2), so this step needs no API key. Metadata is what powers filtered queries later.",
+            "python": "collection.add(\n    ids=[\"a1\", \"a2\", \"a3\", \"a4\"],\n    documents=[\n        \"How to tune PostgreSQL for heavy write workloads\",\n        \"A beginner's guide to baking sourdough bread\",\n        \"Scaling Kubernetes clusters past 1000 nodes\",\n        \"Why your sourdough starter keeps dying\",\n    ],\n    metadatas=[\n        {\"topic\": \"databases\", \"year\": 2024},\n        {\"topic\": \"cooking\", \"year\": 2023},\n        {\"topic\": \"devops\", \"year\": 2024},\n        {\"topic\": \"cooking\", \"year\": 2024},\n    ],\n)\nprint(\"count =\", collection.count())  # 4",
+            "javascript": "await collection.add({\n  ids: [\"a1\", \"a2\", \"a3\", \"a4\"],\n  documents: [\n    \"How to tune PostgreSQL for heavy write workloads\",\n    \"A beginner's guide to baking sourdough bread\",\n    \"Scaling Kubernetes clusters past 1000 nodes\",\n    \"Why your sourdough starter keeps dying\",\n  ],\n  metadatas: [\n    { topic: \"databases\", year: 2024 },\n    { topic: \"cooking\", year: 2023 },\n    { topic: \"devops\", year: 2024 },\n    { topic: \"cooking\", year: 2024 },\n  ],\n});\nconsole.log(\"count =\", await collection.count()); // 4"
+          },
+          {
+            "title": "Query with where-filters",
+            "explanation": "`query` embeds your text and returns the nearest documents; `where` pre-filters by metadata before the vector search runs. The same query for \"bread won't rise\" returns different results when restricted to `topic = cooking` and `year = 2024`.",
+            "python": "results = collection.query(\n    query_texts=[\"my bread won't rise\"],\n    n_results=2,\n)\nprint(\"unfiltered:\", results[\"documents\"][0])\n\nfiltered = collection.query(\n    query_texts=[\"my bread won't rise\"],\n    n_results=2,\n    where={\"$and\": [{\"topic\": \"cooking\"}, {\"year\": {\"$gte\": 2024}}]},\n)\nprint(\"cooking+2024:\", filtered[\"documents\"][0])\n# Only 'Why your sourdough starter keeps dying' survives the filter.",
+            "javascript": "const results = await collection.query({\n  queryTexts: [\"my bread won't rise\"],\n  nResults: 2,\n});\nconsole.log(\"unfiltered:\", results.documents[0]);\n\nconst filtered = await collection.query({\n  queryTexts: [\"my bread won't rise\"],\n  nResults: 2,\n  where: { $and: [{ topic: \"cooking\" }, { year: { $gte: 2024 } }] },\n});\nconsole.log(\"cooking+2024:\", filtered.documents[0]);\n// Only 'Why your sourdough starter keeps dying' survives the filter."
+          },
+          {
+            "title": "Update and delete entries",
+            "explanation": "`update` overwrites the document and/or metadata for existing ids (Chroma re-embeds updated text automatically); `delete` removes by id or by where-filter. Re-run your query after each mutation to confirm the index reflects the change.",
+            "python": "collection.update(\n    ids=[\"a2\"],\n    documents=[\"An advanced guide to baking sourdough bread at home\"],\n    metadatas=[{\"topic\": \"cooking\", \"year\": 2025}],\n)\nprint(collection.get(ids=[\"a2\"])[\"documents\"])  # updated text\n\ncollection.delete(ids=[\"a1\"])              # delete by id\ncollection.delete(where={\"topic\": \"devops\"})  # delete by filter\nprint(\"count after deletes =\", collection.count())  # 2",
+            "javascript": "await collection.update({\n  ids: [\"a2\"],\n  documents: [\"An advanced guide to baking sourdough bread at home\"],\n  metadatas: [{ topic: \"cooking\", year: 2025 }],\n});\nconst got = await collection.get({ ids: [\"a2\"] });\nconsole.log(got.documents); // updated text\n\nawait collection.delete({ ids: [\"a1\"] });                 // delete by id\nawait collection.delete({ where: { topic: \"devops\" } });  // delete by filter\nconsole.log(\"count after deletes =\", await collection.count()); // 2"
+          }
+        ],
+        "practice": [
+          "Restart your script (or the `chroma run` server) and confirm the collection still has your documents—that is what `PersistentClient`/`--path` buys you.",
+          "Load 50 of your own notes or bookmarks with a `source` metadata field, then run the same query filtered to each source and compare results.",
+          "Swap Chroma's default embedder for `text-embedding-3-small` via an OpenAI embedding function and check whether your top results change.",
+          "Use `where_document: {\"$contains\": \"sourdough\"}` combined with a metadata `where` filter in a single query.",
+          "Write an `upsert_article(id, text, meta)` helper that uses `collection.upsert` and prove it neither duplicates ids nor loses metadata after 3 repeated calls."
+        ]
+      }
+    },
+    {
+      "id": "pinecone",
+      "title": "Pinecone",
+      "subsection": "Popular Vector DBs",
+      "minutes": 5,
+      "intro": "Pinecone is the best-known fully managed vector database — serverless, zero-ops, usage-priced, and built for production-scale similarity search without touching infrastructure.",
+      "summary": [
+        "Pinecone's pitch is that vectors are an infrastructure problem you shouldn't have: you create an index via API, upsert vectors, and query — Pinecone handles sharding, replication, index building, and scaling. Its serverless architecture (the focus of the 'Introducing Pinecone Serverless' launch) separates storage from compute: vectors live cheaply in object storage while query compute scales on demand, which cut costs dramatically versus the older pod-based model where you paid for always-on capacity. Pricing is usage-based — per GB stored and per read/write units — with a free tier good for ~100k-scale experiments.",
+        "Feature-wise it covers the production checklist: low-latency ANN queries with metadata filtering, namespaces for multi-tenancy (one index, isolated per-customer partitions — a common SaaS pattern), hybrid dense+sparse search for keyword-aware retrieval, integrated embedding and reranking models (so you can send raw text and let Pinecone embed it), and SOC 2/HIPAA-grade enterprise posture. Client SDKs cover Python, Node, Go, and Java, and it's a first-class citizen in LangChain/LlamaIndex.",
+        "Trade-offs: it's proprietary and cloud-only — no self-hosting, so data residency and vendor lock-in are real considerations, and at very large scale usage pricing can exceed self-hosted Qdrant/Milvus on raw economics. The decision is classic managed-vs-self-hosted: Pinecone buys you near-zero operational burden and predictable latency; open-source alternatives buy you control and lower marginal cost at the price of running the cluster yourself."
+      ],
+      "keyPoints": [
+        "Fully managed and serverless: storage decoupled from compute, pay per GB + per read/write unit; free tier available.",
+        "Namespaces give cheap multi-tenancy — the standard pattern for per-customer isolation in SaaS RAG.",
+        "Supports metadata filtering, hybrid dense+sparse search, and integrated embedding/reranking models.",
+        "Proprietary, cloud-only — no self-host option; weigh lock-in and data residency.",
+        "Specify the metric (cosine/dotproduct/euclidean) and dimension at index creation — they must match your embedding model.",
+        "Great default when you want zero ops; self-hosted Qdrant/Milvus can be cheaper at very large scale."
+      ],
+      "code": [
+        {
+          "title": "Pinecone: create index, upsert, query",
+          "language": "python",
+          "code": "from pinecone import Pinecone, ServerlessSpec\n\npc = Pinecone(api_key=\"PINECONE_API_KEY\")\n\nif not pc.has_index(\"docs\"):\n    pc.create_index(\n        name=\"docs\", dimension=1536, metric=\"cosine\",\n        spec=ServerlessSpec(cloud=\"aws\", region=\"us-east-1\"),\n    )\nindex = pc.Index(\"docs\")\n\nindex.upsert(\n    vectors=[\n        {\"id\": \"a\", \"values\": emb_a, \"metadata\": {\"source\": \"faq\"}},\n        {\"id\": \"b\", \"values\": emb_b, \"metadata\": {\"source\": \"blog\"}},\n    ],\n    namespace=\"tenant-42\",\n)\n\nres = index.query(vector=query_emb, top_k=3, namespace=\"tenant-42\",\n                  filter={\"source\": \"faq\"}, include_metadata=True)\nprint(res.matches)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Pinecone",
+          "url": "https://www.pinecone.io",
+          "type": "official"
+        },
+        {
+          "title": "Everything you need to know about Pinecone",
+          "url": "https://www.packtpub.com/article-hub/everything-you-need-to-know-about-pinecone-a-vector-database?srsltid=AfmBOorXsy9WImpULoLjd-42ERvTzj3pQb7C2EFgamWlRobyGJVZKKdz",
+          "type": "article"
+        },
+        {
+          "title": "Introducing Pinecone Serverless",
+          "url": "https://www.youtube.com/watch?v=iCuR6ihHQgc",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "weaviate",
+      "title": "Weaviate",
+      "subsection": "Popular Vector DBs",
+      "minutes": 4,
+      "intro": "Weaviate is an open-source vector database with built-in hybrid search, a modular 'vectorizer' system that can embed your data for you, and both self-hosted and managed cloud options.",
+      "summary": [
+        "Weaviate (BSD-3, written in Go) organizes data into collections with schemas, storing objects (properties/metadata) together with their vectors over an HNSW index. Its standout feature is the module system: configure a vectorizer (`text2vec-openai`, `text2vec-cohere`, local `text2vec-transformers`, multimodal CLIP, and more) and Weaviate calls the embedding model automatically at import and query time — you write text in, similarity out, no separate embedding pipeline. You can also bring your own vectors.",
+        "Search capabilities are broad: pure vector `nearText`/`nearVector`, BM25 keyword search, and first-class hybrid search that fuses both score lists with a tunable `alpha` parameter — one of the easiest hybrid implementations to use, which matters because hybrid usually beats pure vector retrieval in production. It adds filtered search, multi-tenancy, replication and horizontal sharding, quantization options (PQ/BQ/SQ) for memory savings, and generative/RAG modules that can call an LLM over retrieved results. APIs are GraphQL and REST/gRPC, with solid Python/TS clients.",
+        "Deployment: self-host with Docker/Kubernetes for free, or use Weaviate Cloud (serverless, usage-priced) for managed operation. It sits in the same tier as Qdrant and Milvus as a production-grade open-source engine; pick Weaviate when built-in vectorizers, hybrid search ergonomics, or its RAG modules fit your stack."
+      ],
+      "keyPoints": [
+        "Open source (BSD-3) in Go; HNSW index; self-host via Docker/K8s or managed Weaviate Cloud.",
+        "Vectorizer modules embed data automatically (OpenAI, Cohere, local transformers, CLIP) — or bring your own vectors.",
+        "First-class hybrid search: BM25 + vector fused with an `alpha` weight, plus metadata filtering.",
+        "Multimodal modules support text+image search in one collection.",
+        "Built-in multi-tenancy, replication, and PQ/BQ quantization for scale.",
+        "Generative modules can run RAG (retrieve then call an LLM) inside the database query."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Weaviate",
+          "url": "https://weaviate.io/",
+          "type": "official"
+        },
+        {
+          "title": "Advanced AI Agents with RAG",
+          "url": "https://www.youtube.com/watch?v=UoowC-hsaf0&list=PLTL2JUbrY6tVmVxY12e6vRDmY-maAXzR1",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "faiss",
+      "title": "FAISS",
+      "subsection": "Popular Vector DBs",
+      "minutes": 6,
+      "intro": "FAISS is Meta's C++/Python library for similarity search over dense vectors — not a database but an in-process index toolkit, and the reference implementation for ANN algorithms at billion-vector scale.",
+      "summary": [
+        "FAISS (Facebook AI Similarity Search) is a library, not a server: you build an index object in your process, add numpy arrays of vectors, and search. That distinction drives everything — there's no persistence layer beyond writing the index to a file, no metadata storage (you keep a separate id→record mapping), no replication or access control. In exchange you get the fastest, most flexible ANN engine available: exhaustive `IndexFlatL2`/`IndexFlatIP` for exact search, `IndexIVFFlat` (cluster-then-probe), `IndexHNSWFlat`, and product-quantization variants like `IndexIVFPQ` that compress vectors 16-64x so a billion vectors fit in RAM, plus best-in-class GPU acceleration.",
+        "The index zoo encodes the core ANN trade-off triangle: speed vs recall vs memory. Flat = exact but O(n); IVF = train k-means centroids, search only `nprobe` nearest clusters (tune `nprobe` up for recall, down for speed); HNSW = graph traversal, great recall/latency but high RAM; PQ = lossy compression for memory-bound scale. FAISS's `index_factory` strings (e.g. `\"IVF4096,PQ64\"`) compose these. Learning FAISS teaches you the vocabulary every vector DB uses internally — most of them literally wrap or reimplement these structures.",
+        "When to use it: in-process search where running a DB server is overkill (batch jobs, notebooks, model evaluation, embedded apps), research, or as the engine inside your own retrieval service. When not to: you need CRUD with metadata filtering, durability, multi-tenant serving, or a team-friendly API — that's what the databases built on these algorithms are for. LangChain's `FAISS` vectorstore wrapper papers over some gaps (it pairs the index with a docstore) and is a common lightweight RAG choice."
+      ],
+      "keyPoints": [
+        "Library, not a database: in-process, no server, no metadata/filtering/durability — you manage that yourself.",
+        "Index taxonomy = the ANN trade-off triangle: Flat (exact), IVF (`nprobe` clusters), HNSW (graph, RAM-heavy), PQ (compressed).",
+        "`IndexIVFPQ` and GPU support let FAISS scale to billions of vectors on a single machine.",
+        "IVF and PQ indexes must be trained on a sample of vectors before adding data.",
+        "Use `faiss.normalize_L2` + `IndexFlatIP` to get cosine similarity.",
+        "Perfect for notebooks, batch pipelines, and custom services; wrong tool when you need a multi-user database.",
+        "MIT-licensed; install via `faiss-cpu` or `faiss-gpu` pip packages."
+      ],
+      "code": [
+        {
+          "title": "FAISS: exact and IVF approximate search",
+          "language": "python",
+          "code": "import faiss\nimport numpy as np\n\nd = 384\nxb = np.random.rand(100_000, d).astype(\"float32\")  # corpus embeddings\nxq = np.random.rand(5, d).astype(\"float32\")        # query embeddings\nfaiss.normalize_L2(xb); faiss.normalize_L2(xq)      # cosine via inner product\n\n# Exact search\nflat = faiss.IndexFlatIP(d)\nflat.add(xb)\nD, I = flat.search(xq, k=5)   # similarities, neighbor row ids\n\n# Approximate: IVF with 256 clusters\nivf = faiss.IndexIVFFlat(faiss.IndexFlatIP(d), d, 256,\n                         faiss.METRIC_INNER_PRODUCT)\nivf.train(xb)                 # required before add\nivf.add(xb)\nivf.nprobe = 8                # clusters to scan: recall vs speed knob\nD, I = ivf.search(xq, k=5)\nfaiss.write_index(ivf, \"docs.index\")"
+        }
+      ],
+      "resources": [
+        {
+          "title": "FAISS",
+          "url": "https://ai.meta.com/tools/faiss/",
+          "type": "official"
+        },
+        {
+          "title": "What Is Faiss (Facebook AI Similarity Search)?",
+          "url": "https://www.datacamp.com/blog/faiss-facebook-ai-similarity-search",
+          "type": "article"
+        },
+        {
+          "title": "FAISS Vector Library with LangChain and OpenAI",
+          "url": "https://www.youtube.com/watch?v=ZCSsIkyCZk4",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "lancedb",
+      "title": "LanceDB",
+      "subsection": "Popular Vector DBs",
+      "minutes": 4,
+      "intro": "LanceDB is an embedded, serverless vector database built on the Lance columnar format — vectors live in files on local disk or object storage (S3), with no server to run.",
+      "summary": [
+        "LanceDB's architectural bet is storage-first: instead of a client-server database, it's a library (Rust core, Python/TypeScript bindings) that reads and writes the open Lance columnar format — a modern, versioned alternative to Parquet designed for ML data. Your 'database' is a directory of files, which can sit on local disk or directly on S3/GCS. That makes it embedded like SQLite, trivially cheap at rest, and naturally suited to serverless and data-lake architectures where compute spins up, queries files on object storage, and disappears.",
+        "Despite the simple deployment model it's a real search engine: IVF-PQ and HNSW indexes for ANN, full-text (BM25) search, hybrid search with reranking, SQL-style filtering, and — unusually — first-class multimodal data handling, storing images, audio, and tensors next to vectors in the same table with zero-copy access. Lance's versioning gives you time travel over datasets, which ML teams use for reproducibility. The embedding API can auto-embed data via registered functions (OpenAI, sentence-transformers, etc.).",
+        "Fit: ideal when you want vector search inside an application or pipeline without operating a database — desktop/edge apps, Lambda functions, notebooks, feature/training pipelines over data lakes — and it scales surprisingly far (hundreds of millions of vectors on object storage). LanceDB Cloud/Enterprise adds a managed, distributed tier. The open-source core is Apache-2.0. Trade-off versus Qdrant/Weaviate: no standing server means no shared multi-user endpoint out of the box — it's your process doing the searching."
+      ],
+      "keyPoints": [
+        "Embedded/serverless: a library plus files (Lance format) on disk or S3 — no database server to operate.",
+        "Lance columnar format supports versioning/time travel and zero-copy multimodal storage (images, audio, tensors with vectors).",
+        "Supports IVF-PQ and HNSW ANN, BM25 full-text, hybrid search, and SQL-style filters.",
+        "Runs anywhere a process runs: Lambdas, notebooks, desktop apps, data pipelines.",
+        "Apache-2.0 open source; LanceDB Cloud provides the managed distributed option.",
+        "Trade-off: no built-in multi-user server — concurrency and serving are your application's job."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "LanceDB",
+          "url": "https://lancedb.com/",
+          "type": "official"
+        },
+        {
+          "title": "LanceDB Documentation",
+          "url": "https://docs.lancedb.com/enterprise/introduction",
+          "type": "official"
+        },
+        {
+          "title": "LanceDB on GitHub",
+          "url": "https://github.com/lancedb/lancedb",
+          "type": "opensource"
+        }
+      ]
+    },
+    {
+      "id": "qdrant",
+      "title": "Qdrant",
+      "subsection": "Popular Vector DBs",
+      "minutes": 5,
+      "intro": "Qdrant is a Rust-built, open-source vector database known for performance, sophisticated payload filtering during ANN search, and aggressive quantization options.",
+      "summary": [
+        "Qdrant (Apache-2.0, written in Rust) stores 'points' — an ID, a vector (or several named vectors per point), and an arbitrary JSON payload — in collections indexed with a custom HNSW implementation. Its signature strength is filterable HNSW: instead of post-filtering ANN results (which can return too few hits) or brute-forcing pre-filtered subsets, Qdrant integrates payload conditions into graph traversal, keeping filtered queries fast and accurate. Payload indexes over keywords, numbers, geo, and full-text make `must`/`should`/`must_not` filter clauses cheap.",
+        "Performance features go deep: scalar, product, and binary quantization (binary can cut memory ~32x and speed up search ~40x for high-dimensional vectors, with optional rescoring from original vectors), memory-mapped on-disk storage for larger-than-RAM collections, named multi-vectors and sparse vectors per point for hybrid dense+sparse retrieval, and gRPC/REST APIs. It scales with sharding and replication in distributed mode, and ships official Python/JS/Go/Java/Rust clients.",
+        "Deployment is flexible: a single Docker container locally (plus an in-memory Python mode for tests), self-hosted clusters, or Qdrant Cloud with a permanent free 1GB tier. It has become a default choice for self-hosted production RAG — open source with no feature-gated core, strong benchmarks, and the best-in-class filtering story. Compare with Weaviate (more built-in vectorizers/RAG modules) and Milvus (heavier, built for massive distributed scale)."
+      ],
+      "keyPoints": [
+        "Rust, Apache-2.0; points = ID + vector(s) + JSON payload; custom HNSW index.",
+        "Filterable HNSW integrates metadata conditions into graph search — no recall collapse on filtered queries.",
+        "Scalar/product/binary quantization: binary gives up to ~32x memory reduction with rescoring to recover accuracy.",
+        "Supports named multi-vectors and sparse vectors per point — hybrid search in one collection.",
+        "Run via single Docker container, `:memory:` mode for tests, distributed cluster, or Qdrant Cloud (free 1GB tier).",
+        "A go-to for self-hosted production RAG; benchmark leader in many filtered-search scenarios."
+      ],
+      "code": [
+        {
+          "title": "Qdrant: upsert and filtered query",
+          "language": "python",
+          "code": "from qdrant_client import QdrantClient, models\n\nclient = QdrantClient(url=\"http://localhost:6333\")\n\nclient.create_collection(\n    collection_name=\"docs\",\n    vectors_config=models.VectorParams(size=1536, distance=models.Distance.COSINE),\n)\n\nclient.upsert(\n    collection_name=\"docs\",\n    points=[\n        models.PointStruct(id=1, vector=emb_a, payload={\"lang\": \"en\", \"year\": 2025}),\n        models.PointStruct(id=2, vector=emb_b, payload={\"lang\": \"de\", \"year\": 2024}),\n    ],\n)\n\nhits = client.query_points(\n    collection_name=\"docs\",\n    query=query_emb,\n    limit=3,\n    query_filter=models.Filter(must=[\n        models.FieldCondition(key=\"lang\", match=models.MatchValue(value=\"en\")),\n    ]),\n).points\nprint([(h.id, h.score) for h in hits])"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Qdrant",
+          "url": "https://qdrant.tech/",
+          "type": "official"
+        },
+        {
+          "title": "Qdrant on GitHub",
+          "url": "https://github.com/qdrant/qdrant",
+          "type": "opensource"
+        },
+        {
+          "title": "Getting started with Qdrant",
+          "url": "https://www.youtube.com/watch?v=LRcZ9pbGnno",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "supabase-pgvector",
+      "title": "Supabase (pgvector)",
+      "subsection": "Popular Vector DBs",
+      "minutes": 6,
+      "intro": "pgvector turns Postgres into a vector database — and Supabase packages it with auth, storage, and edge functions, so embeddings live in the same database as the rest of your app data.",
+      "summary": [
+        "pgvector is an open-source Postgres extension that adds a `vector` column type, distance operators (`<->` Euclidean, `<=>` cosine distance, `<#>` negative inner product), and ANN indexes. The killer argument is architectural: if your app already runs on Postgres, you get vector search with zero new infrastructure, and vectors stay transactionally consistent with your relational data — joins, row-level security, backups, and `WHERE` filters all just work alongside similarity search. Supabase enables pgvector out of the box and layers on conveniences: SQL/RPC access from its client libraries, Edge Functions for embedding generation, and guides for the full RAG loop.",
+        "Indexing options matter. With no index, queries are exact but scan every row. IVFFlat (the original index) clusters vectors into lists — build it after loading data and tune `lists`/`probes`. HNSW (added in pgvector 0.5+) is now the usual choice: better recall/latency, no training step, works on empty tables, at the cost of slower builds and more memory. pgvector supports up to 2,000 dimensions in indexed vector columns (use `halfvec` half-precision to index up to 4,000 and halve storage), plus binary quantization and sparse vectors in recent versions. Realistic comfortable scale is single-digit millions of vectors per table; beyond that, dedicated engines or sharding strategies start to win.",
+        "A typical Supabase RAG flow: store documents in a table with a `vector(1536)` column, embed via OpenAI in an Edge Function, and expose a match function that combines `ORDER BY embedding <=> query_embedding` with regular SQL filters — getting hybrid relational+vector queries in one statement. The honest trade-off versus dedicated vector DBs: fewer specialized features (no built-in hybrid fusion or multi-vector tricks) and lower ceiling on scale/QPS, but radically simpler ops and one source of truth. For most products, 'just use Postgres' is the right starting answer."
+      ],
+      "keyPoints": [
+        "pgvector adds `vector` type + operators: `<=>` cosine distance, `<->` L2, `<#>` negative inner product.",
+        "Prefer HNSW indexes (pgvector 0.5+) over IVFFlat: better recall, no training step; IVFFlat builds faster and uses less memory.",
+        "Indexed vector columns cap at 2,000 dims — use 512/1536-dim embeddings, or `halfvec` for up to 4,000 dims.",
+        "Vectors live next to relational data: joins, row-level security, transactions, and SQL filters combine with similarity search.",
+        "Comfortable up to low millions of vectors; dedicated engines win at bigger scale or extreme QPS.",
+        "Supabase ships pgvector enabled with client libraries, Edge Functions, and RAG guides; plain Postgres + pgvector works anywhere (RDS, Cloud SQL, Neon)."
+      ],
+      "code": [
+        {
+          "title": "pgvector: table, HNSW index, similarity query",
+          "language": "sql",
+          "code": "create extension if not exists vector;\n\ncreate table documents (\n  id bigserial primary key,\n  content text,\n  metadata jsonb,\n  embedding vector(1536)\n);\n\n-- HNSW index for cosine distance\ncreate index on documents\n  using hnsw (embedding vector_cosine_ops);\n\n-- Top-5 most similar, with a relational filter\nselect id, content,\n       1 - (embedding <=> '[0.01, -0.02, ...]') as similarity\nfrom documents\nwhere metadata->>'lang' = 'en'\norder by embedding <=> '[0.01, -0.02, ...]'\nlimit 5;"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Supabase Vector",
+          "url": "https://supabase.com/docs/guides/ai",
+          "type": "official"
+        },
+        {
+          "title": "Supabase Vector: The Postgres Vector database",
+          "url": "https://www.youtube.com/watch?v=MDxEXKkxf2Q",
+          "type": "video"
+        },
+        {
+          "title": "pgvector on GitHub",
+          "url": "https://github.com/pgvector/pgvector",
+          "type": "opensource"
+        }
+      ],
+      "handsOn": {
+        "goal": "Turn a Supabase Postgres database into a vector store: enable pgvector, create a `documents` table and a `match_documents` RPC, then insert and search embeddings from client code.",
+        "steps": [
+          {
+            "title": "Install clients and enable the vector extension",
+            "explanation": "Create a free project at supabase.com and grab the project URL and anon key from Settings -> API. The SQL to enable pgvector runs once in the Supabase SQL Editor—it is identical for both languages, so it is shown in both code panes above the client setup.",
+            "python": "# pip install supabase openai\n# export SUPABASE_URL=https://<project>.supabase.co\n# export SUPABASE_KEY=<anon key>  OPENAI_API_KEY=sk-...\n\n# -- SQL (run once in the Supabase SQL Editor) --\n# create extension if not exists vector;\n\nimport os\nfrom supabase import create_client\nfrom openai import OpenAI\n\nsupabase = create_client(os.environ[\"SUPABASE_URL\"], os.environ[\"SUPABASE_KEY\"])\nopenai_client = OpenAI()\nprint(\"clients ready\")",
+            "javascript": "// npm install @supabase/supabase-js openai\n// export SUPABASE_URL=https://<project>.supabase.co\n// export SUPABASE_KEY=<anon key>  OPENAI_API_KEY=sk-...\n\n// -- SQL (run once in the Supabase SQL Editor) --\n// create extension if not exists vector;\n\nimport { createClient } from \"@supabase/supabase-js\";\nimport OpenAI from \"openai\";\n\nconst supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);\nconst openai = new OpenAI();\nconsole.log(\"clients ready\");"
+          },
+          {
+            "title": "Create the table and `match_documents` RPC (SQL)",
+            "explanation": "This step is pure SQL—run it in the SQL Editor regardless of which language you code in, so the snippet is duplicated in both panes. `vector(1536)` matches `text-embedding-3-small`'s default size, and the function exposes cosine search (`<=>` is cosine distance) as an RPC that any client can call.",
+            "python": "-- SQL: run in the Supabase SQL Editor (same for Python and JS)\ncreate table documents (\n  id bigserial primary key,\n  content text not null,\n  embedding vector(1536)\n);\n\ncreate or replace function match_documents(\n  query_embedding vector(1536),\n  match_count int default 3\n) returns table (id bigint, content text, similarity float)\nlanguage sql stable as $$\n  select id, content,\n         1 - (embedding <=> query_embedding) as similarity\n  from documents\n  order by embedding <=> query_embedding\n  limit match_count;\n$$;",
+            "javascript": "-- SQL: run in the Supabase SQL Editor (same for Python and JS)\ncreate table documents (\n  id bigserial primary key,\n  content text not null,\n  embedding vector(1536)\n);\n\ncreate or replace function match_documents(\n  query_embedding vector(1536),\n  match_count int default 3\n) returns table (id bigint, content text, similarity float)\nlanguage sql stable as $$\n  select id, content,\n         1 - (embedding <=> query_embedding) as similarity\n  from documents\n  order by embedding <=> query_embedding\n  limit match_count;\n$$;"
+          },
+          {
+            "title": "Embed and insert documents from the client",
+            "explanation": "Embed a batch of texts with `text-embedding-3-small`, then insert content plus embedding through the Supabase client. The client serializes the float list into the `vector` column for you—no manual casting needed.",
+            "python": "texts = [\n    \"The mitochondria is the powerhouse of the cell\",\n    \"Postgres supports JSONB for semi-structured data\",\n    \"Our office is closed on public holidays\",\n    \"pgvector adds approximate nearest neighbor search to Postgres\",\n]\nresp = openai_client.embeddings.create(\n    model=\"text-embedding-3-small\", input=texts\n)\nrows = [\n    {\"content\": t, \"embedding\": d.embedding}\n    for t, d in zip(texts, resp.data)\n]\nsupabase.table(\"documents\").insert(rows).execute()\nprint(\"inserted\", len(rows), \"rows\")",
+            "javascript": "const texts = [\n  \"The mitochondria is the powerhouse of the cell\",\n  \"Postgres supports JSONB for semi-structured data\",\n  \"Our office is closed on public holidays\",\n  \"pgvector adds approximate nearest neighbor search to Postgres\",\n];\nconst resp = await openai.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: texts,\n});\nconst rows = texts.map((content, i) => ({\n  content,\n  embedding: resp.data[i].embedding,\n}));\nconst { error } = await supabase.from(\"documents\").insert(rows);\nif (error) throw error;\nconsole.log(\"inserted\", rows.length, \"rows\");"
+          },
+          {
+            "title": "Search via the RPC (and raw SQL)",
+            "explanation": "Embed the query, then call `match_documents` through `.rpc()`—the function runs inside Postgres and only ships back the top rows. The equivalent raw SQL (`order by embedding <=> '[...]' limit 3`) is shown in a comment so you can also run it directly in the SQL Editor.",
+            "python": "q = openai_client.embeddings.create(\n    model=\"text-embedding-3-small\",\n    input=\"how do I search vectors in Postgres?\",\n).data[0].embedding\n\nres = supabase.rpc(\n    \"match_documents\",\n    {\"query_embedding\": q, \"match_count\": 3},\n).execute()\nfor row in res.data:\n    print(round(row[\"similarity\"], 4), row[\"content\"])\n# Top hit: 'pgvector adds approximate nearest neighbor search...'\n\n# Raw SQL equivalent (SQL Editor):\n# select content, 1 - (embedding <=> '[0.01, ...]') as similarity\n# from documents order by embedding <=> '[0.01, ...]' limit 3;",
+            "javascript": "const qResp = await openai.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: \"how do I search vectors in Postgres?\",\n});\nconst q = qResp.data[0].embedding;\n\nconst { data, error } = await supabase.rpc(\"match_documents\", {\n  query_embedding: q,\n  match_count: 3,\n});\nif (error) throw error;\nfor (const row of data) {\n  console.log(row.similarity.toFixed(4), row.content);\n}\n// Top hit: 'pgvector adds approximate nearest neighbor search...'\n\n// Raw SQL equivalent (SQL Editor):\n// select content, 1 - (embedding <=> '[0.01, ...]') as similarity\n// from documents order by embedding <=> '[0.01, ...]' limit 3;"
+          }
+        ],
+        "practice": [
+          "Add a `metadata jsonb` column, store `{\"category\": ...}` per row, and extend `match_documents` to take a category filter parameter.",
+          "Insert 100 documents, then add an HNSW index (`create index on documents using hnsw (embedding vector_cosine_ops);`) and verify queries still return the same top 3.",
+          "Add a `similarity > 0.5` threshold inside `match_documents` and confirm an off-topic query like `best pizza in town` returns zero rows.",
+          "Rebuild the table with `vector(256)` and embeddings created with `dimensions: 256`—measure the table size difference with `select pg_size_pretty(pg_total_relation_size('documents'));`.",
+          "Wire the RPC into the FAQ search engine from the semantic-search lab so the ranking happens in Postgres instead of in your app code."
+        ]
+      }
+    },
+    {
+      "id": "mongodb-atlas-vector-search",
+      "title": "MongoDB Atlas Vector Search",
+      "subsection": "Popular Vector DBs",
+      "minutes": 4,
+      "intro": "Atlas Vector Search adds ANN search over vector fields stored inside MongoDB documents, letting teams already on MongoDB do semantic search without a separate vector database.",
+      "summary": [
+        "The model is simple: store an embedding as an array field on a normal document (next to its text, metadata, everything else), define a `vectorSearch` index on that field (specifying dimensions and similarity metric — cosine, dot product, or Euclidean), and query with the `$vectorSearch` aggregation stage. Under the hood Atlas builds an HNSW index on dedicated search infrastructure, and supports both ANN and exact (ENN) modes. Because it's an aggregation stage, vector search composes with the rest of MongoDB's pipeline — `$match`-style pre-filters on indexed fields, `$project`, `$lookup` — and with Atlas Search (Lucene BM25) for hybrid retrieval via `$rankFusion`.",
+        "The argument mirrors pgvector's: if MongoDB is already your operational database, keeping embeddings beside source documents removes a whole synchronization problem — no pipeline to keep a separate vector DB consistent with your data, one security/backup model, familiar drivers. It supports up to 8,192-dimension vectors, quantized (int8/binary) vectors for memory savings, and dedicated Search Nodes so search workload scales independently of the core database. LangChain and LlamaIndex ship Atlas vector store integrations.",
+        "Considerations: it's an Atlas cloud feature — only recently extended toward self-managed deployments in newest server versions, so historically not available on self-hosted MongoDB; vector indexes are eventually consistent with writes; and a document database doing vector search won't match a dedicated engine's knobs (quantization-with-rescoring strategies, multi-vector). The decision rule: already on Atlas → use it and skip the extra system; greenfield with extreme vector requirements → compare with dedicated engines first."
+      ],
+      "keyPoints": [
+        "Embeddings live as array fields on regular documents; query via the `$vectorSearch` aggregation stage over an HNSW index.",
+        "Supports cosine/dotProduct/euclidean metrics, up to 8,192 dimensions, pre-filtering, and ANN or exact (ENN) modes.",
+        "Hybrid search: combine `$vectorSearch` with Atlas Search BM25 using `$rankFusion`.",
+        "Biggest win is operational: no separate vector DB to sync, secure, and back up.",
+        "Dedicated Search Nodes isolate vector workload from the operational database.",
+        "Atlas-centric feature — verify availability if you self-host MongoDB; vector indexes update asynchronously after writes."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Vector Search in MongoDB Atlas",
+          "url": "https://www.mongodb.com/products/platform/atlas-vector-search",
+          "type": "official"
+        }
+      ]
+    },
+    {
+      "id": "indexing-embeddings",
+      "title": "Indexing Embeddings",
+      "subsection": "Implementing Vector Search",
+      "minutes": 6,
+      "intro": "Indexing is the offline half of vector search: chunk your data, embed each chunk, and load vectors plus metadata into an ANN index so queries can be answered fast later.",
+      "summary": [
+        "The ingestion pipeline has four stages. (1) Extract and clean source content — HTML, PDFs, tickets, code. (2) Chunk it: embedding models have token limits and retrieval works best on focused passages, so split documents into chunks of roughly 200-500 tokens, often with 10-20% overlap so sentences aren't orphaned at boundaries; smarter strategies split on semantic boundaries (headings, paragraphs) rather than fixed sizes. (3) Embed every chunk with your chosen model — batched, cached, and versioned. (4) Upsert each vector with a stable ID and metadata (source document, title, URL, timestamps, tenant, access tags) into the vector store, which builds or updates its ANN index.",
+        "Chunking is the highest-leverage decision and the focus of the LlamaIndex docs: too-large chunks dilute the embedding (one vector averaging many topics matches nothing well) and waste LLM context; too-small chunks lose the surrounding meaning needed to answer questions. A robust pattern is to attach enough metadata to each chunk to reconstruct context — parent document ID and position — so retrieval can expand to neighboring chunks or the full section ('small-to-big' retrieval). Frameworks like LlamaIndex and LangChain automate the load-split-embed-store pipeline with pluggable parsers and splitters.",
+        "On the index side, understand what gets built: HNSW graphs update incrementally and handle streaming upserts well; IVF-style indexes need (re)training on representative data; deletes are often soft and reclaimed by background compaction. Operational must-dos: use deterministic IDs (e.g. hash of source+chunk position) so re-ingesting updates instead of duplicating; record the embedding model name/version in metadata — when you upgrade models you must re-embed and rebuild; and plan incremental sync from your source of truth (change-data-capture or periodic re-crawl) because a stale index quietly degrades your whole RAG system."
+      ],
+      "keyPoints": [
+        "Pipeline: extract → chunk → embed → upsert (vector + ID + metadata); the ANN index is built/updated on upsert.",
+        "Chunk size sweet spot is usually 200-500 tokens with ~10-20% overlap; split on semantic boundaries when possible.",
+        "Rich metadata (source, position, tenant, ACL tags) enables filtering, citation, and context expansion at query time.",
+        "Use deterministic IDs so re-ingestion upserts rather than duplicates.",
+        "Stamp the embedding model version on every record — model upgrades require full re-embedding.",
+        "Keep the index in sync with the source of truth; treat it as a rebuildable derived artifact, not the system of record."
+      ],
+      "code": [
+        {
+          "title": "Minimal ingest pipeline: chunk, embed, upsert to Chroma",
+          "language": "python",
+          "code": "import hashlib\nimport chromadb\nfrom openai import OpenAI\n\noai = OpenAI()\ncol = chromadb.PersistentClient(\"./db\").get_or_create_collection(\"kb\")\n\ndef chunk(text, size=1000, overlap=150):  # ~chars, demo splitter\n    return [text[i:i + size] for i in range(0, len(text), size - overlap)]\n\ndef ingest(doc_id: str, text: str, source: str):\n    chunks = chunk(text)\n    resp = oai.embeddings.create(model=\"text-embedding-3-small\", input=chunks)\n    col.upsert(\n        ids=[hashlib.sha1(f\"{doc_id}:{i}\".encode()).hexdigest() for i in range(len(chunks))],\n        embeddings=[d.embedding for d in resp.data],\n        documents=chunks,\n        metadatas=[{\"doc\": doc_id, \"pos\": i, \"source\": source,\n                    \"model\": \"text-embedding-3-small\"} for i in range(len(chunks))],\n    )\n\ningest(\"handbook\", open(\"handbook.txt\").read(), \"wiki\")"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Indexing & Embeddings",
+          "url": "https://developers.llamaindex.ai/python/framework/understanding/rag/indexing/",
+          "type": "article"
+        },
+        {
+          "title": "Vector Databases Simply Explained! (Embeddings & Indexes)",
+          "url": "https://www.youtube.com/watch?v=dN0lsF2cvm4",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Index 10,000 random vectors two ways—exact brute force and HNSW—then measure query latency and recall@10 to feel the speed/accuracy tradeoff yourself.",
+        "steps": [
+          {
+            "title": "Install and generate 10k random vectors",
+            "explanation": "`hnswlib` is the same C++ library under both wrappers (`hnswlib` on pip, `hnswlib-node` on npm). Random 128-dim vectors are enough to demonstrate index behavior—no API key or real embeddings needed for this lab.",
+            "python": "# pip install hnswlib numpy\n\nimport numpy as np\n\nDIM, N = 128, 10_000\nrng = np.random.default_rng(42)\ndata = rng.random((N, DIM), dtype=np.float32)\nqueries = rng.random((100, DIM), dtype=np.float32)\nprint(\"data:\", data.shape, \"queries:\", queries.shape)",
+            "javascript": "// npm install hnswlib-node\n\nconst DIM = 128, N = 10000;\n\nfunction randomVector(dim) {\n  return Array.from({ length: dim }, () => Math.random());\n}\nconst data = Array.from({ length: N }, () => randomVector(DIM));\nconst queries = Array.from({ length: 100 }, () => randomVector(DIM));\nconsole.log(\"data:\", data.length, \"queries:\", queries.length);"
+          },
+          {
+            "title": "Build a flat (exact) baseline",
+            "explanation": "Brute force compares the query against every single vector, so it is guaranteed to return the true top 10—that makes it both our accuracy ground truth and our latency baseline. Note how the cost scales linearly with N.",
+            "python": "import time\n\ndef brute_force_top10(q):\n    dists = np.linalg.norm(data - q, axis=1)  # euclidean to all 10k\n    return np.argsort(dists)[:10]\n\nstart = time.perf_counter()\nground_truth = [brute_force_top10(q) for q in queries]\nflat_ms = (time.perf_counter() - start) * 1000 / len(queries)\nprint(f\"flat search: {flat_ms:.2f} ms/query (exact by definition)\")",
+            "javascript": "function bruteForceTop10(q) {\n  const scored = data.map((v, i) => {\n    let s = 0;\n    for (let d = 0; d < DIM; d++) s += (v[d] - q[d]) ** 2;\n    return { i, dist: s }; // squared euclidean: same ranking\n  });\n  scored.sort((a, b) => a.dist - b.dist);\n  return scored.slice(0, 10).map((x) => x.i);\n}\n\nconst t0 = performance.now();\nconst groundTruth = queries.map(bruteForceTop10);\nconst flatMs = (performance.now() - t0) / queries.length;\nconsole.log(`flat search: ${flatMs.toFixed(2)} ms/query (exact by definition)`);"
+          },
+          {
+            "title": "Build an HNSW index",
+            "explanation": "HNSW builds a layered graph of neighbors at index time so queries can greedily hop toward the target instead of scanning everything. `M` controls graph connectivity and `efConstruction` controls build quality—both trade build time and memory for accuracy.",
+            "python": "import hnswlib\n\nindex = hnswlib.Index(space=\"l2\", dim=DIM)\nindex.init_index(max_elements=N, M=16, ef_construction=200)\n\nstart = time.perf_counter()\nindex.add_items(data, np.arange(N))\nprint(f\"built HNSW over {N} vectors in \"\n      f\"{time.perf_counter() - start:.2f}s\")\n\nindex.set_ef(50)  # search-time quality knob (must be >= k)",
+            "javascript": "import { HierarchicalNSW } from \"hnswlib-node\";\n\nconst index = new HierarchicalNSW(\"l2\", DIM);\nindex.initIndex(N, 16, 200); // maxElements, M, efConstruction\n\nconst tBuild = performance.now();\nfor (let i = 0; i < N; i++) index.addPoint(data[i], i);\nconsole.log(\n  `built HNSW over ${N} vectors in ${((performance.now() - tBuild) / 1000).toFixed(2)}s`\n);\n\nindex.setEf(50); // search-time quality knob (must be >= k)"
+          },
+          {
+            "title": "Measure latency and recall@10",
+            "explanation": "Recall@10 asks: of the 10 true nearest neighbors, how many did HNSW actually return? Expect roughly 10-50x faster queries at 0.9+ recall. Re-run with `ef` at 10 and 200 to watch recall and latency move together—that knob is the whole ANN tradeoff in one number.",
+            "python": "start = time.perf_counter()\nlabels, _ = index.knn_query(queries, k=10)\nhnsw_ms = (time.perf_counter() - start) * 1000 / len(queries)\n\nrecall = np.mean([\n    len(set(labels[i]) & set(ground_truth[i])) / 10\n    for i in range(len(queries))\n])\nprint(f\"flat: {flat_ms:.2f} ms/query | recall@10 = 1.000\")\nprint(f\"hnsw: {hnsw_ms:.2f} ms/query | recall@10 = {recall:.3f}\")\nprint(f\"speedup: {flat_ms / hnsw_ms:.0f}x\")\n# Typical: ~20-50x faster at ~0.95+ recall. Try index.set_ef(10) vs 200.",
+            "javascript": "const t1 = performance.now();\nconst hnswResults = queries.map((q) => index.searchKnn(q, 10).neighbors);\nconst hnswMs = (performance.now() - t1) / queries.length;\n\nlet recall = 0;\nfor (let i = 0; i < queries.length; i++) {\n  const truth = new Set(groundTruth[i]);\n  recall += hnswResults[i].filter((x) => truth.has(x)).length / 10;\n}\nrecall /= queries.length;\n\nconsole.log(`flat: ${flatMs.toFixed(2)} ms/query | recall@10 = 1.000`);\nconsole.log(`hnsw: ${hnswMs.toFixed(2)} ms/query | recall@10 = ${recall.toFixed(3)}`);\nconsole.log(`speedup: ${(flatMs / hnswMs).toFixed(0)}x`);\n// Typical: ~20-50x faster at ~0.95+ recall. Try index.setEf(10) vs 200."
+          }
+        ],
+        "practice": [
+          "Sweep `ef` over 10, 25, 50, 100, 200 and print a latency-vs-recall table—find the smallest `ef` that keeps recall@10 above 0.95.",
+          "Rebuild the index with `M=4` and `M=48`; compare build time, query latency, and recall against `M=16`.",
+          "Grow N from 10k to 100k and measure how flat vs HNSW query times scale—which one stays nearly constant?",
+          "Save the index to disk (`index.save_index` / `writeIndex`), reload it in a fresh process, and verify recall is unchanged.",
+          "Replace the random vectors with 1,000 real `text-embedding-3-small` embeddings (use `dimensions: 128`) and check whether recall differs from random data at the same `ef`."
+        ]
+      }
+    },
+    {
+      "id": "performing-similarity-search",
+      "title": "Performing Similarity Search",
+      "subsection": "Implementing Vector Search",
+      "minutes": 5,
+      "intro": "Similarity search is the online half: embed the query with the same model used at indexing, run a top-k ANN lookup (plus filters), and post-process the hits before handing them to your app or LLM.",
+      "summary": [
+        "The query path: take the user's input, embed it with the exact same model (and any query-specific mode, like Cohere's `search_query` input type or E5's `query:` prefix) used to index documents — mixing models or modes is the most common silent failure in vector search. The query vector goes to the index, which returns the k nearest stored vectors with similarity scores and metadata. Under the hood the ANN index (typically HNSW) navigates its graph toward the query instead of comparing against every vector, returning approximate-but-near-perfect neighbors in milliseconds.",
+        "Scores need interpretation. Cosine similarity ranges -1..1 (text embeddings usually land 0..1); some engines report distance instead, where smaller is better — check which you're getting. Absolute values are model-dependent: 0.45 might be a great match for one model and noise for another, so calibrate score thresholds empirically on your data rather than hardcoding folklore numbers. Retrieve more candidates than you need (k=20-100), then refine: apply metadata filters (prefer engines that filter during the ANN search), deduplicate near-identical chunks, and optionally rerank the candidates with a cross-encoder for a large precision boost before taking the final top 3-10.",
+        "Quality tuning levers, roughly in order of impact: better chunking and metadata at index time; hybrid search (fuse vector results with BM25 keyword results via reciprocal rank fusion) to catch exact terms; reranking; query transformation (have an LLM rewrite vague user questions, or HyDE — embed a hypothetical answer instead of the question); and ANN parameters (`ef_search`/`nprobe`) trading latency for recall. Measure with a small labeled set using recall@k and MRR/nDCG — retrieval quality is measurable, and tuning blind is guesswork."
+      ],
+      "keyPoints": [
+        "Embed queries with the SAME model (and query mode/prefix) used for documents — mismatches fail silently with bad results.",
+        "Know your engine's score convention: similarity (higher=better) vs distance (lower=better).",
+        "Don't hardcode similarity thresholds — calibrate on your own data; absolute scores vary by model.",
+        "Over-retrieve (k=20-100) then filter, dedupe, and rerank with a cross-encoder before taking the final top results.",
+        "Hybrid search (vector + BM25 with reciprocal rank fusion) rescues exact-match queries like names, SKUs, and error codes.",
+        "Tune `ef_search`/`nprobe` for the recall/latency trade-off, and evaluate with recall@k / MRR on a labeled query set."
+      ],
+      "code": [
+        {
+          "title": "Query flow: embed, search, threshold, format for RAG",
+          "language": "python",
+          "code": "import chromadb\nfrom openai import OpenAI\n\noai = OpenAI()\ncol = chromadb.PersistentClient(\"./db\").get_collection(\"kb\")\n\ndef search(query: str, k: int = 20, max_distance: float = 0.6):\n    q_emb = oai.embeddings.create(\n        model=\"text-embedding-3-small\", input=query\n    ).data[0].embedding\n\n    res = col.query(query_embeddings=[q_emb], n_results=k,\n                    include=[\"documents\", \"metadatas\", \"distances\"])\n    hits = [\n        {\"text\": d, \"meta\": m, \"distance\": dist}\n        for d, m, dist in zip(res[\"documents\"][0], res[\"metadatas\"][0], res[\"distances\"][0])\n        if dist <= max_distance      # calibrated on your own data\n    ]\n    return hits[:5]\n\ncontext = \"\\n\\n\".join(h[\"text\"] for h in search(\"how do I rotate API keys?\"))\n# -> feed `context` into your LLM prompt for RAG"
+        }
+      ],
+      "resources": [
+        {
+          "title": "What is Similarity Search & How Does it work?",
+          "url": "https://www.truefoundry.com/blog/similarity-search",
+          "type": "article"
+        }
+      ],
+      "handsOn": {
+        "goal": "Implement cosine, euclidean, and dot-product similarity from scratch, discover when they agree and disagree, and ship a reusable top-k search function with a score threshold.",
+        "steps": [
+          {
+            "title": "Set up and implement all three metrics",
+            "explanation": "All three metrics are a few lines each—no libraries beyond numpy. Cosine measures angle, euclidean measures straight-line distance, and dot product measures angle and magnitude together; keep all three side by side so you can compare them on identical inputs.",
+            "python": "# pip install numpy\nimport numpy as np\n\ndef dot(a, b):\n    return float(np.dot(a, b))\n\ndef cosine(a, b):\n    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))\n\ndef euclidean(a, b):\n    return float(np.linalg.norm(np.array(a) - np.array(b)))\n\nprint(\"metrics defined\")",
+            "javascript": "// No install needed — plain Node (save as metrics.mjs, run: node metrics.mjs)\n\nexport function dot(a, b) {\n  return a.reduce((s, x, i) => s + x * b[i], 0);\n}\n\nexport function norm(a) {\n  return Math.sqrt(dot(a, a));\n}\n\nexport function cosine(a, b) {\n  return dot(a, b) / (norm(a) * norm(b));\n}\n\nexport function euclidean(a, b) {\n  return Math.sqrt(a.reduce((s, x, i) => s + (x - b[i]) ** 2, 0));\n}\n\nconsole.log(\"metrics defined\");"
+          },
+          {
+            "title": "Unnormalized vectors: the metrics disagree",
+            "explanation": "Make `c` point in exactly the same direction as `a` but with 10x the magnitude. Cosine says `c` is a perfect match (same angle), dot product loves it even more (magnitude rewarded), but euclidean says it is far away. Which document is \"most similar\" literally depends on the metric you picked.",
+            "python": "a = np.array([1.0, 2.0, 3.0])\nb = np.array([1.1, 2.1, 2.9])   # nearby point, similar direction\nc = a * 10                       # same direction, 10x magnitude\n\nfor name, v in [(\"b (nearby)\", b), (\"c (scaled 10x)\", c)]:\n    print(f\"a vs {name}:\")\n    print(f\"  cosine    = {cosine(a, v):.4f}\")\n    print(f\"  dot       = {dot(a, v):.2f}\")\n    print(f\"  euclidean = {euclidean(a, v):.4f}\")\n# cosine ranks c first (1.0000), euclidean ranks b first,\n# dot gives c a huge score purely from magnitude.",
+            "javascript": "const a = [1.0, 2.0, 3.0];\nconst b = [1.1, 2.1, 2.9];        // nearby point, similar direction\nconst c = a.map((x) => x * 10);    // same direction, 10x magnitude\n\nfor (const [name, v] of [[\"b (nearby)\", b], [\"c (scaled 10x)\", c]]) {\n  console.log(`a vs ${name}:`);\n  console.log(`  cosine    = ${cosine(a, v).toFixed(4)}`);\n  console.log(`  dot       = ${dot(a, v).toFixed(2)}`);\n  console.log(`  euclidean = ${euclidean(a, v).toFixed(4)}`);\n}\n// cosine ranks c first (1.0000), euclidean ranks b first,\n// dot gives c a huge score purely from magnitude."
+          },
+          {
+            "title": "Normalize the vectors: the metrics agree",
+            "explanation": "Divide every vector by its length so they all sit on the unit sphere. Now cosine equals dot product exactly, and euclidean distance becomes a monotonic function of cosine (`d^2 = 2 - 2*cos`)—all three produce the same ranking. This is why many embedding APIs return pre-normalized vectors and why dot product is the fast default in vector databases.",
+            "python": "def normalize(v):\n    v = np.array(v, dtype=float)\n    return v / np.linalg.norm(v)\n\nan, bn, cn = normalize(a), normalize(b), normalize(c)\n\nfor name, v in [(\"b_norm\", bn), (\"c_norm\", cn)]:\n    cos, dp, eu = cosine(an, v), dot(an, v), euclidean(an, v)\n    print(f\"a_norm vs {name}: cos={cos:.4f} dot={dp:.4f} eucl={eu:.4f}\")\n    print(f\"  check: 2 - 2*cos = {2 - 2*cos:.4f} ~= eucl^2 = {eu**2:.4f}\")\n# cos == dot exactly; euclidean now gives the same ranking too.",
+            "javascript": "function normalize(v) {\n  const n = norm(v);\n  return v.map((x) => x / n);\n}\n\nconst an = normalize(a), bn = normalize(b), cn = normalize(c);\n\nfor (const [name, v] of [[\"b_norm\", bn], [\"c_norm\", cn]]) {\n  const cos = cosine(an, v), dp = dot(an, v), eu = euclidean(an, v);\n  console.log(\n    `a_norm vs ${name}: cos=${cos.toFixed(4)} dot=${dp.toFixed(4)} eucl=${eu.toFixed(4)}`\n  );\n  console.log(\n    `  check: 2 - 2*cos = ${(2 - 2 * cos).toFixed(4)} ~= eucl^2 = ${(eu * eu).toFixed(4)}`\n  );\n}\n// cos == dot exactly; euclidean now gives the same ranking too."
+          },
+          {
+            "title": "Build top-k search with a score threshold",
+            "explanation": "Real search APIs return at most `k` results and drop anything below a minimum score—without a threshold, a query about pizza still \"matches\" your tax documents, just badly. This function is the core of every vector database's query path; everything else is indexing to make it fast.",
+            "python": "def top_k(query_vec, doc_vecs, docs, k=3, min_score=0.3):\n    scored = sorted(\n        ((cosine(query_vec, v), doc) for v, doc in zip(doc_vecs, docs)),\n        key=lambda x: -x[0],\n    )\n    return [(s, d) for s, d in scored[:k] if s >= min_score]\n\nrng = np.random.default_rng(7)\ndocs = [f\"doc-{i}\" for i in range(8)]\ndoc_vecs = [rng.normal(size=4) for _ in docs]\nquery = doc_vecs[2] + rng.normal(scale=0.1, size=4)  # near doc-2\n\nfor score, doc in top_k(query, doc_vecs, docs, k=3, min_score=0.3):\n    print(f\"{score:.4f}  {doc}\")\n# doc-2 first; weak matches below 0.3 are dropped entirely.",
+            "javascript": "function topK(queryVec, docVecs, docs, k = 3, minScore = 0.3) {\n  return docVecs\n    .map((v, i) => ({ score: cosine(queryVec, v), doc: docs[i] }))\n    .sort((x, y) => y.score - x.score)\n    .slice(0, k)\n    .filter((r) => r.score >= minScore);\n}\n\nconst docs = Array.from({ length: 8 }, (_, i) => `doc-${i}`);\nconst docVecs = docs.map(() =>\n  Array.from({ length: 4 }, () => Math.random() * 2 - 1)\n);\nconst query = docVecs[2].map((x) => x + (Math.random() - 0.5) * 0.2); // near doc-2\n\nfor (const { score, doc } of topK(query, docVecs, docs, 3, 0.3)) {\n  console.log(score.toFixed(4), doc);\n}\n// doc-2 first; weak matches below 0.3 are dropped entirely."
+          }
+        ],
+        "practice": [
+          "Embed 10 sentences with `text-embedding-3-small`, check each vector's norm, and confirm whether the API returns normalized vectors.",
+          "Construct two vectors where cosine ranks A over B but euclidean ranks B over A; print both scores to prove the disagreement.",
+          "Benchmark dot product vs full cosine over 100k 1536-dim normalized vectors—how much time does skipping the norm computation save?",
+          "Extend `top_k` to accept `metric='cosine'|'euclidean'|'dot'` and verify all three return identical rankings on normalized inputs.",
+          "Plug your `top_k` into the FAQ engine from the semantic-search lab and tune `min_score` until the query `best pizza in town` returns an empty list while real queries still match."
+        ]
+      }
+    }
+  ]
+}

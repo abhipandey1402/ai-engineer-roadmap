@@ -1,0 +1,147 @@
+SECTION 10: AI Agents
+DESCRIPTION: Agents that reason, use tools, and act — from manual loops to agent SDKs.
+======================================================================
+
+
+### TOPIC: What are AI Agents?  (id: what-are-ai-agents)  [group: Fundamentals]
+
+# AI Agents
+
+In AI engineering, "agents" refer to autonomous systems or components that can perceive their environment, make decisions, and take actions to achieve specific goals. Agents often interact with external systems, users, or other agents to carry out complex tasks. They can vary in complexity, from simple rule-based bots to sophisticated AI-powered agents that leverage machine learning models, natural language processing, and reinforcement learning.
+
+Visit the following resources to learn more:
+
+- [@article@Building an AI Agent Tutorial - LangChain](https://python.langchain.com/docs/tutorials/agents/)
+- [@article@AI Agents and Their Types](https://play.ht/blog/ai-agents-use-cases/)
+- [@article@How to Design My First AI Agent](https://towardsdatascience.com/how-to-design-my-first-ai-agent/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+- [@video@The Complete Guide to Building AI Agents for Beginners](https://youtu.be/MOyl58VF2ak?si=-QjRD_5y3iViprJX)
+
+----------------------------------------------------------------------
+
+### TOPIC: Agent Use Cases  (id: agent-use-cases)  [group: Fundamentals]
+
+# Agents Use Cases
+
+AI Agents have a variety of use cases ranging from customer support, workflow automation, cybersecurity, finance, marketing, and sales, and more.
+
+Visit the following resources to learn more:
+
+- [@article@Top 15 Use Cases Of AI Agents In Business](https://www.ampcome.com/post/15-use-cases-of-ai-agents-in-business)
+- [@article@A Brief Guide on AI Agents: Benefits and Use Cases](https://www.codica.com/blog/brief-guide-on-ai-agents/)
+- [@article@How to Build Effective AI Agents to Process Millions of Requests](https://towardsdatascience.com/how-to-build-effective-ai-agents-to-process-millions-of-requests/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+- [@video@The Complete Guide to Building AI Agents for Beginners](https://youtu.be/MOyl58VF2ak?si=-QjRD_5y3iViprJX)
+
+----------------------------------------------------------------------
+
+### TOPIC: ReAct Prompting  (id: react-prompting)  [group: Fundamentals]
+
+# ReAct Prompting
+
+ReAct prompting is a technique that combines reasoning and action by guiding language models to think through a problem step-by-step and then take specific actions based on the reasoning. It encourages the model to break down tasks into logical steps (reasoning) and perform operations, such as calling APIs or retrieving information (actions), to reach a solution. This approach helps in scenarios where the model needs to process complex queries, interact with external systems, or handle tasks requiring a sequence of actions, improving the model's ability to provide accurate and context-aware responses.
+
+Visit the following resources to learn more:
+
+- [@article@ReAct Prompting](https://www.promptingguide.ai/techniques/react)
+- [@article@ReAct Prompting: How We Prompt for High-Quality Results from LLMs](https://www.width.ai/post/react-prompting)
+
+----------------------------------------------------------------------
+
+### TOPIC: Tools & Function Calling  (id: tools-function-calling)  [group: Fundamentals]
+
+# Tools & Function Calling in AI Agents
+
+Tools and function calling equip AI agents with the ability to interact with the real world and access external information. Instead of just providing text-based responses, the agent can use predefined functions, tools, or APIs to perform specific actions like searching the web, sending emails, or controlling devices. This extends the agent's capabilities and allows it to solve more complex tasks that require actions beyond simple language generation.
+
+Visit the following resources to learn more:
+
+- [@course@A Comprehensive Guide to Function Calling in LLMs](https://thenewstack.io/a-comprehensive-guide-to-function-calling-in-llms/)
+- [@official@What are Tools? - Hugging Face](https://huggingface.co/learn/agents-course/en/unit1/tools)
+- [@article@Compare 50+ AI Agent Tools in 2026](https://aimultiple.com/ai-agent-tools)
+- [@article@AI Agents Explained in Simple Terms for Beginners](https://www.geeky-gadgets.com/ai-agents-explained-for-beginners/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Multi-Agent Systems  (id: multi-agent-systems)  [group: Fundamentals]
+
+# Multi-Agent Systems
+
+Multi-agent systems involve the coordinated behavior of multiple intelligent agents within an environment. These agents interact with each other, potentially cooperating or competing, to achieve individual or collective goals. The complexity arises from the need for agents to reason about the actions, intentions, and knowledge of other agents to make informed decisions and effectively navigate the environment.
+
+Visit the following resources to learn more:
+
+- [@article@What is a multi-agent system?](https://www.ibm.com/think/topics/multiagent-system)
+- [@article@Multi-Agent Systems](https://huggingface.co/learn/agents-course/en/unit2/smolagents/multi_agent_systems)
+- [@article@Guide to multi-agent systems (MAS)](https://cloud.google.com/discover/what-is-a-multi-agent-system)
+- [@article@Agentic AI 103: Building Multi-Agent Teams](https://towardsdatascience.com/agentic-ai-103-building-multi-agent-teams/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+
+----------------------------------------------------------------------
+
+### TOPIC: Manual Implementation  (id: manual-implementation)  [group: Building AI Agents]
+
+# Manual Implementation of AI Agents
+
+Manually implementing AI agents involves crafting their logic and behavior from the ground up, without relying heavily on pre-built frameworks or automated tools. This approach requires writing code to define how the agent perceives its environment, makes decisions, and takes actions, often involving explicit programming of algorithms for tasks like perception, planning, and learning. It offers maximum control and customization but demands a deep understanding of AI principles and software engineering.
+
+Visit the following resources to learn more:
+
+- [@official@A practical guide to building agents - OpenAI](https://cdn.openai.com/business-guides-and-resources/a-practical-guide-to-building-agents.pdf)
+- [@official@Create custom subagents - Claude](https://code.claude.com/docs/en/sub-agents)
+
+----------------------------------------------------------------------
+
+### TOPIC: OpenAI AgentKit & Agents SDK  (id: openai-agentkit-agents-sdk)  [group: Building AI Agents]
+
+# OpenAI AgentKit
+
+OpenAI AgentKit is a framework designed to simplify the process of creating AI agents that can perform specific tasks by leveraging large language models (LLMs). It provides tools and abstractions for managing agent state, defining agent behavior, and connecting agents to various tools and resources, allowing developers to build more complex and capable AI systems without needing to manage all the low-level details.
+
+Visit the following resources to learn more:
+
+- [@official@Introducing AgentKit](https://openai.com/index/introducing-agentkit/)
+- [@official@Build every step of agents on one platform](https://openai.com/agent-platform/)
+- [@video@OpenAI Agents SDK Tutorial (FULL SERIES)](https://www.youtube.com/watch?v=gFcAfU3V1Zo)
+
+----------------------------------------------------------------------
+
+### TOPIC: Claude Agent SDK  (id: claude-agent-sdk)  [group: Building AI Agents]
+
+# Claude Agent SDK
+
+The Claude Agent SDK provides tools and libraries to build autonomous AI agents powered by Anthropic's Claude models. It simplifies the development process by offering pre-built components and abstractions for tasks such as planning, tool usage, memory management, and human interaction. This allows developers to focus on defining the agent's behavior and capabilities rather than the underlying infrastructure.
+
+Visit the following resources to learn more:
+
+- [@official@Agent SDK overview](https://platform.claude.com/docs/en/agent-sdk/overview)
+- [@article@Getting Started with the Claude Agent SDK](https://www.kdnuggets.com/getting-started-with-the-claude-agent-sdk)
+- [@video@Building Custom AI Agents Just Got EASIER - Claude Agent SDK](https://www.youtube.com/watch?v=NsROagHaKxA)
+- [@video@Claude Agents SDK BEATS all Agent Framework! (Beginners Guide)](https://www.youtube.com/watch?v=i6N8oQQ0tUE)
+
+----------------------------------------------------------------------
+
+### TOPIC: Vertex AI Agent Builder  (id: vertex-ai-agent-builder)  [group: Building AI Agents]
+
+# Vertex AI
+
+Vertex AI is Google Cloud's fully-managed, unified development platform for building, training, deploying, and managing machine learning (ML) models at scale. It provides tools for the entire ML lifecycle, from data preparation and custom training with AutoML to model monitoring and deployment. Vertex AI offers access to Google's foundation models, such as Gemini, along with custom training options and tools for building AI agents. It streamlines the ML workflow into a single interface, supporting both low-code and custom development on managed infrastructure
+
+Visit the following resources to learn more:
+
+- [@official@Vertex AI](https://cloud.google.com/generative-ai-studio?hl=en)
+- [@article@Vertex AI Tutorial: A Comprehensive Guide For Beginners](https://www.datacamp.com/tutorial/vertex-ai-tutorial)
+- [@video@Introduction to Vertex AI Studio](https://www.youtube.com/watch?v=KWarqNq195M)
+
+----------------------------------------------------------------------
+
+### TOPIC: Google ADK  (id: google-adk)  [group: Building AI Agents]
+
+# Google ADK
+
+The Google Agent Development Kit (ADK) is a framework designed to help developers build, test, and deploy AI agents. It provides tools and libraries that streamline the agent development process, offering features like agent orchestration, tool integration, and evaluation metrics. ADK aims to simplify the complexities of creating sophisticated AI agents capable of interacting with the real world.
+
+Visit the following resources to learn more:
+
+- [@course@ADK Crash Course - From Beginner To Expert](https://codelabs.developers.google.com/onramp/instructions#0)
+- [@official@Agent Development Kit](https://google.github.io/adk-docs/)
+- [@official@Overview of Agent Development Kit](https://docs.cloud.google.com/agent-builder/agent-development-kit/overview)
+
+----------------------------------------------------------------------

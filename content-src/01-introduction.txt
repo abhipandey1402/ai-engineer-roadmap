@@ -1,0 +1,59 @@
+SECTION 1: Introduction
+DESCRIPTION: What an AI Engineer is, what they do, and how the role differs from ML engineering.
+======================================================================
+
+
+### TOPIC: What is an AI Engineer?  (id: what-is-an-ai-engineer)  [group: -]
+
+# What is an AI Engineer?
+
+AI engineers are professionals who specialize in designing, developing, and implementing artificial intelligence (AI) systems. Their work is essential in various industries, as they create applications that enable machines to perform tasks that typically require human intelligence, such as problem-solving, learning, and decision-making.
+
+Visit the following resources to learn more:
+
+- [@article@How to Become an AI Engineer: Duties, Skills, and Salary](https://www.simplilearn.com/tutorials/artificial-intelligence-tutorial/how-to-become-an-ai-engineer)
+- [@article@AI Engineers: What they do and how to become one](https://www.techtarget.com/whatis/feature/How-to-become-an-artificial-intelligence-engineer)
+- [@article@I Transitioned from Data Science to AI Engineering: Here’s Everything You Need to Know](https://towardsdatascience.com/i-transitioned-from-data-science-to-ai-engineering-heres-everything-you-need-to-know/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+
+----------------------------------------------------------------------
+
+### TOPIC: Roles and Responsibilities  (id: roles-and-responsibilities)  [group: -]
+
+# Roles and Responsibilities
+
+AI Engineers are responsible for designing, developing, and deploying AI systems that solve real-world problems. Their roles include building machine learning models, implementing data processing pipelines, and integrating AI solutions into existing software or platforms. They work on tasks like data collection, cleaning, and labeling, as well as model training, testing, and optimization to ensure high performance and accuracy. AI Engineers also focus on scaling models for production use, monitoring their performance, and troubleshooting issues. Additionally, they collaborate with data scientists, software developers, and other stakeholders to align AI projects with business goals, ensuring that solutions are reliable, efficient, and ethically sound.
+
+Visit the following resources to learn more:
+
+- [@article@AI Engineer Job Description](https://resources.workable.com/ai-engineer-job-description)
+- [@article@How To Become an AI Engineer (Plus Job Duties and Skills)](https://www.indeed.com/career-advice/finding-a-job/ai-engineer)
+
+----------------------------------------------------------------------
+
+### TOPIC: Impact on Product Development  (id: impact-on-product-development)  [group: -]
+
+# Impact on Product Development
+
+AI engineering transforms product development by automating tasks, enhancing data-driven decision-making, and enabling the creation of smarter, more personalized products. It speeds up design cycles, optimizes processes, and allows for predictive maintenance, quality control, and efficient resource management. By integrating AI, companies can innovate faster, reduce costs, and improve user experiences, giving them a competitive edge in the market.
+
+Visit the following resources to learn more:
+
+- [@article@AI in Product Development: Netflix, BMW, and PepsiCo](https://www.virtasant.com/ai-today/ai-in-product-development-netflix-bmw#:~:text=AI%20can%20help%20make%20product,and%20gain%20a%20competitive%20edge.)
+- [@article@AI Product Development: Why Are Founders So Fascinated By The Potential?](https://www.techmagic.co/blog/ai-product-development/)
+
+----------------------------------------------------------------------
+
+### TOPIC: AI Engineer vs ML Engineer  (id: ai-engineer-vs-ml-engineer)  [group: -]
+
+# AI Engineer vs ML Engineer
+
+An AI Engineer uses pre-trained models and existing AI tools to improve user experiences. They focus on applying AI in practical ways, without building models from scratch. This is different from AI Researchers and ML Engineers, who focus more on creating new models or developing AI theory.
+
+Visit the following resources to learn more:
+
+- [@article@What does an AI Engineer do?](https://www.codecademy.com/resources/blog/what-does-an-ai-engineer-do/)
+- [@article@What is an ML Engineer?](https://www.coursera.org/articles/what-is-machine-learning-engineer)
+- [@article@Machine Learning vs AI Engineer: What Are the Differences?](https://towardsdatascience.com/machine-learning-vs-ai-engineer-no-confusing-jargon/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+- [@video@AI vs ML](https://www.youtube.com/watch?v=4RixMPF4xis)
+
+----------------------------------------------------------------------

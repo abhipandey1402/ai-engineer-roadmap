@@ -1,0 +1,168 @@
+{
+  "id": "context-engineering",
+  "title": "Context Engineering",
+  "description": "Designing everything the model sees: memory, retrieval, compaction, and isolation strategies.",
+  "topics": [
+    {
+      "id": "prompt-vs-context-engineering",
+      "title": "Prompt vs Context Engineering",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Prompt engineering optimizes the instructions you write; context engineering optimizes everything the model sees — instructions, retrieved data, tools, history, and memory — as one curated token budget.",
+      "summary": [
+        "Prompt engineering asks \"how do I phrase this instruction?\"; context engineering asks \"what is the optimal set of tokens to put in the window for this step?\" As Anthropic's engineering post frames it, context engineering is the natural evolution of prompt engineering for the agent era: a single well-crafted prompt was enough for one-shot tasks, but agents run in loops where each turn accumulates tool definitions, tool results, retrieved documents, message history, and memory. Someone has to decide, at every step, what makes the cut — that curation is context engineering. The Anthropic post's organizing idea is that attention is a finite resource: LLMs suffer \"context rot,\" where the ability to accurately recall and use information degrades as the window fills, so the goal is the smallest set of high-signal tokens that maximizes the likelihood of the right output — not the biggest possible dump.",
+        "The Elastic and Towards Data Science pieces draw the same dividing line operationally: prompt engineering is mostly static authoring (system prompts, examples, output formats, written once and versioned), while context engineering is a dynamic system — pipelines that retrieve, rank, filter, summarize, and assemble context per request. The context window becomes something like RAM: a scarce working memory you allocate deliberately across competing claimants (instructions, knowledge, history, tool schemas, scratch space). Prompt engineering doesn't disappear; it becomes one component — the instruction layer — inside the broader system.",
+        "The discipline matters because most production failures of LLM apps are context failures, not model failures: the right fact wasn't retrieved, stale history crowded out fresh data, twenty irrelevant tool schemas diluted attention, or two tasks bled into each other. The standard toolbox — popularized by LangChain's framing — is four strategies you'll meet in the rest of this section: write (persist state to external memory), select (retrieve only what's relevant: RAG and dynamic filters), compress (compaction and summarization), and isolate (split contexts across sub-agents or sandboxes). Mastering when to apply each is arguably the core day-to-day skill of an AI engineer in 2026."
+      ],
+      "keyPoints": [
+        "Prompt engineering = crafting instructions; context engineering = curating the entire token budget (instructions + data + tools + history + memory) per step.",
+        "Context rot is real: recall and reasoning degrade as windows fill — a 1M-token window is not 1M tokens of reliable attention.",
+        "Goal: the smallest high-signal token set that gets the right output — treat the window like RAM, not a landfill.",
+        "Prompt engineering is mostly static authoring; context engineering is a dynamic per-request assembly pipeline.",
+        "Most production LLM failures are context failures (missing, stale, or noisy context), not model capability failures.",
+        "The four canonical strategies: write (memory), select (retrieval), compress (compaction), isolate (sub-agents) — the rest of this section covers them."
+      ],
+      "code": [
+        {
+          "title": "What a context-engineered request actually contains",
+          "language": "text",
+          "code": "[SYSTEM]            stable instructions + role        (prompt engineering)\n[TOOLS]             only the 6 tools relevant to this task, not all 40\n[MEMORY]            \"User prefers TypeScript; project uses pnpm\"  <- written earlier\n[RETRIEVED]         top-3 doc chunks for the current query        <- selected\n[HISTORY SUMMARY]   compacted summary of turns 1-30               <- compressed\n[RECENT TURNS]      last 5 messages verbatim\n[USER]              the current question\n\nEvery block above is a deliberate allocation decision\nagainst a finite attention budget."
+        }
+      ],
+      "resources": [
+        {"title": "Context engineering vs. prompt engineering", "url": "https://www.elastic.co/search-labs/blog/context-engineering-vs-prompt-engineering", "type": "article"},
+        {"title": "Effective context engineering for AI agents", "url": "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents", "type": "article"},
+        {"title": "Beyond Prompting: The Power of Context Engineering", "url": "https://towardsdatascience.com/beyond-prompting-the-power-of-context-engineering/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration", "type": "article"},
+        {"title": "Context Engineering vs. Prompt Engineering: Smarter AI with RAG & Agents", "url": "https://www.youtube.com/watch?v=vD0E3EUb8-8", "type": "video"}
+      ]
+    },
+    {
+      "id": "external-memory",
+      "title": "External Memory",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "External memory persists information outside the model's weights and context window — files, databases, vector stores — so agents can remember across turns, sessions, and tasks.",
+      "summary": [
+        "LLMs are stateless: weights are frozen at training time, and the context window evaporates when the session ends. External memory is the \"write\" strategy of context engineering — persisting useful information to storage the model can read back later via retrieval or tools. It spans several layers: short-term scratchpads (an agent taking notes to a file mid-task, like a `NOTES.md` it maintains outside the window), long-term user memory (preferences, facts, past decisions stored per user — the mechanism behind ChatGPT's and Claude's memory features), and shared knowledge bases (databases, knowledge graphs, document stores queried at runtime). The payoff is continuity and personalization without retraining, and resilience: an agent that wrote its plan to a file can survive a context overflow or restart and pick up where it left off.",
+        "The engineering challenge is the read/write policy, which is what the Towards Data Science piece on agentic memory for continual learning digs into. Writing: what's worth remembering? Naive \"store every turn\" approaches drown the system in noise, so practical systems extract salient facts (often using an LLM call to decide what to write), deduplicate against existing memories, and update or invalidate stale entries rather than appending forever — memory hygiene is what separates useful memory from a junk drawer. Reading: relevant memories must be retrieved per request (typically by embedding similarity, recency, and importance scoring — the scheme popularized by the generative-agents paper) and injected compactly into context, because memory competes for the same token budget as everything else.",
+        "This is effectively continual learning without gradient descent: the agent improves over time by accumulating curated experience — failed approaches, user corrections, environment facts — rather than by changing weights. Mature stacks expose memory as tools (`save_memory`, `search_memory`) so the model decides agentically when to write and read; frameworks like LangGraph's memory stores, Letta (formerly MemGPT), and Mem0 productize the pattern, with MemGPT's key insight being to let the model itself manage paging between in-context and external storage like an OS manages RAM versus disk. Gotchas: memories can be wrong or outdated and then poison every future session, so store provenance and timestamps; and user memory is PII, bringing privacy, retention, and deletion obligations."
+      ],
+      "keyPoints": [
+        "LLMs are stateless — anything that must survive the session has to be written somewhere external and re-injected later.",
+        "Three layers: in-task scratchpads (notes/files), long-term per-user memory (preferences, facts), and shared knowledge bases.",
+        "Write policy is the hard part: extract salient facts, deduplicate, and update/expire stale entries — don't append every turn.",
+        "Retrieve memories by relevance + recency + importance, and inject them compactly; memory competes for the same token budget.",
+        "Memory-as-tools (`save_memory`, `search_memory`) lets the agent decide when to remember — the MemGPT/Letta pattern of model-managed paging.",
+        "Bad memories compound: a wrong stored fact corrupts all future sessions — keep provenance and timestamps.",
+        "Stored user memory is PII: plan for inspection, correction, and deletion from day one."
+      ],
+      "code": [
+        {
+          "title": "Memory as tools the agent calls",
+          "language": "python",
+          "code": "memory_tools = [\n    {\n        \"name\": \"save_memory\",\n        \"description\": \"Persist a durable fact about the user or project worth recalling in future sessions. Do not save transient details.\",\n        \"input_schema\": {\"type\": \"object\", \"properties\": {\n            \"fact\": {\"type\": \"string\"},\n            \"category\": {\"type\": \"string\", \"enum\": [\"preference\", \"project\", \"decision\"]},\n        }, \"required\": [\"fact\", \"category\"]},\n    },\n    {\n        \"name\": \"search_memory\",\n        \"description\": \"Search stored memories for facts relevant to the current task.\",\n        \"input_schema\": {\"type\": \"object\", \"properties\": {\n            \"query\": {\"type\": \"string\"}}, \"required\": [\"query\"]},\n    },\n]\n\n# At session start, inject retrieved memories compactly:\nsystem_prompt = f\"\"\"You are a coding assistant.\n<memories>\n- [preference, 2026-04-12] User prefers TypeScript with strict mode\n- [project, 2026-05-30] API uses pnpm workspaces, deploys via GitHub Actions\n</memories>\"\"\""
+        }
+      ],
+      "resources": [
+        {"title": "How to Maximize Agentic Memory for Continual Learning", "url": "https://towardsdatascience.com/how-to-maximize-agentic-memory-for-continual-learning/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration", "type": "article"}
+      ]
+    },
+    {
+      "id": "rag-and-dynamic-filters",
+      "title": "RAG and Dynamic Filters",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "RAG retrieves relevant external documents into the context at query time; dynamic filters narrow that retrieval with query- and user-specific metadata constraints so only the most pertinent context gets in.",
+      "summary": [
+        "Retrieval-Augmented Generation is the \"select\" strategy of context engineering: instead of hoping knowledge is in the weights (stale, unverifiable) or stuffing entire corpora into the window (expensive, attention-rotting), you fetch just the relevant slices at query time. The classic pipeline: chunk documents, embed them into vectors, store in a vector database; at query time embed the question, retrieve the top-k most similar chunks, and inject them into the prompt with instructions to answer from them. This grounds responses in current, private, citable data — and it remains the dominant way to connect LLMs to enterprise knowledge.",
+        "Pure semantic similarity isn't enough in production, which is where dynamic filters come in: metadata constraints computed per query and per user that prune the candidate set before or alongside vector search. Examples: restrict to documents the requesting user is authorized to see (ACL filtering — non-negotiable for enterprise RAG), to the product version they're on, to dates after 2025, or to the `region = EU` subset. \"Dynamic\" means the filters aren't hardcoded — they're derived at runtime from the user's identity, session state, or the query itself, often by having an LLM extract structured filters from natural language (\"self-query\" retrieval: \"open bugs from last week\" → `status=open AND created>2026-06-03`). Filtering shrinks the search space, which simultaneously improves precision, latency, and security.",
+        "The \"is RAG dead?\" debate, covered in the Towards Data Science piece, is really about RAG's role shifting rather than disappearing. Long context windows (1M+ tokens) and agentic search (agents iteratively grepping files or calling search tools, the way coding agents work) handle some cases single-shot RAG served badly. The emerging consensus: naive RAG (one-shot top-k over a single vector index) is giving way to agentic retrieval — the model decides what to search, evaluates results, and searches again — layered over semantic layers and structured metadata that give retrieval business meaning. Owain Lewis's four-strategies piece slots retrieval alongside write/compress/isolate: retrieval is how you select the right context, and hybrid search (semantic + keyword/BM25), re-ranking retrieved candidates with a cross-encoder, and metadata filtering are the standard quality levers. RAG as \"retrieval feeding generation\" is alive and well; what died is the assumption that cosine similarity alone is a retrieval strategy."
+      ],
+      "keyPoints": [
+        "RAG = embed → retrieve top-k → inject into prompt; it grounds answers in current, private, citable data without retraining.",
+        "Dynamic filters apply runtime metadata constraints (user ACLs, dates, product version, region) to prune candidates — precision, latency, and security all improve.",
+        "Permission-aware filtering is mandatory for enterprise RAG: retrieval must never surface documents the user can't access.",
+        "Self-query retrieval uses an LLM to turn natural language into structured filters (\"last week's open bugs\" → status/date predicates).",
+        "Hybrid search (vector + BM25 keyword) plus cross-encoder re-ranking beats pure cosine similarity in most real deployments.",
+        "Long context doesn't kill RAG: stuffing 500k irrelevant tokens costs more and recalls worse than retrieving the right 5k.",
+        "Trend: one-shot top-k RAG → agentic retrieval, where the model iteratively searches, inspects results, and refines queries."
+      ],
+      "code": [
+        {
+          "title": "Vector search with dynamic metadata filters",
+          "language": "python",
+          "code": "# Filters computed at runtime from user + query — not hardcoded\nuser_filter = {\n    \"$and\": [\n        {\"allowed_groups\": {\"$in\": current_user.groups}},   # ACL: only docs user may see\n        {\"product_version\": {\"$eq\": current_user.version}}, # their version's docs\n        {\"updated_at\": {\"$gte\": \"2025-01-01\"}},             # freshness cutoff\n    ]\n}\n\nresults = collection.query(\n    query_texts=[user_question],\n    n_results=5,\n    where=user_filter,        # metadata filter narrows the candidate set\n)\n\ncontext = \"\\n\\n\".join(doc for doc in results[\"documents\"][0])\nprompt = f\"\"\"Answer using only the context below. Cite the source id.\nIf the context doesn't contain the answer, say so.\n\n<context>\n{context}\n</context>\n\nQuestion: {user_question}\"\"\""
+        }
+      ],
+      "resources": [
+        {"title": "4 context engineering strategies every AI engineer needs to know", "url": "https://newsletter.owainlewis.com/p/4-context-engineering-strategies", "type": "article"},
+        {"title": "Context Engineering", "url": "https://blog.langchain.com/context-engineering-for-agents/", "type": "article"},
+        {"title": "Is RAG Dead? The Rise of Context Engineering and Semantic Layers for Agentic AI", "url": "https://towardsdatascience.com/beyond-rag/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration", "type": "article"}
+      ]
+    },
+    {
+      "id": "context-compaction",
+      "title": "Context Compaction",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Context compaction shrinks a growing context — by summarizing, pruning, or re-ranking — so long-running sessions keep fitting in the window without losing what matters.",
+      "summary": [
+        "Agent contexts only grow: every tool call appends its result, every turn adds messages, and a long coding or research session will blow past even large windows — or, before that, degrade into context rot where the model starts forgetting instructions and repeating work. Compaction is the \"compress\" strategy: periodically reduce the context to a smaller, information-dense form. The canonical mechanism — implemented in Claude Code's auto-compact and described in both the LangChain post and Armin Ronacher-circulated gist — is summarize-and-replace: when usage crosses a threshold (commonly ~80-90% of the window, or earlier for quality), an LLM call distills the conversation so far into a structured summary, which replaces the old turns; recent messages are kept verbatim because they carry the immediate working state.",
+        "What the summary must preserve is task-dependent and is where compaction quality lives: current objective and overall plan, decisions made and their rationale, file paths/IDs/URLs and other exact references, constraints and user preferences stated along the way, what's been completed versus outstanding, and errors already encountered (so the agent doesn't retry known failures). Generic \"summarize this conversation\" prompts lose exactly these details — production systems use a purpose-built compaction prompt with explicit sections. Cheaper complements to full summarization: tool-result pruning (replacing old, bulky tool outputs with one-line stubs once they've been acted on — often the biggest win since tool results dominate agent token counts), dropping superseded file versions, and trimming dead-end explorations.",
+        "Compaction is inherently lossy, which drives several design rules. Compact at natural boundaries (a subtask completed) rather than mid-reasoning. Pair compaction with external memory: write details to files or a store before compressing, so anything lost from the window remains recoverable via retrieval — compaction and memory are complementary, not alternatives. Note the cache interaction: compaction rewrites the prompt prefix, invalidating your prompt cache, so there's a real cost trade-off in compacting too eagerly. And test compaction against long-session evals: the classic failure is an agent that's brilliant for 50 turns and then, post-compaction, forgets a constraint the user set in turn 3."
+      ],
+      "keyPoints": [
+        "Trigger compaction around 80-90% window usage — or earlier, since quality (context rot) degrades before hard limits hit.",
+        "Summarize-and-replace: distill old turns into a structured summary, keep recent messages verbatim.",
+        "A good compaction prompt explicitly preserves: objective, plan, decisions + rationale, exact refs (paths/IDs), constraints, done vs. outstanding, known errors.",
+        "Tool-result pruning (stubbing out old bulky outputs) is often the cheapest, biggest win — tool results dominate agent token usage.",
+        "Write important details to external memory before compacting — lossy compression plus retrieval beats lossy compression alone.",
+        "Compaction rewrites the prefix and invalidates prompt caches — factor that into when and how often you compact.",
+        "Eval the failure mode: post-compaction agents forgetting early constraints is the most common long-session bug."
+      ],
+      "code": [
+        {
+          "title": "A structured compaction prompt",
+          "language": "text",
+          "code": "Compact the conversation above into a continuation brief. Preserve:\n\n1. OBJECTIVE: the user's goal, in one sentence.\n2. PLAN & PROGRESS: steps completed / in progress / not started.\n3. DECISIONS: choices made and why (include rejected options).\n4. EXACT REFERENCES: file paths, function names, IDs, URLs, commands run.\n5. CONSTRAINTS: every requirement or preference the user stated.\n6. KNOWN FAILURES: approaches tried that did not work, and the errors.\n\nBe dense and factual. Do not editorialize. Anything not listed\nabove may be dropped. Output under 800 tokens."
+        }
+      ],
+      "resources": [
+        {"title": "Context Engineering", "url": "https://blog.langchain.com/context-engineering-for-agents/", "type": "article"},
+        {"title": "Context Compaction", "url": "https://gist.github.com/badlogic/cd2ef65b0697c4dbe2d13fbecb0a0a5f", "type": "article"}
+      ]
+    },
+    {
+      "id": "context-isolation",
+      "title": "Context Isolation",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Context isolation gives each task or sub-agent its own separate context window, preventing unrelated information from interfering and keeping every window small and focused.",
+      "summary": [
+        "Cramming everything into one context — multiple tasks, dozens of tool schemas, mixed knowledge domains — causes interference: instructions from one task bleed into another, irrelevant tool definitions dilute attention, and one poisoned or bloated context degrades all work happening inside it. Context isolation, the \"isolate\" strategy in the LangChain/Owain Lewis framing, splits work across separate contexts instead: each sub-agent or sub-task gets its own window containing only its instructions, its tools, and its slice of data. It's separation of concerns applied to the token budget.",
+        "The flagship pattern is the orchestrator (lead agent) with sub-agents: the orchestrator decomposes the task and dispatches focused sub-agents — a researcher, a coder, a reviewer — each running in a fresh context with a narrow toolset. Crucially, sub-agents return only distilled results (a summary, a diff, a verdict), not their full working transcript, so the orchestrator's context stays lean while the heavy token consumption (hundreds of tool calls, long documents) happens in disposable child contexts. Anthropic's multi-agent research system is the canonical example: parallel search sub-agents each burn large contexts exploring, then report back condensed findings. The same principle covers lighter mechanisms too: sandboxing heavy state in a code-execution environment (variables and dataframes live in the sandbox, not the window) and partitioning state so the model only sees the fields relevant to the current step.",
+        "Trade-offs are real: isolation adds latency and cost (more LLM calls), and coordination becomes the new hard problem — sub-agents don't share each other's discoveries unless you explicitly pass them, so poorly specified handoffs produce duplicated work or contradictory results. Rules of thumb: isolate when subtasks are independent and token-heavy (parallel research, multi-file code review), when different tasks need different tool sets or different models (a cheap fast model for extraction sub-tasks, a frontier model for the orchestrator), or when you need failure containment (one sub-agent going off the rails doesn't corrupt the rest). Keep a single context when steps are tightly coupled and need full shared history. Most production agent systems land on a hybrid: one main thread, with isolated sub-contexts spawned for self-contained, token-hungry chunks of work."
+      ],
+      "keyPoints": [
+        "Isolation = separation of concerns for context: each sub-task gets its own window with only its instructions, tools, and data.",
+        "Orchestrator/sub-agent is the flagship pattern: sub-agents burn tokens in disposable contexts and return only distilled results.",
+        "Isolation enables parallelism (concurrent sub-agents), per-task model choice (cheap model for simple subtasks), and failure containment.",
+        "Trimming the tool list per context matters as much as trimming data — irrelevant tool schemas dilute selection accuracy.",
+        "The coordination tax: sub-agents share nothing implicitly — handoff specs (inputs, expected output format) must be explicit or you get duplicate/contradictory work.",
+        "Isolate independent, token-heavy subtasks; keep tightly coupled reasoning in one shared context.",
+        "Code-execution sandboxes are isolation too: keep heavy state (dataframes, files) outside the window and pull in only what's needed."
+      ],
+      "code": [
+        {
+          "title": "Orchestrator dispatching an isolated sub-agent",
+          "language": "python",
+          "code": "def run_subagent(task_brief: str, tools: list, model: str) -> str:\n    \"\"\"Fresh context: the sub-agent sees ONLY its brief and its tools.\"\"\"\n    resp = client.messages.create(\n        model=model,\n        max_tokens=4000,\n        system=\"You are a focused research sub-agent. Complete the brief \"\n               \"and reply with a <findings> summary under 500 tokens.\",\n        tools=tools,                       # narrow toolset for this task only\n        messages=[{\"role\": \"user\", \"content\": task_brief}],\n    )\n    return extract_findings(resp)          # distilled result, not the transcript\n\n# Orchestrator: parallel, isolated contexts; only summaries return\nbriefs = [\n    \"Compare pricing pages of competitors A, B, C as of June 2026.\",\n    \"Summarize G2 reviews of competitor A from the last 6 months.\",\n]\nfindings = [run_subagent(b, tools=[web_search], model=\"claude-haiku-4-5\")\n            for b in briefs]\n\n# Orchestrator context stays lean: it never sees the sub-agents' tool calls\nfinal = synthesize(findings, model=\"claude-sonnet-4-6\")"
+        }
+      ],
+      "resources": [
+        {"title": "4 context engineering strategies every AI engineer needs to know", "url": "https://newsletter.owainlewis.com/p/4-context-engineering-strategies", "type": "article"},
+        {"title": "Context Engineering", "url": "https://blog.langchain.com/context-engineering-for-agents/", "type": "article"}
+      ]
+    }
+  ]
+}

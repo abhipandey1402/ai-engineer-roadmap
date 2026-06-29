@@ -1,0 +1,539 @@
+{
+  "id": "embeddings",
+  "title": "Embeddings",
+  "description": "What embeddings are, what they're used for, and the main embedding model families.",
+  "topics": [
+    {
+      "id": "what-are-embeddings",
+      "title": "What are Embeddings",
+      "subsection": "Fundamentals",
+      "minutes": 6,
+      "intro": "Embeddings are dense numerical vectors that represent the semantic meaning of text, images, or other data so that similar items end up close together in vector space.",
+      "summary": [
+        "An embedding model takes a piece of data — a word, a sentence, a whole document, an image — and maps it to a fixed-length list of floating-point numbers, typically a few hundred to a few thousand dimensions. The key property is that the geometry of this space encodes meaning: 'puppy' and 'dog' land near each other, while 'puppy' and 'spreadsheet' land far apart. This works because the models are trained on huge corpora to place items that appear in similar contexts at similar positions, so the distance between two vectors becomes a proxy for how related the underlying items are.",
+        "Because every input becomes the same-shaped vector, you can compare apples to apples with simple math. The standard similarity measure is cosine similarity — the cosine of the angle between two vectors, ranging from -1 to 1 (in practice roughly 0 to 1 for text embeddings). Many providers, including OpenAI, return vectors normalized to unit length, which makes cosine similarity just a dot product and makes it equivalent to ranking by Euclidean distance. This single trick — turn anything into a vector, then measure distance — powers semantic search, recommendations, clustering, deduplication, classification, and retrieval-augmented generation (RAG).",
+        "It helps to contrast embeddings with older sparse representations like bag-of-words or TF-IDF, where each dimension is a literal word count. Those vectors are huge, mostly zeros, and treat 'car' and 'automobile' as unrelated. Dense embeddings are compact, every dimension carries learned (if uninterpretable) signal, and synonyms naturally cluster. The practical upshot for an engineer: embeddings are the bridge between unstructured data and anything you can do with numbers — they are the input format for vector databases, the retrieval layer of RAG systems, and cheap features for downstream ML models.",
+        "One important rule: vectors are only comparable if they came from the same model. An embedding from `text-embedding-3-small` and one from a sentence-transformers model live in completely different spaces. If you ever switch embedding models, you must re-embed your entire corpus."
+      ],
+      "keyPoints": [
+        "An embedding is a fixed-length vector of floats; typical sizes are 384 (MiniLM), 768 (BERT-base), 1536 (OpenAI `text-embedding-3-small`), and 3072 (`text-embedding-3-large`).",
+        "Semantic similarity is measured geometrically — cosine similarity is the default metric for text embeddings.",
+        "Normalized (unit-length) vectors make cosine similarity equal to a plain dot product, which is what most providers and vector DBs assume.",
+        "Embeddings from different models are NOT comparable — changing models means re-embedding everything.",
+        "Dense embeddings beat sparse TF-IDF vectors at capturing synonyms and paraphrases, but sparse/keyword methods still win on exact terms like product codes — hybrid search combines both.",
+        "Embeddings work for more than text: images, audio, code, and users/items in recommenders can all live in vector spaces, sometimes in a shared multimodal space (e.g. CLIP)."
+      ],
+      "code": [
+        {
+          "title": "Embed two texts and compare with cosine similarity",
+          "language": "python",
+          "code": "import numpy as np\nfrom openai import OpenAI\n\nclient = OpenAI()\n\ndef embed(text: str) -> np.ndarray:\n    resp = client.embeddings.create(\n        model=\"text-embedding-3-small\",\n        input=text,\n    )\n    return np.array(resp.data[0].embedding)\n\na = embed(\"How do I reset my password?\")\nb = embed(\"I forgot my login credentials\")\nc = embed(\"Best pizza places in Chicago\")\n\ndef cosine(u, v):\n    return np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))\n\nprint(cosine(a, b))  # high, ~0.6+ (related)\nprint(cosine(a, c))  # low (unrelated)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "What is Embedding? - IBM",
+          "url": "https://www.ibm.com/topics/embedding",
+          "type": "article"
+        },
+        {
+          "title": "What are Embeddings in Machine Learning?",
+          "url": "https://www.cloudflare.com/en-gb/learning/ai/what-are-embeddings/",
+          "type": "article"
+        },
+        {
+          "title": "What are Word Embeddings",
+          "url": "https://www.youtube.com/watch?v=wgfSDrqYMJ4",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Embed real words and sentences with `text-embedding-3-small`, compute cosine similarity by hand, and prove that meaning—not spelling—drives the numbers.",
+        "steps": [
+          {
+            "title": "Install and set your API key",
+            "explanation": "You need the OpenAI SDK plus a math helper (numpy in Python; plain JS needs nothing extra). Export your key as `OPENAI_API_KEY` so the client picks it up automatically.",
+            "python": "# In your terminal:\n# pip install openai numpy\n# export OPENAI_API_KEY=sk-...\n\nfrom openai import OpenAI\nclient = OpenAI()  # reads OPENAI_API_KEY from the environment\nprint(\"Client ready\")",
+            "javascript": "// In your terminal:\n// npm init -y && npm install openai\n// export OPENAI_API_KEY=sk-...\n\nimport OpenAI from \"openai\";\nconst client = new OpenAI(); // reads OPENAI_API_KEY from the environment\nconsole.log(\"Client ready\");"
+          },
+          {
+            "title": "Embed a few words and inspect the vectors",
+            "explanation": "One API call can embed a whole batch of inputs. Each input comes back as a list of floats—`text-embedding-3-small` returns 1536 of them by default. The vector length is fixed regardless of how long the input text is.",
+            "python": "from openai import OpenAI\nclient = OpenAI()\n\nwords = [\"dog\", \"puppy\", \"spreadsheet\"]\nresp = client.embeddings.create(\n    model=\"text-embedding-3-small\",\n    input=words,\n)\nvectors = {w: d.embedding for w, d in zip(words, resp.data)}\n\nfor w, v in vectors.items():\n    print(f\"{w!r}: {len(v)} dims, first 3 = {v[:3]}\")\n# 'dog': 1536 dims, first 3 = [0.0034..., -0.018..., ...]",
+            "javascript": "import OpenAI from \"openai\";\nconst client = new OpenAI();\n\nconst words = [\"dog\", \"puppy\", \"spreadsheet\"];\nconst resp = await client.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: words,\n});\nconst vectors = Object.fromEntries(\n  words.map((w, i) => [w, resp.data[i].embedding])\n);\n\nfor (const [w, v] of Object.entries(vectors)) {\n  console.log(`'${w}': ${v.length} dims, first 3 =`, v.slice(0, 3));\n}\n// 'dog': 1536 dims, first 3 = [0.0034..., -0.018..., ...]"
+          },
+          {
+            "title": "Compute cosine similarity by hand",
+            "explanation": "Cosine similarity is just the dot product of two vectors divided by the product of their lengths—no library magic required. Run it on the three vectors and watch `dog` vs `puppy` score far higher than `dog` vs `spreadsheet`, even though none of the words share letters.",
+            "python": "import numpy as np\n\ndef cosine(a, b):\n    a, b = np.array(a), np.array(b)\n    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))\n\nprint(\"dog ~ puppy      :\", round(cosine(vectors[\"dog\"], vectors[\"puppy\"]), 4))\nprint(\"dog ~ spreadsheet:\", round(cosine(vectors[\"dog\"], vectors[\"spreadsheet\"]), 4))\n# dog ~ puppy       : ~0.86\n# dog ~ spreadsheet : ~0.18  -> meaning, not spelling, drives the score",
+            "javascript": "function cosine(a, b) {\n  let dot = 0, na = 0, nb = 0;\n  for (let i = 0; i < a.length; i++) {\n    dot += a[i] * b[i];\n    na += a[i] * a[i];\n    nb += b[i] * b[i];\n  }\n  return dot / (Math.sqrt(na) * Math.sqrt(nb));\n}\n\nconsole.log(\"dog ~ puppy      :\", cosine(vectors.dog, vectors.puppy).toFixed(4));\nconsole.log(\"dog ~ spreadsheet:\", cosine(vectors.dog, vectors.spreadsheet).toFixed(4));\n// dog ~ puppy       : ~0.86\n// dog ~ spreadsheet : ~0.18  -> meaning, not spelling, drives the score"
+          },
+          {
+            "title": "Shrink vectors with the `dimensions` parameter",
+            "explanation": "`text-embedding-3-small` supports Matryoshka-style truncation: pass `dimensions` and you get a shorter vector that costs less to store and compare. Re-run the same similarity check at 256 dims and notice the ranking (`puppy` > `spreadsheet`) survives almost untouched.",
+            "python": "resp = client.embeddings.create(\n    model=\"text-embedding-3-small\",\n    input=[\"dog\", \"puppy\", \"spreadsheet\"],\n    dimensions=256,\n)\nsmall = {w: d.embedding for w, d in zip([\"dog\", \"puppy\", \"spreadsheet\"], resp.data)}\n\nprint(\"vector length now:\", len(small[\"dog\"]))  # 256\nprint(\"dog ~ puppy      :\", round(cosine(small[\"dog\"], small[\"puppy\"]), 4))\nprint(\"dog ~ spreadsheet:\", round(cosine(small[\"dog\"], small[\"spreadsheet\"]), 4))\n# Same ordering as 1536 dims, at 1/6 the storage cost.",
+            "javascript": "const respSmall = await client.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: [\"dog\", \"puppy\", \"spreadsheet\"],\n  dimensions: 256,\n});\nconst small = Object.fromEntries(\n  [\"dog\", \"puppy\", \"spreadsheet\"].map((w, i) => [w, respSmall.data[i].embedding])\n);\n\nconsole.log(\"vector length now:\", small.dog.length); // 256\nconsole.log(\"dog ~ puppy      :\", cosine(small.dog, small.puppy).toFixed(4));\nconsole.log(\"dog ~ spreadsheet:\", cosine(small.dog, small.spreadsheet).toFixed(4));\n// Same ordering as 1536 dims, at 1/6 the storage cost."
+          }
+        ],
+        "practice": [
+          "Embed `king`, `queen`, `man`, `woman` and print the full 4x4 cosine similarity matrix—which pair is closest?",
+          "Embed the same sentence in English and Spanish (e.g. `I love coffee` / `Me encanta el cafe`) and check their similarity against an unrelated English sentence.",
+          "Sweep `dimensions` through 64, 256, 512, 1536 and plot (or print) how `dog`~`puppy` similarity changes at each size.",
+          "Embed 100 sentences from a blog post and find the 5 most similar pairs by brute-force cosine over all pairs.",
+          "Write a function `odd_one_out(words)` that embeds a list of words and returns the one with the lowest average similarity to the rest; test it on `['apple', 'banana', 'cherry', 'laptop']`."
+        ]
+      }
+    },
+    {
+      "id": "semantic-search",
+      "title": "Semantic Search",
+      "subsection": "Use Cases",
+      "minutes": 5,
+      "intro": "Semantic search retrieves documents by meaning rather than exact keyword overlap, by embedding both query and documents and ranking by vector similarity.",
+      "summary": [
+        "Classic keyword (lexical) search like BM25 matches literal terms: a search for 'how to terminate an EC2 instance' won't find a doc titled 'shutting down AWS virtual machines' because the words don't overlap. Semantic search fixes this by embedding the query and every document into the same vector space and returning the documents whose vectors are closest to the query vector. Because the embedding model has learned that 'terminate' and 'shut down' mean similar things, intent matches even when vocabulary doesn't.",
+        "The standard pipeline has an offline and an online phase. Offline: split your corpus into chunks (paragraphs or a few hundred tokens each — embedding whole documents dilutes meaning), embed each chunk, and store the vectors in a vector index or database. Online: embed the incoming query with the same model, run a nearest-neighbor search (usually approximate, for speed), and return the top-k chunks. Many production systems add a second-stage reranker (a cross-encoder like Cohere Rerank) that re-scores the top 50-100 candidates more accurately before showing the top 5-10.",
+        "Semantic search is not strictly better than keyword search — it can miss exact identifiers, rare names, SKUs, or error codes that lexical search nails. The pragmatic answer, which Elastic, Weaviate, and most modern engines push, is hybrid search: run BM25 and vector search in parallel and merge results (e.g. with reciprocal rank fusion). Semantic search is also the 'R' in RAG — the retrieved chunks get stuffed into an LLM prompt so the model can answer from your data."
+      ],
+      "keyPoints": [
+        "Semantic search matches intent: query and documents are embedded with the same model and ranked by cosine similarity.",
+        "Chunk documents before embedding — 200-500 token chunks usually retrieve better than whole-document embeddings.",
+        "Hybrid search (BM25 + vectors, merged with reciprocal rank fusion) outperforms either alone, especially for exact terms like codes and names.",
+        "A cross-encoder reranker on the top ~100 candidates is the cheapest big quality win in retrieval pipelines.",
+        "Some models distinguish query vs document embeddings (e.g. Cohere's `input_type`, instruction-prefixed models) — use the right mode for each side.",
+        "Semantic search is the retrieval backbone of RAG systems."
+      ],
+      "code": [
+        {
+          "title": "Minimal semantic search over a list of docs",
+          "language": "python",
+          "code": "import numpy as np\nfrom openai import OpenAI\n\nclient = OpenAI()\ndocs = [\n    \"Shutting down AWS virtual machines safely\",\n    \"Recipe for sourdough bread\",\n    \"Kubernetes pod restart policies\",\n]\n\ndef embed(texts):\n    resp = client.embeddings.create(model=\"text-embedding-3-small\", input=texts)\n    return np.array([d.embedding for d in resp.data])\n\ndoc_vecs = embed(docs)              # (3, 1536), unit-normalized by OpenAI\nquery_vec = embed([\"how to terminate an EC2 instance\"])[0]\n\nscores = doc_vecs @ query_vec       # dot product == cosine for unit vectors\nfor i in np.argsort(-scores):\n    print(f\"{scores[i]:.3f}  {docs[i]}\")"
+        }
+      ],
+      "resources": [
+        {
+          "title": "What is Semantic Search?",
+          "url": "https://www.elastic.co/what-is/semantic-search",
+          "type": "article"
+        },
+        {
+          "title": "What is Semantic Search? - Cohere",
+          "url": "https://www.youtube.com/watch?v=fFt4kR4ntAA",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Build a tiny semantic search engine over 20 FAQ entries and watch it beat keyword search on the query \"can't log in\".",
+        "steps": [
+          {
+            "title": "Install and prepare an FAQ corpus",
+            "explanation": "Same dependencies as the embeddings lab. The corpus is ~20 short FAQ answers; note that the password-reset entry never contains the words `log` or `in`, which is exactly what will break keyword search later.",
+            "python": "# pip install openai numpy\n# export OPENAI_API_KEY=sk-...\n\nFAQS = [\n    \"How do I reset my password?\",\n    \"Where can I update my billing information?\",\n    \"How do I cancel my subscription?\",\n    \"What payment methods do you accept?\",\n    \"How do I invite a teammate to my workspace?\",\n    \"Why was my credit card declined?\",\n    \"How do I export my data as CSV?\",\n    \"How do I enable two-factor authentication?\",\n    \"Can I change my account email address?\",\n    \"How do I delete my account permanently?\",\n    \"What are the API rate limits?\",\n    \"How do I generate a new API key?\",\n    \"Where do I find my invoices?\",\n    \"How do I upgrade to the Pro plan?\",\n    \"Is there a free trial available?\",\n    \"How do I report a bug to support?\",\n    \"What browsers are supported?\",\n    \"How do I change the workspace language?\",\n    \"Why am I not receiving notification emails?\",\n    \"How do I connect my Slack workspace?\",\n]\nprint(len(FAQS), \"FAQ entries ready\")",
+            "javascript": "// npm install openai\n// export OPENAI_API_KEY=sk-...\n\nconst FAQS = [\n  \"How do I reset my password?\",\n  \"Where can I update my billing information?\",\n  \"How do I cancel my subscription?\",\n  \"What payment methods do you accept?\",\n  \"How do I invite a teammate to my workspace?\",\n  \"Why was my credit card declined?\",\n  \"How do I export my data as CSV?\",\n  \"How do I enable two-factor authentication?\",\n  \"Can I change my account email address?\",\n  \"How do I delete my account permanently?\",\n  \"What are the API rate limits?\",\n  \"How do I generate a new API key?\",\n  \"Where do I find my invoices?\",\n  \"How do I upgrade to the Pro plan?\",\n  \"Is there a free trial available?\",\n  \"How do I report a bug to support?\",\n  \"What browsers are supported?\",\n  \"How do I change the workspace language?\",\n  \"Why am I not receiving notification emails?\",\n  \"How do I connect my Slack workspace?\",\n];\nconsole.log(FAQS.length, \"FAQ entries ready\");"
+          },
+          {
+            "title": "Show keyword search failing on synonyms",
+            "explanation": "A naive keyword matcher counts shared words between query and document. The query \"can't log in\" shares zero meaningful words with \"How do I reset my password?\", so keyword search returns junk—this is the gap semantic search closes.",
+            "python": "def keyword_search(query, docs, k=3):\n    q_words = set(query.lower().split())\n    scored = [(len(q_words & set(d.lower().split())), d) for d in docs]\n    scored.sort(key=lambda x: -x[0])\n    return scored[:k]\n\nfor score, doc in keyword_search(\"can't log in\", FAQS):\n    print(score, doc)\n# Every overlap count is 0 or matches only stopwords —\n# the password-reset FAQ is nowhere in the results.",
+            "javascript": "function keywordSearch(query, docs, k = 3) {\n  const qWords = new Set(query.toLowerCase().split(\" \"));\n  return docs\n    .map((d) => {\n      const dWords = new Set(d.toLowerCase().split(\" \"));\n      const overlap = [...qWords].filter((w) => dWords.has(w)).length;\n      return { overlap, d };\n    })\n    .sort((a, b) => b.overlap - a.overlap)\n    .slice(0, k);\n}\n\nfor (const { overlap, d } of keywordSearch(\"can't log in\", FAQS)) {\n  console.log(overlap, d);\n}\n// Every overlap count is 0 or matches only stopwords —\n// the password-reset FAQ is nowhere in the results."
+          },
+          {
+            "title": "Embed the whole corpus in one call",
+            "explanation": "Embed all 20 FAQs in a single batched request—this is how you should always do it in production rather than one call per document. Store the vectors alongside the original text so you can map results back.",
+            "python": "import numpy as np\nfrom openai import OpenAI\n\nclient = OpenAI()\n\nresp = client.embeddings.create(\n    model=\"text-embedding-3-small\",\n    input=FAQS,\n)\ndoc_vectors = np.array([d.embedding for d in resp.data])\nprint(\"index shape:\", doc_vectors.shape)  # (20, 1536)",
+            "javascript": "import OpenAI from \"openai\";\nconst client = new OpenAI();\n\nconst resp = await client.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: FAQS,\n});\nconst docVectors = resp.data.map((d) => d.embedding);\nconsole.log(\"index size:\", docVectors.length, \"x\", docVectors[0].length); // 20 x 1536"
+          },
+          {
+            "title": "Embed the query, rank by cosine, return top 3",
+            "explanation": "Embed the query with the same model, score it against every document vector, and sort. \"can't log in\" now lands \"How do I reset my password?\" at or near the top—semantic search matched the intent, not the words.",
+            "python": "def cosine(a, b):\n    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))\n\ndef semantic_search(query, k=3):\n    q = client.embeddings.create(\n        model=\"text-embedding-3-small\", input=query\n    ).data[0].embedding\n    scores = [(cosine(q, v), FAQS[i]) for i, v in enumerate(doc_vectors)]\n    scores.sort(key=lambda x: -x[0])\n    return scores[:k]\n\nfor score, doc in semantic_search(\"can't log in\"):\n    print(round(score, 4), doc)\n# 0.54 How do I reset my password?\n# 0.43 How do I enable two-factor authentication?\n# ...intent matched, zero shared keywords.",
+            "javascript": "function cosine(a, b) {\n  let dot = 0, na = 0, nb = 0;\n  for (let i = 0; i < a.length; i++) {\n    dot += a[i] * b[i];\n    na += a[i] * a[i];\n    nb += b[i] * b[i];\n  }\n  return dot / (Math.sqrt(na) * Math.sqrt(nb));\n}\n\nasync function semanticSearch(query, k = 3) {\n  const r = await client.embeddings.create({\n    model: \"text-embedding-3-small\", input: query,\n  });\n  const q = r.data[0].embedding;\n  return docVectors\n    .map((v, i) => ({ score: cosine(q, v), doc: FAQS[i] }))\n    .sort((a, b) => b.score - a.score)\n    .slice(0, k);\n}\n\nfor (const { score, doc } of await semanticSearch(\"can't log in\")) {\n  console.log(score.toFixed(4), doc);\n}\n// 0.54 How do I reset my password?  <- intent matched, zero shared keywords"
+          }
+        ],
+        "practice": [
+          "Try 5 more synonym-heavy queries (e.g. `charge failed`, `add a coworker`, `download everything I own`) and check that the right FAQ ranks first each time.",
+          "Add a score threshold: if the best cosine score is below 0.35, return `No good match found` instead of a wrong answer.",
+          "Cache the FAQ embeddings to a JSON file on disk so reruns skip the embedding call entirely.",
+          "Replace the FAQ list with 50+ headings from a real README or docs site and build a `search(query)` CLI around it.",
+          "Build a hybrid scorer: `0.7 * cosine + 0.3 * keyword_overlap`, and find one query where the hybrid beats pure semantic search."
+        ]
+      }
+    },
+    {
+      "id": "data-classification",
+      "title": "Data Classification",
+      "subsection": "Use Cases",
+      "minutes": 4,
+      "intro": "Embeddings turn raw text or images into feature vectors that simple classifiers can be trained on, making classification cheap, fast, and surprisingly accurate.",
+      "summary": [
+        "Instead of fine-tuning a large model for every classification task, you can embed your inputs once and train a lightweight classifier — logistic regression, a small MLP, or even k-nearest-neighbors — on the vectors. Because the embedding model has already done the heavy lifting of understanding language, the classifier only has to learn a decision boundary in an already-meaningful space. This 'embeddings + small head' pattern routinely gets strong results on sentiment analysis, topic tagging, intent detection, and spam filtering with a few hundred labeled examples.",
+        "There are two even cheaper variants. Zero-shot: embed each class label or a short description of it ('billing question', 'bug report', 'feature request'), embed the incoming text, and assign the class with the highest cosine similarity — no training at all. Few-shot/centroid: average the embeddings of a handful of examples per class and classify to the nearest centroid. These work because semantically similar texts cluster in embedding space.",
+        "The practical trade-offs: training a classifier on frozen embeddings is orders of magnitude cheaper than fine-tuning an LLM and inference is milliseconds, but accuracy ceilings are lower than a fine-tuned model on hard, nuanced tasks. Embeddings also drift with the provider — if OpenAI deprecates your embedding model, your trained classifier head needs retraining on the new vectors. Cache embeddings; they're deterministic per model, so never pay to embed the same text twice."
+      ],
+      "keyPoints": [
+        "Pattern: frozen embeddings + logistic regression is a strong, cheap baseline for text classification — often within a few points of fine-tuned models.",
+        "Zero-shot classification works by embedding class descriptions and picking the nearest one — no labels required.",
+        "A few hundred labeled examples are usually enough when the features are good embeddings.",
+        "Inference is fast and cheap: one embedding call plus a tiny matrix multiply.",
+        "If you switch or the provider deprecates the embedding model, the classifier must be retrained — pin model versions and cache vectors.",
+        "Same trick works for images (CLIP embeddings) and audio."
+      ],
+      "code": [
+        {
+          "title": "Logistic regression on embeddings (scikit-learn)",
+          "language": "python",
+          "code": "import numpy as np\nfrom openai import OpenAI\nfrom sklearn.linear_model import LogisticRegression\n\nclient = OpenAI()\n\ndef embed(texts):\n    resp = client.embeddings.create(model=\"text-embedding-3-small\", input=texts)\n    return np.array([d.embedding for d in resp.data])\n\ntexts = [\"refund my order\", \"app crashes on login\", \"love this product\", \"charge appeared twice\"]\nlabels = [\"billing\", \"bug\", \"praise\", \"billing\"]\n\nclf = LogisticRegression(max_iter=1000).fit(embed(texts), labels)\nprint(clf.predict(embed([\"I was billed twice this month\"])))  # ['billing']"
+        }
+      ],
+      "resources": [
+        {
+          "title": "What Is Data Classification?",
+          "url": "https://www.paloaltonetworks.com/cyberpedia/data-classification",
+          "type": "article"
+        },
+        {
+          "title": "Text Embeddings, Classification, and Semantic Search (w/ Python Code)",
+          "url": "https://www.youtube.com/watch?v=sNa_uiqSlJo",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "recommendation-systems",
+      "title": "Recommendation Systems",
+      "subsection": "Use Cases",
+      "minutes": 4,
+      "intro": "Recommenders use embeddings to place items and users in the same vector space, so 'things you might like' becomes a nearest-neighbor lookup.",
+      "summary": [
+        "The core idea: represent every item (product, article, song) as a vector, and recommendation reduces to similarity search. Content-based recommenders embed item attributes — title, description, image — with a pretrained model, then recommend items whose vectors are closest to what the user just viewed or bought. This works from day one for new items (no interaction history needed), which is why embeddings are the standard fix for the cold-start problem.",
+        "Collaborative approaches learn embeddings from behavior instead: matrix factorization and two-tower neural networks learn a user vector and an item vector such that their dot product predicts engagement. Users end up near items they would click. Modern stacks often combine both — behavioral embeddings where history is rich, content embeddings as fallback — and serve them from a vector database, retrieving hundreds of candidates with ANN search and then reranking with a heavier model that uses business features (recency, price, diversity).",
+        "Practically, this is the same infrastructure as semantic search: embed, index, query nearest neighbors. A useful trick is averaging the embeddings of a user's recent interactions to form a session vector and querying with that. Watch out for popularity bias (popular items dominate neighborhoods) and the filter-bubble effect — production systems usually inject diversity and freshness rules after retrieval."
+      ],
+      "keyPoints": [
+        "Recommendation via embeddings = nearest-neighbor search: 'similar items' are vectors close to the current item or user vector.",
+        "Content embeddings solve cold start for new items; collaborative (two-tower) embeddings capture taste from behavior.",
+        "Averaging a user's recent item embeddings makes a cheap, effective session/user vector.",
+        "Standard architecture: ANN retrieval of ~100s of candidates from a vector DB, then a reranker applies business logic.",
+        "Same vector infrastructure powers search and recommendations — one index can serve both.",
+        "Mitigate popularity bias and filter bubbles with post-retrieval diversity rules."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "What Role does AI Play in Recommendation Systems and Engines?",
+          "url": "https://www.algolia.com/blog/ai/what-role-does-ai-play-in-recommendation-systems-and-engines/",
+          "type": "article"
+        },
+        {
+          "title": "What is a Recommendation Engine?",
+          "url": "https://www.ibm.com/think/topics/recommendation-engine",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "anomaly-detection",
+      "title": "Anomaly Detection",
+      "subsection": "Use Cases",
+      "minutes": 4,
+      "intro": "Anomaly detection with embeddings flags data points whose vectors sit far from the rest of the distribution — outliers in semantic space.",
+      "summary": [
+        "Once data lives in embedding space, 'normal' items form dense clusters and anomalies are the points far from everything else. The simplest detector: embed all items, compute each point's distance to its k nearest neighbors (or to a cluster centroid), and flag the points with the largest distances. Google's Gemini anomaly-detection tutorial demonstrates exactly this — embed a text corpus, reduce dimensions, and outliers visually and numerically separate from the topical clusters.",
+        "This pattern shines on unstructured data where hand-crafted rules fail: a fraudulent support message that reads differently from genuine ones, a log line unlike any seen before, an off-topic document in a curated corpus, a defective product photo. Classical algorithms — k-NN distance, Isolation Forest, Local Outlier Factor, DBSCAN noise points, or a one-class SVM — all run happily on embedding vectors as features. For time-series or transactions you can embed a textual or structured rendering of each event.",
+        "Caveats: embeddings capture semantic unusualness, not business-rule violations — a perfectly fluent fraudulent email may embed near legitimate ones, so combine semantic outlier scores with rule-based and statistical signals. Distance concentration in very high dimensions can blunt contrasts, so it's common to reduce dimensionality (PCA/UMAP) before density-based methods. And the definition of 'normal' drifts: re-fit thresholds as your data distribution moves."
+      ],
+      "keyPoints": [
+        "Core recipe: embed everything, score each point by distance to its k nearest neighbors or cluster centroid, flag the tail.",
+        "Works on text, images, and logs where rule-based detection can't generalize.",
+        "Classical detectors (Isolation Forest, LOF, one-class SVM, DBSCAN) plug directly into embedding features.",
+        "Embeddings detect semantic oddity, not policy violations — combine with rules for fraud/security use cases.",
+        "Consider dimensionality reduction (PCA/UMAP) before density-based methods in very high-dimensional spaces.",
+        "Recalibrate thresholds over time; 'normal' drifts with your data."
+      ],
+      "code": [
+        {
+          "title": "k-NN distance outlier score on embeddings",
+          "language": "python",
+          "code": "import numpy as np\nfrom sklearn.neighbors import NearestNeighbors\n\n# vecs: (n_docs, dim) array of embeddings from any model\nvecs = np.load(\"embeddings.npy\")\n\nnn = NearestNeighbors(n_neighbors=6, metric=\"cosine\").fit(vecs)\ndists, _ = nn.kneighbors(vecs)\nscore = dists[:, 1:].mean(axis=1)   # mean distance to 5 nearest (skip self)\n\nthreshold = np.percentile(score, 99)\nanomalies = np.where(score > threshold)[0]\nprint(\"outlier indices:\", anomalies)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Anomaly in Embeddings",
+          "url": "https://ai.google.dev/gemini-api/tutorials/anomaly_detection",
+          "type": "article"
+        },
+        {
+          "title": "Boosting Your Anomaly Detection With LLMs",
+          "url": "https://towardsdatascience.com/boosting-your-anomaly-detection-with-llms/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "embedding-models",
+      "title": "Embedding Models",
+      "subsection": "Models",
+      "minutes": 5,
+      "intro": "Embedding models are the neural networks that produce vectors — they differ in quality, dimensions, context length, language coverage, cost, and whether you call an API or run them yourself.",
+      "summary": [
+        "The landscape splits into two camps. Proprietary APIs — OpenAI `text-embedding-3-small`/`-large`, Google `gemini-embedding-001`, Cohere Embed v4, Voyage AI — give you state-of-the-art quality with zero infrastructure: send text, get vectors, pay per token. Open-source models — the sentence-transformers family, BGE and GTE from BAAI/Alibaba, E5, Nomic Embed, Jina embeddings, Qwen3-Embedding — run locally or on your own GPUs, cost nothing per call, keep data in-house, and the best ones now match or beat proprietary APIs on public benchmarks.",
+        "The standard scoreboard is MTEB (Massive Text Embedding Benchmark) on Hugging Face, which scores models across retrieval, classification, clustering, and reranking tasks. Treat it as a shortlist generator, not gospel — models can overfit the benchmark, and your domain (legal, code, medical) may rank them differently. Always run a small eval on your own data before committing.",
+        "Key spec-sheet items when choosing: output dimensions (384-4096; bigger = better quality but more storage and slower search), max input tokens (512 for older models, 8k+ for modern ones — matters for chunking strategy), multilingual coverage, and whether the model supports Matryoshka Representation Learning (MRL), which lets you truncate vectors to a shorter prefix (e.g. 1536 → 256 dims) with modest quality loss to cut storage and latency. Remember the lock-in dynamic: vectors are model-specific, so swapping models means re-embedding the whole corpus — favor a model you can keep using."
+      ],
+      "keyPoints": [
+        "Two camps: API models (OpenAI, Gemini, Cohere, Voyage) for zero-ops quality; open-source (BGE, GTE, E5, Nomic, Jina, sentence-transformers) for cost, privacy, and control.",
+        "Check the MTEB leaderboard for a shortlist, then evaluate on YOUR data — domain shifts re-rank models.",
+        "Dimensions trade quality against storage/search cost; MRL-trained models let you truncate vectors cheaply.",
+        "Max input length matters: 512-token models force fine chunking; 8k-token models give flexibility.",
+        "Switching embedding models requires re-embedding the entire corpus — plan for it.",
+        "Small open models (e.g. 384-dim `all-MiniLM-L6-v2`) are often 'good enough' and run on CPU; don't default to the biggest model."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "What are Embedding Models? An Overview",
+          "url": "https://www.couchbase.com/blog/embedding-models/",
+          "type": "article"
+        },
+        {
+          "title": "Best Open-Source Embedding Models Benchmarked and Ranked",
+          "url": "https://supermemory.ai/blog/best-open-source-embedding-models-benchmarked-and-ranked/",
+          "type": "article"
+        },
+        {
+          "title": "MTEB Leaderboard",
+          "url": "https://huggingface.co/spaces/mteb/leaderboard",
+          "type": "official"
+        }
+      ]
+    },
+    {
+      "id": "openai-embeddings-api",
+      "title": "OpenAI Embeddings API",
+      "subsection": "Models",
+      "minutes": 5,
+      "intro": "OpenAI's embeddings endpoint turns text into vectors with one API call — `text-embedding-3-small` and `-large` are the workhorse models for most RAG and search stacks.",
+      "summary": [
+        "The API is a single endpoint: POST text (a string or a batch of strings) to `/v1/embeddings` with a model name, get back float vectors. `text-embedding-3-small` returns 1536 dimensions and is the price/performance default; `text-embedding-3-large` returns 3072 dimensions with higher accuracy, especially multilingual. Both accept up to 8191 input tokens. Pricing is per input token and is very cheap relative to chat models — small costs $0.02 per million tokens, large $0.13 per million — so embedding a million short documents costs single-digit dollars.",
+        "A standout feature is the `dimensions` parameter: the v3 models are trained with Matryoshka-style loss, so you can ask for shortened vectors (e.g. 512 or 256 dims) and the API returns truncated, renormalized embeddings that retain most quality. This directly cuts vector DB storage and query latency. Returned vectors are already normalized to length 1, so cosine similarity, dot product, and Euclidean ranking are interchangeable.",
+        "Operationally: batch your inputs (up to 2048 strings per request) instead of looping one-by-one — it's dramatically faster and avoids rate limits; cache embeddings keyed on (model, text) since they're deterministic and you should never pay twice; and count tokens with `tiktoken` to keep chunks under the limit. The older `text-embedding-ada-002` (1536 dims) still appears in tutorials but is superseded — v3 small is better and cheaper."
+      ],
+      "keyPoints": [
+        "`text-embedding-3-small`: 1536 dims, $0.02/1M tokens — the default. `text-embedding-3-large`: 3072 dims, $0.13/1M tokens — higher accuracy.",
+        "Max input is 8191 tokens per string; batch up to 2048 strings per request.",
+        "The `dimensions` parameter shrinks vectors (e.g. to 512) with modest quality loss — big storage/latency savings.",
+        "Vectors come back unit-normalized: cosine similarity == dot product.",
+        "Embeddings are deterministic per model — cache them, never re-embed the same text.",
+        "`text-embedding-ada-002` is legacy; prefer the v3 models."
+      ],
+      "code": [
+        {
+          "title": "Batch embeddings with the dimensions parameter",
+          "language": "python",
+          "code": "from openai import OpenAI\n\nclient = OpenAI()  # uses OPENAI_API_KEY env var\n\nresp = client.embeddings.create(\n    model=\"text-embedding-3-small\",\n    input=[\n        \"Vector databases store embeddings.\",\n        \"Postgres can do vector search with pgvector.\",\n    ],\n    dimensions=512,   # optional: shorten from 1536\n)\n\nfor item in resp.data:\n    print(item.index, len(item.embedding))  # 0 512 / 1 512\nprint(resp.usage.total_tokens)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "OpenAI Embeddings API",
+          "url": "https://platform.openai.com/docs/api-reference/embeddings/create",
+          "type": "official"
+        },
+        {
+          "title": "Master OpenAI Embedding API",
+          "url": "https://www.youtube.com/watch?v=9oCS-VQupoc",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "gemini-embedding",
+      "title": "Gemini Embedding",
+      "subsection": "Models",
+      "minutes": 4,
+      "intro": "Google's Gemini API offers `gemini-embedding-001`, a top-ranked multilingual embedding model with flexible output dimensions and task-type hints.",
+      "summary": [
+        "Google's embedding offering in the Gemini API is `gemini-embedding-001`, which debuted at the top of the MTEB multilingual leaderboard when it went generally available. It supports 100+ languages, accepts inputs up to 2048 tokens, and outputs 3072 dimensions by default. Thanks to Matryoshka Representation Learning you can request smaller outputs via `output_dimensionality` — 1536 or 768 are recommended truncation points that preserve most quality while cutting storage. Note that truncated vectors are not pre-normalized, so normalize them yourself before using dot-product similarity.",
+        "A distinctive feature is the `task_type` parameter: you tell the API what the embedding is for — `RETRIEVAL_QUERY`, `RETRIEVAL_DOCUMENT`, `SEMANTIC_SIMILARITY`, `CLASSIFICATION`, `CLUSTERING`, `CODE_RETRIEVAL_QUERY`, and more — and the model optimizes the vector for that use. Using the asymmetric query/document pair for search measurably improves retrieval quality over a one-size-fits-all embedding.",
+        "Access goes through the `google-genai` Python SDK or REST, with a free tier on Google AI Studio and paid scaling on Vertex AI ($0.15 per million input tokens). For teams already on Google Cloud, embedding in Vertex keeps data within the platform and pairs naturally with Vertex Vector Search. As always, vectors are model-specific — pick the right `task_type` and dimension up front so you don't re-embed later."
+      ],
+      "keyPoints": [
+        "`gemini-embedding-001`: 3072 dims default, MRL-truncatable to 1536/768; 2048-token input; 100+ languages.",
+        "Launched as the #1 model on the MTEB multilingual leaderboard.",
+        "`task_type` hints (`RETRIEVAL_QUERY` vs `RETRIEVAL_DOCUMENT`, etc.) tune vectors per use case — use them.",
+        "Truncated outputs are not normalized — renormalize before dot-product similarity.",
+        "Free tier via Google AI Studio; paid at $0.15/1M tokens, with Vertex AI for enterprise.",
+        "Replaces older `text-embedding-004`; Google publishes deprecation timelines, so pin and monitor model versions."
+      ],
+      "code": [
+        {
+          "title": "Gemini embeddings with task type",
+          "language": "python",
+          "code": "from google import genai\nfrom google.genai import types\n\nclient = genai.Client()  # uses GEMINI_API_KEY env var\n\nresult = client.models.embed_content(\n    model=\"gemini-embedding-001\",\n    contents=[\"What is the meaning of life?\"],\n    config=types.EmbedContentConfig(\n        task_type=\"RETRIEVAL_QUERY\",\n        output_dimensionality=768,\n    ),\n)\nvec = result.embeddings[0].values\nprint(len(vec))  # 768"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Embeddings",
+          "url": "https://ai.google.dev/gemini-api/docs/embeddings",
+          "type": "official"
+        },
+        {
+          "title": "Gemini Embedding now generally available in the Gemini API",
+          "url": "https://developers.googleblog.com/gemini-embedding-available-gemini-api/",
+          "type": "official"
+        },
+        {
+          "title": "What are text embeddings?",
+          "url": "https://www.youtube.com/watch?v=vlcQV4j2kTo&t=117s",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "cohere-embed",
+      "title": "Cohere Embed",
+      "subsection": "Models",
+      "minutes": 4,
+      "intro": "Cohere's Embed models are enterprise-focused, strongly multilingual embeddings with explicit query/document input types, multimodal support, and compression-friendly int8/binary outputs.",
+      "summary": [
+        "Cohere's flagship is Embed v4 (with Embed v3 multilingual/english still widely deployed), positioned for enterprise search and RAG. Two design choices stand out. First, the required `input_type` parameter — `search_query`, `search_document`, `classification`, or `clustering` — produces asymmetric embeddings tuned for each role, which improves retrieval quality. Second, embedding `embedding_types` support: besides float vectors, the API can return int8, uint8, binary, and ubinary compressed embeddings, cutting vector storage by 4-32x with small accuracy loss — a big deal at scale, and natively supported by several vector DBs.",
+        "Embed v4 is multimodal (text and images in one space, so you can search PDFs with figures), handles 100+ languages, supports inputs up to ~128k tokens, and offers Matryoshka output dimensions (256/512/1024/1536). Cohere pairs Embed with its Rerank cross-encoder, and the embed-then-rerank combo is one of the most common production retrieval stacks. Availability includes Cohere's own API, AWS Bedrock, Azure AI Foundry, and private deployments — a key differentiator for enterprises with data-residency constraints.",
+        "Pricing is per input token (around $0.12 per million for v4), with image inputs billed separately. If your workload is multilingual enterprise search or you need compressed embeddings to keep a 100M-vector index affordable, Cohere is usually on the shortlist."
+      ],
+      "keyPoints": [
+        "Always set `input_type` (`search_query` vs `search_document`) — Cohere embeddings are asymmetric by design.",
+        "Embed v4: multimodal text+image, 100+ languages, up to ~128k-token inputs, output dims 256-1536.",
+        "int8/binary `embedding_types` cut storage 4-32x — pair with a vector DB that supports quantized vectors.",
+        "Embed + Cohere Rerank is a proven two-stage retrieval stack.",
+        "Available on Cohere API, AWS Bedrock, Azure, and private/VPC deployments for compliance-heavy orgs.",
+        "Pricing ~$0.12 per 1M input tokens for Embed v4."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Introduction to Embeddings at Cohere",
+          "url": "https://docs.cohere.com/docs/embeddings",
+          "type": "official"
+        },
+        {
+          "title": "What are embedding models? Benefits and best practices",
+          "url": "https://cohere.com/blog/embedding-models",
+          "type": "official"
+        }
+      ]
+    },
+    {
+      "id": "sentence-transformers",
+      "title": "Sentence Transformers",
+      "subsection": "Models",
+      "minutes": 5,
+      "intro": "Sentence Transformers (SBERT) is the standard open-source Python library for generating sentence and document embeddings locally — `pip install sentence-transformers` and you have vectors in three lines.",
+      "summary": [
+        "Plain BERT gives you a vector per token, not a good vector per sentence — naively averaging them or using the [CLS] token performs poorly for similarity. Sentence-BERT (SBERT) fixed this in 2019 by fine-tuning BERT-style models with siamese/contrastive objectives so that whole-sentence vectors are directly comparable with cosine similarity. The `sentence-transformers` library packages this: `SentenceTransformer(name).encode(texts)` returns ready-to-use numpy embeddings, with batching, GPU support, and normalization built in.",
+        "The model hub matters as much as the library. `all-MiniLM-L6-v2` (384 dims, ~80MB) is the famous fast baseline that runs fine on CPU; `all-mpnet-base-v2` (768 dims) is a stronger classic; and modern hub models like BGE, GTE, E5, and multilingual variants all load through the same API. Because everything runs locally, there is zero per-call cost, no data leaves your machine, and latency is in your control — the standard choice when privacy, cost, or offline operation rules out APIs.",
+        "Beyond inference, the library is also the standard toolkit for fine-tuning your own embedding model on domain pairs (query-document, duplicate questions) with losses like MultipleNegativesRankingLoss — a few thousand pairs can beat general-purpose APIs on your domain. It also ships CrossEncoder classes for reranking. Trade-off versus APIs: you own the serving (GPU for big models, batching, scaling), and small local models trail the top API models on broad benchmarks — but for many apps the gap doesn't matter."
+      ],
+      "keyPoints": [
+        "`pip install sentence-transformers`; `model.encode(list_of_texts)` returns numpy vectors — the fastest path to local embeddings.",
+        "`all-MiniLM-L6-v2`: 384 dims, CPU-friendly, the go-to baseline; `all-mpnet-base-v2` (768 dims) is stronger but slower.",
+        "SBERT's contrastive fine-tuning is what makes sentence vectors cosine-comparable — raw BERT outputs are not.",
+        "Zero per-call cost and full data privacy — nothing leaves your infrastructure.",
+        "Loads most modern hub models (BGE, GTE, E5) via the same API; also provides CrossEncoder rerankers.",
+        "Supports fine-tuning on your own pairs — domain fine-tunes often beat general API models.",
+        "Use `normalize_embeddings=True` so dot product equals cosine similarity."
+      ],
+      "code": [
+        {
+          "title": "Local embeddings and similarity with sentence-transformers",
+          "language": "python",
+          "code": "from sentence_transformers import SentenceTransformer\n\nmodel = SentenceTransformer(\"all-MiniLM-L6-v2\")  # 384-dim, runs on CPU\n\nsentences = [\n    \"The cat sat on the mat.\",\n    \"A feline rested on the rug.\",\n    \"Stock prices fell sharply today.\",\n]\nemb = model.encode(sentences, normalize_embeddings=True)\nprint(emb.shape)  # (3, 384)\n\nsims = model.similarity(emb, emb)  # cosine similarity matrix\nprint(sims[0])  # high for sentence 1, low for sentence 2"
+        }
+      ],
+      "resources": [
+        {
+          "title": "What is BERT?",
+          "url": "https://h2o.ai/wiki/bert/",
+          "type": "article"
+        },
+        {
+          "title": "SentenceTransformers Documentation",
+          "url": "https://sbert.net/",
+          "type": "article"
+        },
+        {
+          "title": "Using Sentence Transformers at Hugging Face",
+          "url": "https://huggingface.co/docs/hub/sentence-transformers",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "models-on-hugging-face",
+      "title": "Models on Hugging Face",
+      "subsection": "Models",
+      "minutes": 4,
+      "intro": "Hugging Face hosts thousands of open embedding models plus the MTEB leaderboard — it's where you find, compare, and download models for local or self-hosted use.",
+      "summary": [
+        "The Hugging Face Hub is the distribution channel for open embedding models: filter by the `feature-extraction` or `sentence-similarity` pipeline tags and you'll find everything from 22MB MiniLM variants to multi-billion-parameter retrieval models (BGE, GTE, E5, Nomic Embed, Jina, Qwen3-Embedding, and many multilingual/domain-specific options). Each model card documents dimensions, max sequence length, languages, license, and usage snippets. The MTEB leaderboard — hosted as a Hugging Face Space — is the de facto ranking across retrieval, classification, clustering, and STS tasks, and the usual starting point for choosing a model.",
+        "You can use hub models three ways: load locally with `sentence-transformers` or `transformers` (full control, zero per-call cost); call the HF Inference API / Inference Endpoints to get embeddings over HTTP without managing hardware; or self-host with Text Embeddings Inference (TEI), Hugging Face's optimized Rust serving container that delivers high-throughput embedding serving on CPU or GPU.",
+        "Two practical notes. Check the license — most popular embedding models are Apache-2.0 or MIT, but some (and some training datasets) restrict commercial use. And read the model card for usage quirks: E5-style models require `query:`/`passage:` prefixes, some BGE versions recommend instruction prefixes for queries, and pooling/normalization conventions differ — getting these wrong silently degrades retrieval quality."
+      ],
+      "keyPoints": [
+        "Filter the Hub by `feature-extraction`/`sentence-similarity` tags; the MTEB leaderboard Space ranks models on real tasks.",
+        "Three consumption modes: local load (sentence-transformers), HF Inference API/Endpoints, or self-hosted TEI containers.",
+        "Top open families: BGE, GTE, E5, Nomic Embed, Jina, Qwen3-Embedding, plus the classic sentence-transformers models.",
+        "Read the model card: some models need query/passage prefixes and specific pooling — skipping them hurts quality silently.",
+        "Verify the license (Apache-2.0/MIT are safe; some models restrict commercial use).",
+        "Text Embeddings Inference (TEI) is the standard high-throughput serving option for production self-hosting."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Hugging Face Embedding Models",
+          "url": "https://huggingface.co/models?pipeline_tag=feature-extraction",
+          "type": "official"
+        },
+        {
+          "title": "Hugging Face - Text embeddings & semantic search",
+          "url": "https://www.youtube.com/watch?v=OATCgQtNX2o",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "jina-embeddings",
+      "title": "Jina Embeddings",
+      "subsection": "Models",
+      "minutes": 4,
+      "intro": "Jina AI builds open, multilingual, multimodal embedding models known for long-context support (8k-32k tokens), task-specific adapters, and strong text+image retrieval.",
+      "summary": [
+        "Jina AI made its name with `jina-embeddings-v2`, one of the first open models to support 8k-token inputs when most models stopped at 512. The line evolved through v3 (570M params, 89 languages, task-specific LoRA adapters for retrieval/classification/clustering, Matryoshka dimensions down from 1024) and v4 (multimodal — text, images, charts, code in one space, built on a vision-language backbone, with 32k-token context and late-interaction options) to v5, which distills 4B-scale quality into sub-1B multilingual models — strong quality at a size you can realistically self-host.",
+        "Distinctive capabilities: very long context, so you can embed whole documents or large chunks without aggressive splitting; multi-vector/late-interaction output modes for higher-precision retrieval; specialized variants for code search and text-to-image; and the related `jina-clip` models for cross-modal search. Jina also publishes rerankers and a reader API, covering most of the retrieval stack.",
+        "You can consume Jina models through their hosted Embeddings API (free tier with generous token allowance, then pay-as-you-go), or download the open weights from Hugging Face and run them locally — most are permissively licensed for research with commercial terms varying by model, so check each card. They're a strong pick for multilingual RAG and for document collections where long inputs and images matter."
+      ],
+      "keyPoints": [
+        "Known for long context: 8k tokens since v2, up to 32k in v4 — fewer, larger chunks become viable.",
+        "v3: 570M params, 89 languages, task LoRA adapters, MRL dims; v4: multimodal text+image+code; v5: sub-1B models distilled from 4B-class quality.",
+        "Task-specific adapters/modes (retrieval.query vs retrieval.passage, etc.) tune vectors per use case.",
+        "Open weights on Hugging Face plus a hosted API with a free tier — choose self-host or managed.",
+        "Multimodal variants enable searching PDFs, charts, and screenshots, not just plain text.",
+        "Check per-model licenses — some Jina releases use non-commercial licenses with separate commercial terms."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Jina Embeddings",
+          "url": "https://jina.ai/en-US/embeddings/",
+          "type": "official"
+        },
+        {
+          "title": "Jina Embeddings v5: Distilling 4B Quality into Sub-1B Multilingual Embeddings",
+          "url": "https://jina.ai/news/jina-embeddings-v5-text-distilling-4b-quality-into-sub-1b-multilingual-embeddings/",
+          "type": "official"
+        }
+      ]
+    }
+  ]
+}

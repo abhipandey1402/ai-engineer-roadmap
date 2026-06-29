@@ -1,0 +1,71 @@
+SECTION 4: Context Engineering
+DESCRIPTION: Designing everything the model sees: memory, retrieval, compaction, and isolation strategies.
+======================================================================
+
+
+### TOPIC: Prompt vs Context Engineering  (id: prompt-vs-context-engineering)  [group: -]
+
+# Prompt vs. Context Engineering
+
+Prompt engineering focuses on crafting effective instructions (prompts) to elicit desired outputs from Large Language Models (LLMs). Context engineering, on the other hand, involves structuring and providing relevant background information (the context) to the LLM, enabling it to generate more accurate and informed responses based on a richer understanding of the subject matter.
+
+Visit the following resources to learn more:
+
+- [@article@Context engineering vs. prompt engineering](https://www.elastic.co/search-labs/blog/context-engineering-vs-prompt-engineering)
+- [@article@Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
+- [@article@Beyond Prompting: The Power of Context Engineering](https://towardsdatascience.com/beyond-prompting-the-power-of-context-engineering/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+- [@video@Context Engineering vs. Prompt Engineering: Smarter AI with RAG & Agents](https://www.youtube.com/watch?v=vD0E3EUb8-8)
+
+----------------------------------------------------------------------
+
+### TOPIC: External Memory  (id: external-memory)  [group: -]
+
+# External Memory
+
+External memory, in the context of large language models (LLMs), refers to mechanisms that allow these models to access and utilize information stored outside of their internal parameters. This can involve retrieving relevant data from databases, knowledge graphs, or other external sources during the prompt processing or generation phases to augment the model's knowledge and improve its performance on specific tasks. This enhances the LLM's ability to handle complex queries and generate more accurate and contextually relevant responses.
+
+Visit the following resources to learn more:
+
+- [@article@How to Maximize Agentic Memory for Continual Learning](https://towardsdatascience.com/how-to-maximize-agentic-memory-for-continual-learning/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+
+----------------------------------------------------------------------
+
+### TOPIC: RAG and Dynamic Filters  (id: rag-and-dynamic-filters)  [group: -]
+
+# RAG and Dynamic Filters
+
+Retrieval-Augmented Generation (RAG) enhances Large Language Models (LLMs) by providing them with relevant, up-to-date information from external sources. Dynamic filters are techniques that selectively filter the information retrieved for RAG, ensuring that the LLM receives only the most pertinent context based on the specific query and user. This results in more accurate, focused, and contextually appropriate LLM responses.
+
+Visit the following resources to learn more:
+
+- [@article@4 context engineering strategies every AI engineer needs to know](https://newsletter.owainlewis.com/p/4-context-engineering-strategies)
+- [@article@Context Engineering](https://blog.langchain.com/context-engineering-for-agents/)
+- [@article@Is RAG Dead? The Rise of Context Engineering and Semantic Layers for Agentic AI](https://towardsdatascience.com/beyond-rag/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+
+----------------------------------------------------------------------
+
+### TOPIC: Context Compaction  (id: context-compaction)  [group: -]
+
+# Context Compaction
+
+Context compaction is a technique used to reduce the length of the context provided to a large language model (LLM) without sacrificing relevant information. This process aims to remove redundant, irrelevant, or less important information from the context window to make room for more data or improve the efficiency and effectiveness of the LLM's processing. Compaction can involve techniques like summarization, filtering, or re-ranking of context information.
+
+Visit the following resources to learn more:
+
+- [@article@Context Engineering](https://blog.langchain.com/context-engineering-for-agents/)
+- [@article@Context Compaction](https://gist.github.com/badlogic/cd2ef65b0697c4dbe2d13fbecb0a0a5f)
+
+----------------------------------------------------------------------
+
+### TOPIC: Context Isolation  (id: context-isolation)  [group: -]
+
+# Context Isolation
+
+Context isolation is about keeping different tasks or areas of knowledge separate when working with large language models (LLMs). Think of it like giving each task its own dedicated space. Instead of one big LLM trying to handle everything at once, you use multiple, smaller "agents" that are each focused on a specific job and trained on their own specific data. This prevents unrelated information from interfering with each other, leading to more accurate and reliable results.
+
+Visit the following resources to learn more:
+
+- [@article@4 context engineering strategies every AI engineer needs to know](https://newsletter.owainlewis.com/p/4-context-engineering-strategies)
+- [@article@Context Engineering](https://blog.langchain.com/context-engineering-for-agents/)
+
+----------------------------------------------------------------------

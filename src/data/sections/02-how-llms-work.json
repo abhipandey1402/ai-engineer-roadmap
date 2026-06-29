@@ -1,0 +1,522 @@
+{
+  "id": "how-llms-work",
+  "title": "How LLMs Work & Core Terminology",
+  "description": "The foundational vocabulary and mechanics behind large language models.",
+  "topics": [
+    {
+      "id": "large-language-model-llm",
+      "title": "Large Language Model (LLM)",
+      "subsection": "Common Terminology",
+      "minutes": 5,
+      "intro": "An LLM is a transformer-based neural network trained on massive text corpora to predict the next token, which makes it capable of general-purpose language tasks.",
+      "summary": [
+        "A large language model is a deep neural network, almost always a transformer, trained on enormous amounts of text (trillions of tokens from the web, books, and code) to do one deceptively simple thing: predict the next token in a sequence. At sufficient scale of data and parameters, this objective produces emergent abilities: translation, summarization, question answering, reasoning, and code generation, all from the same model without task-specific training. 'Large' refers to parameter count, ranging from a few billion in small open models to hundreds of billions or more in frontier systems like GPT-5.x, Claude Opus 4.x, and Gemini 3.",
+        "Mechanically, the transformer's self-attention layers let every token attend to every other token in the input, which is how the model tracks long-range context and meaning. Training happens in stages: self-supervised pre-training on raw text (the expensive part), then post-training such as instruction tuning and reinforcement learning from human feedback (RLHF) to turn a raw next-token predictor into a helpful, steerable assistant. Newer reasoning models (OpenAI o-series, DeepSeek R1, Claude with extended thinking) add reinforcement learning that teaches the model to spend extra tokens 'thinking' before answering.",
+        "As an AI Engineer you mostly consume LLMs through an API: you send text (a prompt), the model returns generated tokens, and you pay per token. The practical implications follow directly from how they work: outputs are probabilistic rather than deterministic, the model can state falsehoods fluently (hallucination) because it optimizes plausibility not truth, knowledge is frozen at a training cutoff, and any bias in training data can surface in outputs. Most of the rest of this roadmap (RAG, prompt engineering, evals, guardrails) exists to engineer around exactly these properties."
+      ],
+      "keyPoints": [
+        "Core mechanism: next-token prediction with a transformer architecture; everything else is emergent or layered on via post-training.",
+        "Training pipeline: pre-training on trillions of tokens, then instruction tuning and RLHF; reasoning models add RL-trained chain-of-thought.",
+        "LLMs hallucinate by design: they optimize for plausible text, not verified truth. Never treat raw output as a source of record.",
+        "Knowledge has a cutoff date; for current or private data you need retrieval (RAG) or tools, not a bigger model.",
+        "Model landscape circa 2026: GPT-5.x and o-series, Claude Opus/Sonnet 4.x, Gemini 2.5/3, and open-weight Llama 3.x/4 and DeepSeek V3/R1.",
+        "You pay and are rate-limited per token, and every model has a finite context window; both shape application design."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "What is a large language model (LLM)?", "url": "https://www.cloudflare.com/en-gb/learning/ai/what-is-large-language-model/", "type": "article"},
+        {"title": "New to LLMs? Start Here", "url": "https://towardsdatascience.com/new-to-llms-start-here/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration", "type": "article"},
+        {"title": "How Large Language Models Work", "url": "https://www.youtube.com/watch?v=5sLYAQS9sWQ", "type": "video"}
+      ]
+    },
+    {
+      "id": "ai-vs-agi",
+      "title": "AI vs AGI",
+      "subsection": "Common Terminology",
+      "minutes": 3,
+      "intro": "Today's AI is narrow (excellent at specific tasks), while AGI is the still-hypothetical ability to learn and reason across any domain at human level.",
+      "summary": [
+        "Everything deployed today, including frontier LLMs, is 'narrow AI': systems that perform specific tasks by recognizing patterns learned from data. They can be superhuman within a domain (chess, protein folding, code completion) while failing at trivially adjacent problems, because they do not possess general understanding; they apply learned statistical structure. Even very broad LLMs are best understood as a wide collection of narrow competencies stitched together by one interface: language.",
+        "AGI, artificial general intelligence, is the hypothetical point where a system can understand, learn, and apply knowledge across arbitrary domains with human-level flexibility: transferring skills to genuinely novel problems, reasoning abstractly, and adapting without retraining. There is no agreed definition or test, which is why labs disagree about timelines: some define it by economic output (performing most economically valuable work), others by cognitive criteria. As of 2026 AGI remains unrealized, though reasoning-focused models have narrowed the gap on benchmarks faster than most predicted.",
+        "For working engineers, two takeaways matter. First, do not over-attribute: an LLM that talks fluently about reasoning is not necessarily reasoning robustly, and product decisions should assume narrow, brittle competence with verification layered on top. Second, as one Towards Data Science piece argues, the immediate risk is not AGI but 'reduced general intelligence': humans offloading judgment to confident-but-fallible systems. Designing products that keep humans appropriately in the loop is an engineering responsibility today, regardless of AGI timelines."
+      ],
+      "keyPoints": [
+        "All current production AI, including GPT-5.x and Claude 4.x, is narrow AI: capable within trained distributions, brittle outside them.",
+        "AGI means human-level generality across domains; it has no agreed definition, benchmark, or timeline.",
+        "Fluency is not understanding: LLMs can sound general-purpose while failing simple out-of-distribution tasks.",
+        "Design products assuming the model is sometimes confidently wrong; add verification and human oversight for high-stakes paths.",
+        "A nearer-term risk than AGI is humans atrophying their own judgment by over-trusting AI outputs.",
+        "Related term: ASI (artificial superintelligence) refers to hypothetical intelligence beyond human level, a step past AGI."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "What is AGI?", "url": "https://aws.amazon.com/what-is/artificial-general-intelligence/", "type": "article"},
+        {"title": "The crucial difference between AI and AGI", "url": "https://www.forbes.com/sites/bernardmarr/2024/05/20/the-crucial-difference-between-ai-and-agi/", "type": "article"},
+        {"title": "Stop Worrying about AGI: The Immediate Danger is Reduced General Intelligence (RGI)", "url": "https://towardsdatascience.com/stop-worrying-about-agi-the-immediate-danger-is-reduced-general-intelligence-rgi/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration", "type": "article"}
+      ]
+    },
+    {
+      "id": "training",
+      "title": "Training",
+      "subsection": "Common Terminology",
+      "minutes": 4,
+      "intro": "Training is the iterative process of adjusting a model's parameters on data, via loss minimization and gradient descent, until it generalizes to unseen inputs.",
+      "summary": [
+        "Training teaches a model by example. The model makes a prediction on input data, a loss function measures how wrong it was against the known answer, and an optimizer (gradient descent and its variants) nudges the model's internal parameters, its weights, in the direction that reduces the error. Repeat over millions or billions of examples and the weights gradually encode the patterns in the data. The goal is generalization: performing well on new, unseen data, not just memorizing the training set (which is called overfitting; standard practice splits data into train, validation, and test sets to detect it).",
+        "For LLMs specifically, training comes in distinct phases. Pre-training is self-supervised: the model learns next-token prediction on huge raw text corpora, with no human labels needed because the text itself supplies the answers. This is where the vast cost lies: frontier runs consume thousands of GPUs for months and tens to hundreds of millions of dollars. Post-training then aligns the model with human intent: supervised fine-tuning on instruction-response examples, RLHF or similar preference optimization (DPO), and for reasoning models, reinforcement learning on verifiable tasks like math and code.",
+        "The practical implication for AI Engineers is that you almost never do pre-training; you decide where on the spectrum to operate. Data quality dominates outcomes ('garbage in, garbage out' is the single most repeated lesson in training literature), so if you do fine-tune, curating a small clean dataset beats a large noisy one. Understanding training also explains model behavior in production: a model can only reflect what was in its data, with that data's biases and its cutoff date."
+      ],
+      "keyPoints": [
+        "Training loop: predict, measure error with a loss function, adjust weights via gradient descent, repeat.",
+        "Generalization is the goal; overfitting (memorizing training data) is the failure mode, detected with held-out validation/test splits.",
+        "LLM pre-training is self-supervised next-token prediction; no human labeling of the raw corpus is required.",
+        "Frontier pre-training costs run into tens or hundreds of millions of dollars; AI Engineers consume the result, they do not reproduce it.",
+        "Post-training (instruction tuning, RLHF/DPO, reasoning RL) is what makes a raw model helpful and steerable.",
+        "Data quality beats data quantity: a model's ceiling is set by its training data, including its biases and cutoff date."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "What is Model Training?", "url": "https://oden.io/glossary/model-training/", "type": "article"},
+        {"title": "Machine learning model training: What it is and why it's important", "url": "https://domino.ai/blog/what-is-machine-learning-model-training", "type": "article"},
+        {"title": "Training ML Models - Amazon", "url": "https://docs.aws.amazon.com/machine-learning/latest/dg/training-ml-models.html", "type": "official"}
+      ]
+    },
+    {
+      "id": "inference",
+      "title": "Inference",
+      "subsection": "Common Terminology",
+      "minutes": 4,
+      "intro": "Inference is a trained model applying its frozen weights to new input to produce a prediction, which is the phase every API call and production request lives in.",
+      "summary": [
+        "Inference is the model 'at work': taking input it has never seen and producing an output using the knowledge frozen into its weights during training. The classic example is a self-driving car recognizing a stop sign on a road it never trained on. For LLMs, every chat message, completion, and embedding request is inference. No learning happens at inference time; the weights do not change. If a model seems to 'remember' your conversation, that is because prior turns are re-sent in the context window, not because the model updated itself.",
+        "The training/inference split has an economic shape worth internalizing: training is a massive one-time (or periodic) cost, while inference is a smaller cost paid on every single request, forever. At scale, cumulative inference spend dwarfs training cost, which is why so much industry effort goes into making inference cheap and fast: quantization (lower-precision weights), distillation (training small models to mimic big ones), batching, KV-caching, and speculative decoding. It is also why providers price per token and offer model tiers from frontier (expensive, smart) to mini/flash (cheap, fast).",
+        "For AI Engineers, inference is where all your operational concerns live: latency (time to first token and tokens per second), throughput, cost per request, and rate limits. LLM inference is autoregressive, generating one token at a time, so long outputs are inherently slow; streaming tokens to the user as they generate is the standard UX mitigation. Choosing the smallest model that meets your quality bar is usually the highest-leverage cost optimization available."
+      ],
+      "keyPoints": [
+        "Training learns the weights once; inference applies them on every request. No learning occurs at inference time.",
+        "Chat 'memory' is just prior messages re-sent in context, not the model updating itself.",
+        "At scale, total inference cost typically exceeds training cost; per-token pricing reflects this.",
+        "LLM generation is autoregressive (one token at a time), so output length drives latency; stream responses for better UX.",
+        "Key inference metrics: time to first token, tokens/second, cost per request, and rate limits.",
+        "Cost levers: pick a smaller model tier, cap output length, cache repeated prompts, batch where latency allows."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "Inference vs Training", "url": "https://www.cloudflare.com/learning/ai/inference-vs-training/", "type": "article"},
+        {"title": "What is Machine Learning Inference?", "url": "https://hazelcast.com/glossary/machine-learning-inference/", "type": "article"}
+      ]
+    },
+    {
+      "id": "embeddings",
+      "title": "Embeddings",
+      "subsection": "Common Terminology",
+      "minutes": 6,
+      "intro": "Embeddings are dense numeric vectors that represent the meaning of text (or images, audio), so that semantic similarity becomes measurable as geometric closeness.",
+      "summary": [
+        "An embedding maps a piece of data, a word, sentence, document, or image, to a list of floating-point numbers (commonly 256 to 3072 dimensions) such that semantically similar items land close together in vector space. 'The cat sat on the mat' and 'A feline rested on the rug' share almost no words, yet their embeddings are near neighbors because embedding models are trained to capture meaning, not surface form. This is the trick that lets software compare meaning with simple math: cosine similarity or dot product between two vectors gives a similarity score.",
+        "Modern practice uses dedicated embedding models served via API (OpenAI text-embedding-3, Cohere Embed, Voyage, Google Gemini embeddings) or open-source models from the sentence-transformers ecosystem. You embed your documents once, store the vectors, then at query time embed the user's question and find the nearest stored vectors. That nearest-neighbor lookup is the heart of semantic search, recommendation systems, clustering, deduplication, classification, and most importantly for AI Engineers, the retrieval step of RAG. The famous word2vec-era result that vector('king') - vector('man') + vector('woman') lands near vector('queen') illustrates how relationships become directions in the space.",
+        "Practical gotchas: embeddings from different models live in incompatible spaces, so you cannot compare a query embedded with model A against documents embedded with model B; if you switch embedding models you must re-embed your whole corpus. Dimension count trades quality against storage and search speed. And because long documents compress poorly into a single vector, real systems chunk documents into passages and embed each chunk, which makes chunking strategy a quality lever in its own right."
+      ],
+      "keyPoints": [
+        "An embedding is a dense vector (typically 256-3072 dims) where geometric closeness equals semantic similarity.",
+        "Similarity is computed with cosine similarity or dot product; this powers semantic search, recommendations, and RAG retrieval.",
+        "Embeddings capture meaning, not keywords: paraphrases match even with zero word overlap.",
+        "Vectors from different embedding models are incompatible; changing models means re-embedding the entire corpus.",
+        "Long texts are chunked before embedding; chunk size and overlap materially affect retrieval quality.",
+        "Embedding API calls are cheap relative to LLM generation, so embedding large corpora is usually affordable."
+      ],
+      "code": [
+        {
+          "title": "Cosine similarity between embeddings",
+          "language": "python",
+          "code": "import numpy as np\nfrom openai import OpenAI\n\nclient = OpenAI()\n\ndef embed(text: str) -> np.ndarray:\n    resp = client.embeddings.create(model=\"text-embedding-3-small\", input=text)\n    return np.array(resp.data[0].embedding)\n\ndef cosine(a: np.ndarray, b: np.ndarray) -> float:\n    return float(a @ b / (np.linalg.norm(a) * np.linalg.norm(b)))\n\nq = embed(\"How do I reset my password?\")\ndoc1 = embed(\"Steps to recover account access and set a new password\")\ndoc2 = embed(\"Our refund policy for annual subscriptions\")\n\nprint(cosine(q, doc1))  # ~0.6-0.8 (similar meaning)\nprint(cosine(q, doc2))  # much lower (unrelated)"
+        }
+      ],
+      "resources": [
+        {"title": "What are Embeddings in Machine Learning?", "url": "https://www.cloudflare.com/en-gb/learning/ai/what-are-embeddings/", "type": "article"},
+        {"title": "What is Embedding?", "url": "https://www.ibm.com/topics/embedding", "type": "article"},
+        {"title": "What are Word Embeddings", "url": "https://www.youtube.com/watch?v=wgfSDrqYMJ4", "type": "video"}
+      ]
+    },
+    {
+      "id": "vector-databases",
+      "title": "Vector Databases",
+      "subsection": "Common Terminology",
+      "minutes": 5,
+      "intro": "A vector database stores embeddings and answers 'find the most similar vectors to this query' fast, using approximate nearest neighbor indexes.",
+      "summary": [
+        "Once you have embeddings, you need somewhere to put them and a fast way to search them. Comparing a query vector against millions of stored vectors one by one (exact k-nearest-neighbor) is too slow at scale, so vector databases build approximate nearest neighbor (ANN) indexes, most commonly HNSW graphs or IVF partitions, that find the closest vectors in milliseconds by trading a tiny amount of recall for orders-of-magnitude speed. Alongside the vectors they store the original text and metadata, and support filtering ('only vectors where team = billing'), which is essential for multi-tenant and permission-aware retrieval.",
+        "The market spans dedicated vector databases (Pinecone, Weaviate, Qdrant, Milvus, Chroma) and vector capabilities bolted onto general databases (pgvector for Postgres, MongoDB Atlas Vector Search, Elasticsearch/OpenSearch, Redis, Cloudflare Vectorize). The pragmatic 2026 default for many teams is pgvector: if your data already lives in Postgres and you have fewer than tens of millions of vectors, adding a column beats adding a new database. Dedicated stores earn their keep at large scale, high query volume, or when you need their managed conveniences.",
+        "In a RAG system the vector database is the retrieval backbone: ingest documents, chunk, embed, upsert; at query time embed the question, run a top-k similarity search with metadata filters, and feed the hits to the LLM. Quality tip that the docs all converge on: pure vector search misses exact keywords (IDs, error codes, names), so production systems often run hybrid search (vector + keyword/BM25) and rerank the merged results."
+      ],
+      "keyPoints": [
+        "Vector DBs exist because exact nearest-neighbor search does not scale; ANN indexes (HNSW, IVF) trade ~1% recall for 100x+ speed.",
+        "They store vectors plus payload (text, metadata) and support filtered similarity search, critical for permissions and multi-tenancy.",
+        "Options: dedicated (Pinecone, Weaviate, Qdrant, Milvus, Chroma) vs extensions (pgvector, Atlas, OpenSearch, Vectorize).",
+        "Rule of thumb: start with pgvector if you already run Postgres; reach for a dedicated store at large scale or heavy QPS.",
+        "Hybrid search (vector + keyword) plus reranking beats pure vector search, especially for IDs, codes, and proper nouns.",
+        "Distance metric (cosine, dot product, Euclidean) must match what the embedding model was trained for."
+      ],
+      "code": [
+        {
+          "title": "Semantic search with Chroma",
+          "language": "python",
+          "code": "import chromadb\n\nclient = chromadb.Client()\ncol = client.create_collection(\"docs\")  # embeds automatically by default\n\ncol.add(\n    ids=[\"1\", \"2\", \"3\"],\n    documents=[\n        \"To reset your password, open Settings > Security.\",\n        \"Refunds are processed within 5 business days.\",\n        \"Enable two-factor authentication for extra security.\",\n    ],\n    metadatas=[{\"topic\": \"account\"}, {\"topic\": \"billing\"}, {\"topic\": \"account\"}],\n)\n\nres = col.query(\n    query_texts=[\"how do I change my password\"],\n    n_results=2,\n    where={\"topic\": \"account\"},  # metadata filter\n)\nprint(res[\"documents\"])"
+        }
+      ],
+      "resources": [
+        {"title": "Vector Databases", "url": "https://developers.cloudflare.com/vectorize/reference/what-is-a-vector-database/", "type": "official"},
+        {"title": "What are Vector Databases?", "url": "https://www.mongodb.com/resources/basics/databases/vector-databases", "type": "article"}
+      ]
+    },
+    {
+      "id": "rag",
+      "title": "RAG",
+      "subsection": "Common Terminology",
+      "minutes": 6,
+      "intro": "Retrieval-Augmented Generation fetches relevant documents at query time and puts them in the prompt, grounding the LLM's answer in real, current, private data.",
+      "summary": [
+        "RAG solves the two structural weaknesses of LLMs: frozen knowledge (training cutoff) and missing knowledge (your private data was never in the training set). Instead of hoping the model knows the answer, you retrieve relevant content from your own knowledge base at query time and instruct the model to answer using that content. The canonical pipeline: ingest documents, split them into chunks, embed each chunk, store vectors in a vector database; at query time, embed the user's question, retrieve the top-k most similar chunks, stuff them into the prompt with instructions like 'answer based on the following context', and generate.",
+        "The payoff is large and immediate: answers grounded in current, private, verifiable data; the ability to cite sources; instant knowledge updates (re-index a document instead of retraining a model); and far fewer hallucinations on covered topics. This is why RAG, not fine-tuning, is the default way to give an LLM company knowledge: it is cheaper, updateable, auditable, and access-controllable. Fine-tuning teaches behavior and style; RAG supplies facts.",
+        "In practice the generation step is rarely the problem; retrieval quality is. The well-known failure modes are bad chunking (splitting mid-thought), embedding mismatch between questions and document phrasing, missing exact-match terms (fixed by hybrid vector+keyword search), and irrelevant chunks crowding the context. Production-grade RAG layers on remedies: smarter chunking, query rewriting, hybrid retrieval, rerankers (a second model that re-scores the top candidates), and metadata filtering. Evaluate retrieval (did the right chunks come back?) separately from generation (was the answer faithful to them?); frameworks like RAGAS formalize this. Long context windows (1M+ tokens in Gemini) have not killed RAG: stuffing everything into context is slower, costlier, and less precise than retrieving the right 2,000 tokens."
+      ],
+      "keyPoints": [
+        "Pipeline: chunk -> embed -> store; then query -> retrieve top-k -> prompt with context -> generate.",
+        "RAG supplies facts and freshness; fine-tuning shapes behavior and style. They solve different problems.",
+        "Most RAG failures are retrieval failures: evaluate retrieval and generation separately.",
+        "Hybrid search (vector + BM25 keyword) plus a reranker is the standard production upgrade over naive top-k.",
+        "Chunking strategy (size, overlap, respecting structure) is one of the highest-leverage quality knobs.",
+        "RAG enables citations and access control, which pure LLM generation cannot provide.",
+        "Huge context windows reduce but do not remove the need for RAG; retrieval is still cheaper and more precise at scale."
+      ],
+      "code": [
+        {
+          "title": "Minimal RAG in ~20 lines",
+          "language": "python",
+          "code": "import chromadb\nfrom openai import OpenAI\n\nllm = OpenAI()\ncol = chromadb.Client().create_collection(\"kb\")\n\n# 1) Index (one-time)\ncol.add(ids=[\"a\", \"b\"], documents=[\n    \"Acme's PTO policy: 25 days per year, accrued monthly.\",\n    \"Acme remote work: employees may work remotely up to 3 days/week.\",\n])\n\n# 2) Retrieve\nquestion = \"How many PTO days do I get?\"\nhits = col.query(query_texts=[question], n_results=2)\ncontext = \"\\n\".join(hits[\"documents\"][0])\n\n# 3) Generate, grounded in context\nresp = llm.chat.completions.create(\n    model=\"gpt-5-mini\",\n    messages=[\n        {\"role\": \"system\", \"content\": \"Answer ONLY from the provided context. If the answer is not there, say so.\"},\n        {\"role\": \"user\", \"content\": f\"Context:\\n{context}\\n\\nQuestion: {question}\"},\n    ],\n)\nprint(resp.choices[0].message.content)"
+        }
+      ],
+      "resources": [
+        {"title": "What is Retrieval-Augmented Generation? - Google", "url": "https://cloud.google.com/use-cases/retrieval-augmented-generation", "type": "article"},
+        {"title": "RAG Explained: Understanding Embeddings, Similarity, and Retrieval", "url": "https://towardsdatascience.com/rag-explained-understanding-embeddings-similarity-and-retrieval/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration", "type": "article"},
+        {"title": "What is Retrieval-Augmented Generation? - IBM", "url": "https://www.youtube.com/watch?v=T-D1OfcDW1M", "type": "video"}
+      ]
+    },
+    {
+      "id": "ai-agents",
+      "title": "AI Agents",
+      "subsection": "Common Terminology",
+      "minutes": 5,
+      "intro": "An AI agent is an LLM running in a loop with tools: it perceives state, decides on actions, executes them, and iterates until a goal is reached.",
+      "summary": [
+        "An agent is a system that perceives its environment, decides, and acts toward a goal autonomously. In the LLM era this has a concrete shape: a model given a goal, a set of tools (functions it can call: web search, database queries, code execution, APIs), and a loop. Each iteration, the model reasons about the current state, picks a tool, observes the result, and continues until it decides the task is done. This loop, reason-act-observe (the ReAct pattern), is what separates an agent from a single chat completion: the model's output drives real actions and its next input depends on what those actions returned.",
+        "Agents sit on a spectrum of autonomy. Classic AI taxonomy (simple reflex, model-based, goal-based, utility-based, learning agents) maps loosely onto modern practice: a workflow with one LLM call and fixed steps is barely an agent; a coding assistant that plans, edits files, runs tests, and fixes its own errors is highly agentic. The 2026 toolchain includes frameworks (LangChain/LangGraph, OpenAI Agents SDK, Anthropic's tool-use API), the Model Context Protocol (MCP) as an emerging standard for connecting agents to tools and data, and multi-agent patterns where an orchestrator delegates to specialized sub-agents.",
+        "The engineering reality: autonomy multiplies both power and failure surface. Errors compound across steps (a 95%-reliable step done 10 times succeeds only ~60% of the time end to end), costs grow with loop iterations, and tool access creates security exposure (prompt injection via retrieved content is the headline risk). The consistent advice from practitioners, including Anthropic's 'Building Effective Agents' guidance, is to prefer the simplest pattern that works: use deterministic workflows when steps are known, reserve open-ended agent loops for genuinely dynamic tasks, cap iterations, and require human approval for irreversible actions."
+      ],
+      "keyPoints": [
+        "Agent = LLM + tools + loop: reason, act, observe, repeat until goal or stop condition.",
+        "Tool/function calling is the mechanism: the model emits a structured call, your code executes it and returns the result.",
+        "Errors compound: ten 95%-reliable steps yield roughly 60% end-to-end success. Keep loops short and verifiable.",
+        "Prefer fixed workflows over autonomous loops when the steps are predictable; agents are for dynamic, open-ended tasks.",
+        "Always set guardrails: max iterations, spend caps, restricted tool permissions, human approval for irreversible actions.",
+        "MCP (Model Context Protocol) is becoming the standard interface for giving agents access to tools and data sources.",
+        "Prompt injection through tool results and retrieved content is the top security risk in agentic systems."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "Building an AI Agent Tutorial - LangChain", "url": "https://python.langchain.com/docs/tutorials/agents/", "type": "official"},
+        {"title": "AI Agents and Their Types", "url": "https://www.digitalocean.com/resources/articles/types-of-ai-agents", "type": "article"},
+        {"title": "The Complete Guide to Building AI Agents for Beginners", "url": "https://youtu.be/MOyl58VF2ak?si=-QjRD_5y3iViprJX", "type": "video"}
+      ]
+    },
+    {
+      "id": "fine-tuning",
+      "title": "Fine-tuning",
+      "subsection": "Common Terminology",
+      "minutes": 5,
+      "intro": "Fine-tuning continues training a pre-trained model on a smaller task-specific dataset to specialize its behavior, style, or domain skill.",
+      "summary": [
+        "Fine-tuning takes a model that already knows language (from pre-training) and adjusts its weights on hundreds to tens of thousands of curated examples so it gets better at your specific task: matching a brand voice, emitting a strict output format, following domain conventions, or handling specialized jargon. Because the heavy lifting was done in pre-training, fine-tuning is comparatively cheap, and parameter-efficient methods like LoRA/QLoRA make it cheaper still by training small adapter matrices instead of all weights, often on a single GPU. Providers also offer hosted fine-tuning APIs where you upload JSONL examples and receive a custom model endpoint.",
+        "The crucial judgment call is when to fine-tune at all, and the industry consensus ordering is: prompt engineering first (minutes to iterate, zero training), then RAG if the problem is missing knowledge, and fine-tuning only when those plateau. The mental model that survives every debate: RAG adds knowledge, fine-tuning changes behavior. Fine-tuning is poor at injecting facts (and those facts go stale), but excellent at consistency: tone, format, classification accuracy, and reliably following complex instructions without a 2,000-token prompt. A major 2026-era use case is cost reduction: fine-tune a small cheap model on outputs from a frontier model (distillation) to match its quality on one narrow task at a fraction of the price and latency.",
+        "Gotchas worth knowing before you start: you need high-quality labeled examples (data curation is most of the work; quality beats quantity, as the Granite-Vision case study shows where a carefully fine-tuned 2B model beat a 90B model on a specific task), fine-tuned models can regress on general abilities (catastrophic forgetting), every base-model upgrade means re-running the fine-tune, and you now own evaluation and versioning of a custom model. Always benchmark a fine-tune against a well-prompted base model; the prompt often wins."
+      ],
+      "keyPoints": [
+        "Decision order: prompt engineering -> RAG -> fine-tuning. Escalate only when the cheaper option plateaus.",
+        "RAG adds knowledge; fine-tuning changes behavior (style, format, task specialization). Do not fine-tune to teach facts.",
+        "LoRA/QLoRA train small adapters instead of all weights, cutting cost dramatically; hosted APIs need only a JSONL of examples.",
+        "A small fine-tuned model can beat a far larger general model on a narrow task (e.g. a 2B vision model out-scoring a 90B one).",
+        "Distilling a frontier model into a small fine-tuned model is a standard cost/latency optimization.",
+        "Risks: catastrophic forgetting, stale knowledge, re-tuning on every base model upgrade, and ongoing eval ownership.",
+        "Hundreds of high-quality examples usually beat tens of thousands of noisy ones."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "What is fine-tuning?", "url": "https://www.ibm.com/think/topics/fine-tuning", "type": "article"},
+        {"title": "How I Fine-Tuned Granite-Vision 2B to Beat a 90B Model - Insights and Lessons Learned", "url": "https://towardsdatascience.com/how-i-fine-tuned-granite-vision-2b-to-beat-a-90b-model-insights-and-lessons-learned/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration", "type": "article"},
+        {"title": "RAG vs Fine-Tuning vs Prompt Engineering: Optimizing AI Models", "url": "https://www.youtube.com/watch?v=zYGDpG-pTho", "type": "video"}
+      ]
+    },
+    {
+      "id": "prompt-engineering",
+      "title": "Prompt Engineering",
+      "subsection": "Common Terminology",
+      "minutes": 5,
+      "intro": "Prompt engineering is the craft of writing model instructions that reliably produce the output you want, your cheapest and fastest quality lever.",
+      "summary": [
+        "A prompt is everything you send the model: instructions, role, examples, context, and the user's input. Prompt engineering is designing that text deliberately, because LLMs are extraordinarily sensitive to how a task is phrased. The same model can fail or excel on a task depending purely on the prompt, which makes this the highest-leverage, lowest-cost optimization in the stack: iteration takes seconds and costs nothing but tokens, versus hours and dollars for fine-tuning.",
+        "The core techniques are stable across providers. Be specific and explicit (state the task, audience, length, and constraints; models cannot read intent). Assign a role or persona to set domain and tone. Provide examples: zero-shot (none), one-shot, or few-shot, where 2-5 input-output examples dramatically improve format compliance and edge-case handling. Ask for structured output (JSON with a stated schema) when code consumes the result. Use delimiters (triple quotes, XML tags) to separate instructions from data, which also mitigates prompt injection. For reasoning-heavy tasks, chain-of-thought ('think step by step', or simply using a reasoning model like the o-series or extended thinking) measurably improves accuracy. Tell the model what to do when it cannot comply ('say I don't know') to reduce hallucination.",
+        "Treat prompts as code: version them, test them against a suite of representative cases before shipping changes, and expect to re-validate when you swap model versions, because prompts are not perfectly portable across models. Production prompts typically have a stable system prompt (role, rules, output contract) and a templated user message that interpolates runtime data. Prompt engineering is necessary but bounded: it cannot add knowledge the model lacks (that is RAG) and cannot guarantee behavior at 100% (that is validation and guardrails downstream)."
+      ],
+      "keyPoints": [
+        "The prompt is the cheapest, fastest quality lever; exhaust it before reaching for RAG or fine-tuning.",
+        "Few-shot examples (2-5) are often the single biggest accuracy and format-compliance win.",
+        "Use delimiters or XML tags to separate instructions from untrusted data; it improves parsing and resists injection.",
+        "Demand structured output with an explicit schema when software consumes the response.",
+        "Chain-of-thought or reasoning models materially help math, logic, and multi-step tasks.",
+        "Give an escape hatch ('if unsure, say so') to cut hallucinations.",
+        "Version and regression-test prompts like code; prompts do not transfer unchanged across models or versions."
+      ],
+      "code": [
+        {
+          "title": "Weak vs engineered prompt",
+          "language": "text",
+          "code": "WEAK:\n\"Summarize this customer email.\"\n\nENGINEERED (system prompt):\nYou are a support triage assistant for a SaaS company.\nSummarize the customer email delimited by <email> tags.\n\nRules:\n- Output JSON only: {\"summary\": str, \"sentiment\": \"pos|neu|neg\", \"urgent\": bool}\n- \"summary\": max 25 words, no PII.\n- \"urgent\": true only for outages, data loss, or security issues.\n- If the email is empty or not a support request, return {\"summary\": \"N/A\", \"sentiment\": \"neu\", \"urgent\": false}.\n\n<email>\n{{email_body}}\n</email>"
+        }
+      ],
+      "resources": [
+        {"title": "Visit Dedicated Prompt Engineering Roadmap", "url": "https://roadmap.sh/prompt-engineering", "type": "official"},
+        {"title": "What is Prompt Engineering? - AI Prompt Engineering Explained - AWS", "url": "https://aws.amazon.com/what-is/prompt-engineering/", "type": "article"},
+        {"title": "Advanced Prompt Engineering for Data Science Projects", "url": "https://towardsdatascience.com/advanced-prompt-engineering-for-data-science-projects/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration", "type": "article"},
+        {"title": "What is Prompt Engineering?", "url": "https://www.youtube.com/watch?v=nf1e-55KKbg", "type": "video"}
+      ]
+    },
+    {
+      "id": "context-engineering",
+      "title": "Context Engineering",
+      "subsection": "Common Terminology",
+      "minutes": 5,
+      "intro": "Context engineering is the discipline of curating everything in the model's context window (instructions, history, retrieved data, tool outputs) so it has exactly what it needs and nothing it does not.",
+      "summary": [
+        "If prompt engineering is writing one good instruction, context engineering is managing the entire information environment the model operates in: system prompts, conversation history, retrieved documents, tool definitions and their outputs, memory, and few-shot examples. The term rose to prominence in 2025 as the industry realized that for agents and complex applications, what fills the context window matters more than the cleverness of any single prompt. Anthropic's framing is apt: context is a finite resource with diminishing returns, so the goal is the smallest set of high-signal tokens that maximizes the likelihood of the desired outcome.",
+        "The need comes from two hard constraints. First, the window is finite, and long-running agents accumulate history and tool results that eventually overflow it. Second, and less obviously, more context is not better: models suffer 'context rot' and 'lost in the middle' effects, where attention degrades as the window fills and information buried mid-context gets missed. Irrelevant or stale content actively distracts the model. So engineering effort goes into selection (retrieve only relevant chunks, load tools on demand), compaction (summarize old conversation turns), structured note-taking (the agent writes durable state to external memory/files and reads it back), and isolation (split work across sub-agents, each with a clean focused window).",
+        "Practically, context engineering shows up as architecture, not phrasing: deciding what goes in the system prompt versus retrieval, how much history to keep verbatim versus summarized, when an agent should persist notes outside the window, and how to order content (key instructions at the start and end, where attention is strongest). The JetBrains research line of work adds another lesson: aggressive pruning and smarter selection can cut tokens dramatically with no quality loss, directly reducing cost and latency. For modern agentic apps, this skill matters as much as prompt writing."
+      ],
+      "keyPoints": [
+        "Context engineering manages everything in the window: instructions, history, retrieved data, tools, memory; prompt engineering is a subset.",
+        "More context is not better: models exhibit 'lost in the middle' and context-rot degradation as the window fills.",
+        "Core techniques: retrieval/selection, compaction (summarizing history), structured note-taking to external memory, and sub-agent isolation.",
+        "Place critical instructions at the beginning and end of context, where model attention is strongest.",
+        "Load tools and documents just-in-time rather than preloading everything.",
+        "Pruning irrelevant context cuts cost and latency while often improving accuracy.",
+        "For agents, context management across many turns is the central engineering problem."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "Context Engineering Guide", "url": "https://www.promptingguide.ai/guides/context-engineering-guide", "type": "article"},
+        {"title": "Effective context engineering for AI agents", "url": "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents", "type": "official"},
+        {"title": "How to Perform Effective Agentic Context Engineering", "url": "https://towardsdatascience.com/how-to-perform-effective-agentic-context-engineering/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration", "type": "article"},
+        {"title": "Context Engineering vs. Prompt Engineering: Smarter AI with RAG & Agents", "url": "https://www.youtube.com/watch?v=vD0E3EUb8-8", "type": "video"}
+      ]
+    },
+    {
+      "id": "tokens",
+      "title": "Tokens",
+      "subsection": "Core LLM Elements",
+      "minutes": 5,
+      "intro": "Tokens are the chunks (words, subwords, characters) that LLMs actually read and write, and they are the unit of pricing, limits, and latency.",
+      "summary": [
+        "LLMs never see raw text. A tokenizer first splits text into tokens, units that are usually subwords: common words like 'the' are one token, rarer words split into pieces ('tokenization' might become 'token' + 'ization'). Most modern models use byte-pair encoding (BPE) variants with vocabularies of roughly 50k-200k tokens. Each token maps to an ID, the model processes sequences of IDs, and generation is literally predicting the next token ID over and over. The standard English rule of thumb: 1 token is about 4 characters or 0.75 words, so 1,000 tokens is roughly 750 words.",
+        "Tokens matter operationally for three reasons. Pricing: every API bills per token, input and output separately, with output tokens typically costing 2-5x more than input. Limits: every model has a maximum context (input plus output) and often a separate max-output cap; exceed them and the request fails or truncates. Latency: generation happens token by token, so a 2,000-token answer takes roughly twice as long as a 1,000-token one. This is why counting tokens before sending (with libraries like tiktoken for OpenAI models) is standard practice for cost estimation, context budgeting, and chunking documents to fit windows.",
+        "Tokenization also explains several quirky LLM behaviors. Models historically struggled to count letters in a word ('how many r's in strawberry') because they see tokens, not characters. Non-English languages and unusual formats often consume 2-3x more tokens per word, making them more expensive and effectively shrinking the context window. Numbers, code, and whitespace tokenize unpredictably. And because different model families use different tokenizers, the same text has different token counts on GPT versus Claude versus Llama, so never assume counts transfer across providers."
+      ],
+      "keyPoints": [
+        "Rule of thumb (English): 1 token ~ 4 characters ~ 0.75 words; 1,000 tokens ~ 750 words.",
+        "Billing is per token, with output tokens usually 2-5x the price of input tokens.",
+        "Context limits are measured in tokens (input + output); budget before you send.",
+        "Latency scales with output tokens: cap max output and keep answers tight for speed.",
+        "Non-English text, code, and unusual formatting can use 2-3x more tokens per word.",
+        "Tokenizers differ per model family; the same text yields different counts on GPT vs Claude vs Llama.",
+        "Character-level tasks (counting letters, exact spelling ops) are weak spots because models see tokens, not characters."
+      ],
+      "code": [
+        {
+          "title": "Count tokens with tiktoken",
+          "language": "python",
+          "code": "import tiktoken\n\nenc = tiktoken.get_encoding(\"o200k_base\")  # tokenizer for GPT-4o/GPT-5 family\n\ntext = \"Tokenization is how LLMs read text.\"\ntokens = enc.encode(text)\n\nprint(len(tokens))                # e.g. 9\nprint([enc.decode([t]) for t in tokens])\n# ['Token', 'ization', ' is', ' how', ' LL', 'Ms', ' read', ' text', '.']\n\n# Estimate cost before calling the API\nprompt_tokens = len(enc.encode(open(\"big_doc.txt\").read()))\nprint(f\"~${prompt_tokens / 1e6 * 1.25:.4f} input cost at $1.25/M tokens\")"
+        }
+      ],
+      "resources": [
+        {"title": "Explaining Tokens - the Language and Currency of AI", "url": "https://blogs.nvidia.com/blog/ai-tokens-explained/", "type": "article"},
+        {"title": "Understanding Tokens and Parameters in Model Training: A Deep Dive", "url": "https://www.functionize.com/blog/understanding-tokens-and-parameters-in-model-training", "type": "article"}
+      ]
+    },
+    {
+      "id": "context",
+      "title": "Context",
+      "subsection": "Core LLM Elements",
+      "minutes": 4,
+      "intro": "Context is everything the model can see for a given request, bounded by the context window, the model's working memory measured in tokens.",
+      "summary": [
+        "Context is the full set of information the model conditions on when generating: the system prompt, the conversation so far, retrieved documents, tool outputs, and the current user message. The context window is the hard cap on how much of it fits, measured in tokens and covering input plus generated output. Modern windows are large: 128k-400k tokens for GPT-5-class models, 200k-1M for Claude 4.x, and up to 1M-2M for Gemini 2.5/3. But everything outside the window simply does not exist for the model, which is why chat applications must re-send (or summarize) history every turn; the model itself is stateless between API calls.",
+        "Bigger windows do not mean you should fill them. Research and production experience consistently show degradation in long contexts: the 'lost in the middle' effect, where models recall information at the start and end of context far better than the middle, and general accuracy decay as windows fill with low-relevance content. Long contexts also cost linearly more per request and increase latency. So the working discipline is to treat the window as a budget: include what is relevant, summarize or drop what is not, and place must-follow instructions near the start and the most recent, decision-relevant material near the end.",
+        "Standard context-management patterns: sliding windows (keep the last N turns), summarization (compress old turns into a running summary), RAG (retrieve only relevant knowledge instead of including everything), and prompt caching (providers discount repeated prefixes like long system prompts, cutting cost and time-to-first-token substantially). When a conversation mysteriously 'forgets' early instructions, the cause is almost always context: the instruction scrolled out of the window or got buried in the middle."
+      ],
+      "keyPoints": [
+        "The context window covers input plus output tokens; anything outside it is invisible to the model.",
+        "Models are stateless: 'memory' across turns exists only because your app re-sends the history.",
+        "2026 windows: roughly 128k-400k (GPT-5.x), 200k-1M (Claude 4.x), 1M-2M (Gemini 2.5/3).",
+        "'Lost in the middle': recall is best at the start and end of context; put key instructions and fresh data there.",
+        "Long context costs more and is slower; relevance beats volume.",
+        "Use sliding windows, running summaries, and RAG to stay within budget; use prompt caching for repeated prefixes.",
+        "If a model 'forgets' an instruction mid-conversation, check whether it fell out of or got buried in context."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "What is a Context Window in AI?", "url": "https://www.ibm.com/think/topics/context-window", "type": "article"},
+        {"title": "What Is an AI Context Window?", "url": "https://www.coursera.org/articles/context-window", "type": "article"},
+        {"title": "Cutting Through the Noise: Smarter Context Management for LLM-Powered Agents", "url": "https://blog.jetbrains.com/research/2025/12/efficient-context-management/", "type": "article"},
+        {"title": "What is a Context Window? Unlocking LLM Secrets", "url": "https://www.youtube.com/watch?v=-QVoIxEpFkM", "type": "video"}
+      ]
+    },
+    {
+      "id": "sampling-parameters",
+      "title": "Sampling Parameters",
+      "subsection": "Core LLM Elements",
+      "minutes": 4,
+      "intro": "Sampling parameters (temperature, top-k, top-p, penalties) control how the model picks the next token from its probability distribution, trading determinism against creativity.",
+      "summary": [
+        "At every generation step the model produces a probability distribution over its entire vocabulary for the next token. Sampling parameters decide how to pick from that distribution. Always taking the single most likely token (greedy decoding) is deterministic but produces dull, repetitive text; sampling freely from the full distribution occasionally picks absurd tokens. The parameters exposed by every major API, temperature, top-k, top-p, and repetition penalties, are different knobs for shaping that trade-off between reliability and diversity.",
+        "They operate in sequence: temperature reshapes the distribution (flattening or sharpening it), top-k and top-p truncate it to a candidate pool of plausible tokens, penalties down-weight tokens that have already appeared, and then one token is sampled. Because the knobs interact, the standard advice is to adjust temperature or top-p, not both aggressively, and to change one parameter at a time when tuning. Note that reasoning models (OpenAI o-series, and others) often fix or ignore these parameters entirely.",
+        "Practical defaults: for extraction, classification, code, and tool calls, use temperature 0-0.3 for near-deterministic output; for general assistant chat, 0.7-1.0; for brainstorming and creative writing, 1.0+. Two caveats every engineer eventually learns: temperature 0 still does not guarantee bit-identical outputs across calls (inference nondeterminism), and low temperature does not improve factual accuracy; it only makes the model consistently pick its top guess, right or wrong."
+      ],
+      "keyPoints": [
+        "The model outputs a probability distribution per token; sampling parameters control how you draw from it.",
+        "Pipeline: temperature reshapes -> top-k/top-p truncate -> penalties adjust -> sample.",
+        "Tune temperature or top-p, not both; change one knob at a time.",
+        "Defaults: 0-0.3 for code/extraction/tools, ~0.7 for chat, 1.0+ for creative work.",
+        "Temperature 0 is not perfectly deterministic, and determinism is not accuracy.",
+        "Reasoning models (o-series etc.) often ignore or lock these parameters."
+      ],
+      "code": [
+        {
+          "title": "Setting sampling parameters via API",
+          "language": "python",
+          "code": "from openai import OpenAI\nclient = OpenAI()\n\n# Deterministic-ish: extraction / structured output\nresp = client.chat.completions.create(\n    model=\"gpt-5-mini\",\n    messages=[{\"role\": \"user\", \"content\": \"Extract the date from: 'Invoice due June 10, 2026'\"}],\n    temperature=0.0,\n)\n\n# Creative: brainstorming\nresp = client.chat.completions.create(\n    model=\"gpt-5-mini\",\n    messages=[{\"role\": \"user\", \"content\": \"Give me 10 unusual names for a coffee brand\"}],\n    temperature=1.1,\n    top_p=0.95,\n    frequency_penalty=0.4,\n)"
+        }
+      ],
+      "resources": []
+    },
+    {
+      "id": "temperature",
+      "title": "Temperature",
+      "subsection": "Core LLM Elements",
+      "minutes": 4,
+      "intro": "Temperature scales the sharpness of the next-token probability distribution: low values make the model conservative and consistent, high values make it diverse and surprising.",
+      "summary": [
+        "Temperature is a divisor applied to the model's raw scores (logits) before they are converted to probabilities via softmax. At temperature below 1, the distribution sharpens: probability concentrates on the already-likely tokens, so output becomes predictable and conservative. At temperature above 1, the distribution flattens: unlikely tokens gain probability mass, producing more varied, creative, and occasionally incoherent text. At temperature 0 (or as it approaches 0), sampling collapses to greedy decoding: always pick the top token.",
+        "Choosing temperature is matching randomness to the job. Tasks with one right answer, data extraction, classification, SQL generation, function arguments, math, want 0-0.3 so the model gives its best guess consistently and remains testable. Conversational assistants typically run 0.6-0.9 so phrasing varies naturally without losing coherence. Creative tasks, fiction, naming, brainstorming, benefit from 1.0-1.3 where the long tail of word choices produces genuinely fresh output. Most APIs accept 0-2; values near 2 are usually incoherent.",
+        "Common misconceptions to avoid: low temperature does not make the model more truthful, it makes it more consistent, including consistently wrong, and hallucinations happen at temperature 0 too. Temperature 0 also does not guarantee identical outputs across calls because of floating-point and batching nondeterminism in inference. And when running evals or regression tests, pin temperature low so quality changes you measure come from your prompt or model changes, not sampling noise."
+      ],
+      "keyPoints": [
+        "Mechanism: logits are divided by temperature before softmax; <1 sharpens, >1 flattens the distribution.",
+        "Use 0-0.3 for extraction, classification, code, and tool calls; 0.6-0.9 for chat; 1.0-1.3 for creative work.",
+        "Low temperature = consistency, not correctness; models hallucinate at temperature 0 too.",
+        "Temperature 0 is still not bit-deterministic across calls on most providers.",
+        "Most APIs accept 0-2; near 2 output usually degrades into incoherence.",
+        "Pin temperature (low) in tests and evals to isolate prompt/model effects from sampling noise."
+      ],
+      "code": [
+        {
+          "title": "Same prompt, two temperatures",
+          "language": "python",
+          "code": "from openai import OpenAI\nclient = OpenAI()\n\nprompt = \"Write a one-line tagline for a hiking app.\"\n\nfor temp in (0.1, 1.2):\n    out = client.chat.completions.create(\n        model=\"gpt-5-mini\",\n        messages=[{\"role\": \"user\", \"content\": prompt}],\n        temperature=temp,\n        n=3,\n    )\n    print(f\"--- temperature={temp}\")\n    for c in out.choices:\n        print(c.message.content)\n# temp 0.1: three near-identical safe taglines\n# temp 1.2: three noticeably different, riskier taglines"
+        }
+      ],
+      "resources": [
+        {"title": "What Temperature Means in Natural Language Processing and AI", "url": "https://thenewstack.io/what-temperature-means-in-natural-language-processing-and-ai/", "type": "article"},
+        {"title": "What is LLM Temperature? - IBM", "url": "https://www.ibm.com/think/topics/llm-temperature", "type": "article"},
+        {"title": "How Temperature Settings Transform Your AI Agent's Responses", "url": "https://docsbot.ai/article/how-temperature-settings-transform-your-ai-agents-responses", "type": "article"}
+      ]
+    },
+    {
+      "id": "top-k",
+      "title": "Top-K",
+      "subsection": "Core LLM Elements",
+      "minutes": 3,
+      "intro": "Top-K sampling restricts the next-token choice to the K highest-probability candidates, hard-capping how far the model can stray.",
+      "summary": [
+        "Top-K is the bluntest of the sampling filters: before drawing the next token, discard everything except the K most probable candidates, renormalize their probabilities, and sample from that shortlist. K=1 is greedy decoding (always the single top token). Small K (1-10) yields conservative, focused output suitable for factual and technical tasks; mid-range K (20-50) balances quality and variety for general writing; large K (50+) admits the long tail for creative diversity.",
+        "Top-K's weakness is that it is fixed while the model's confidence is not. When the model is very certain (one token has 95% probability), K=40 still admits 39 mostly-bad options; when the distribution is flat (many reasonable continuations), K=40 may cut off perfectly good candidates. This is exactly the problem top-p (nucleus) sampling solves by selecting on cumulative probability instead of count, which is why top-p is generally preferred and why some APIs (like OpenAI's) expose top-p but not top-k at all. Anthropic and Google expose top_k and it is common in open-source inference stacks (llama.cpp, vLLM, Ollama), often combined as: top-k first, then top-p, then temperature-adjusted sampling.",
+        "Practical guidance: leave top-k at the provider default unless you have a measured reason; if you need tighter control of randomness, reach for temperature or top-p first. Top-k is most useful in open-model serving, where a modest k (around 40, a common default) cheaply prunes the absurd tail of a 100k+ vocabulary before other filters apply."
+      ],
+      "keyPoints": [
+        "Top-K keeps only the K most probable tokens, renormalizes, and samples; K=1 equals greedy decoding.",
+        "Guide: K 1-10 conservative/factual, 20-50 balanced, 50+ creative.",
+        "Fixed K ignores model confidence: too permissive on peaked distributions, too restrictive on flat ones; top-p fixes this.",
+        "OpenAI's API does not expose top_k; Anthropic, Google, and open-source stacks (vLLM, llama.cpp) do.",
+        "Common serving default is around k=40, applied before top-p and temperature.",
+        "Tune temperature or top-p first; treat top-k as a coarse safety prune."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "Top-K Sampling: The Complete Token Selection Guide", "url": "https://www.dataannotation.tech/blog/top-k-sampling", "type": "article"},
+        {"title": "What are the LLM's Top-P + Top-K ?", "url": "https://www.youtube.com/watch?v=aDmp2Uim0zQ", "type": "video"}
+      ]
+    },
+    {
+      "id": "top-p",
+      "title": "Top-P",
+      "subsection": "Core LLM Elements",
+      "minutes": 3,
+      "intro": "Top-P (nucleus) sampling keeps the smallest set of tokens whose probabilities sum to P, adapting the candidate pool to the model's confidence.",
+      "summary": [
+        "Top-P, or nucleus sampling, selects candidates by cumulative probability instead of count: sort tokens by probability, keep adding them until the running total exceeds P (say 0.9), then sample only from that 'nucleus'. The pool size therefore adapts automatically. When the model is confident and one token holds 92% probability, a top-p of 0.9 considers just that token; when many continuations are plausible, the nucleus widens to include them. This adaptivity is why nucleus sampling (introduced by Holtzman et al., 2019, to fix the incoherent tails and degenerate repetition of earlier methods) became the industry default over top-k.",
+        "Reading the values: top_p = 1.0 disables the filter (consider everything); 0.9-0.95 is the common default sweet spot; 0.6-0.9 tightens output for a balance of coherence and variety; 0.1-0.5 is very focused, near-deterministic territory. Because temperature and top-p both govern randomness and interact (temperature reshapes the distribution that top-p then truncates), the standard provider advice is to adjust one or the other, not both. A frequently used recipe for creative-but-coherent output is moderate-high temperature with top_p around 0.9, letting temperature add spice while the nucleus clips the absurd tail.",
+        "For day-to-day engineering: most apps leave top_p at default and steer with temperature alone. Lower top_p when you see occasional bizarre word choices in otherwise good output, and remember that like all sampling controls it shapes style and variability, not factual accuracy."
+      ],
+      "keyPoints": [
+        "Top-P keeps the smallest token set whose cumulative probability >= P; pool size adapts to model confidence.",
+        "Guide: 0.9-0.95 default, 0.6-0.9 balanced, 0.1-0.5 highly focused, 1.0 = off.",
+        "Adaptive pool size is why top-p superseded fixed top-k as the standard method.",
+        "Adjust temperature or top_p, not both (official guidance from OpenAI and others).",
+        "Good recipe: temperature ~0.9 with top_p ~0.9 for creative yet coherent text.",
+        "Lower top_p specifically to kill rare bizarre token choices without flattening overall style."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "What are the LLM's Top-P + Top-K ?", "url": "https://www.youtube.com/watch?v=aDmp2Uim0zQ", "type": "video"}
+      ]
+    },
+    {
+      "id": "repetition-penalties",
+      "title": "Repetition Penalties",
+      "subsection": "Core LLM Elements",
+      "minutes": 3,
+      "intro": "Repetition penalties lower the probability of tokens the model has already produced, breaking loops and forcing vocabulary variety.",
+      "summary": [
+        "LLMs have a known degenerate failure mode: once they repeat a phrase, the repetition becomes self-reinforcing and they can loop ('the best option is the best option is...'), especially at low temperature or in long generations. Repetition penalties counteract this by docking the scores of already-used tokens before sampling. OpenAI-style APIs expose two: frequency_penalty, which scales with how many times a token has appeared (the 5th occurrence is punished harder than the 2nd), and presence_penalty, a flat one-time penalty applied to any token that has appeared at all, which nudges the model toward new topics rather than just new words. Both run -2.0 to 2.0, default 0; open-source stacks often expose a multiplicative repetition_penalty instead (1.0 = off, ~1.1-1.3 typical).",
+        "Tuning intuition: use frequency_penalty to stop word-level echoing and verbal tics (same adjective or sentence-opener everywhere); use presence_penalty to push topical diversity in brainstorming or long-form writing. Modest values (0.1-0.7) are usually enough. Setting them too high backfires visibly: the model starts avoiding necessary words, swaps in awkward synonyms, and can even degrade grammar, a real hazard in code generation where the same identifier must legitimately repeat many times. Negative values do the opposite, encouraging repetition, occasionally useful for enforcing strict format consistency.",
+        "Defaults of 0 are fine for most chat and structured-output workloads, since modern instruction-tuned frontier models rarely loop. Reach for penalties when you actually observe repetition: long outputs, smaller open models, list generation, or low-temperature settings. As always, change one knob at a time and re-run your eval set."
+      ],
+      "keyPoints": [
+        "frequency_penalty scales with occurrence count (repeat more, punished more); presence_penalty is a flat one-time hit per used token.",
+        "Use frequency for word-level repetition, presence for topic-level diversity.",
+        "OpenAI-style range is -2.0 to 2.0 (default 0); start at 0.1-0.7, rarely exceed 1.0.",
+        "Open-source stacks use multiplicative repetition_penalty: 1.0 = off, 1.1-1.3 typical.",
+        "Too-high penalties cause forced synonyms, broken grammar, and broken code (identifiers must repeat).",
+        "Leave at 0 unless you observe looping; small open models and long generations need it most."
+      ],
+      "code": [
+        {
+          "title": "Penalties to diversify list output",
+          "language": "python",
+          "code": "from openai import OpenAI\nclient = OpenAI()\n\nresp = client.chat.completions.create(\n    model=\"gpt-5-mini\",\n    messages=[{\"role\": \"user\", \"content\": \"List 15 blog post ideas about home cooking.\"}],\n    temperature=0.9,\n    frequency_penalty=0.6,  # stop reusing the same words (\"easy\", \"quick\"...)\n    presence_penalty=0.4,   # push toward new topics, not variations of one\n)\nprint(resp.choices[0].message.content)\n# Warning: avoid high penalties for code generation,\n# where repeating identifiers is correct behavior."
+        }
+      ],
+      "resources": [
+        {"title": "Stop the LLM From Rambling: Using Penalties to Control Repetition", "url": "https://dev.to/superorange0707/stop-the-llm-from-rambling-using-penalties-to-control-repetition-5h8", "type": "article"},
+        {"title": "What are LLM Presence and Frequency Penalties?", "url": "https://www.youtube.com/watch?v=J66CRz6s734", "type": "video"}
+      ]
+    }
+  ]
+}

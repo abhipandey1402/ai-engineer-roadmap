@@ -1,0 +1,209 @@
+{
+  "id": "dev-tools",
+  "title": "AI-Assisted Coding Tools",
+  "description": "The agentic coding tools that are changing how software gets built.",
+  "topics": [
+    {
+      "id": "development-tools-overview",
+      "title": "Development Tools Overview",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "A map of the AI coding tool landscape: terminal agents, AI-native IDEs, cloud agents, and browser-based app builders.",
+      "summary": [
+        "AI coding tools have converged on a few distinct form factors. Terminal agents (Claude Code, Gemini CLI, OpenAI Codex CLI) live in your shell: you describe a task, they read the repo, edit files, run tests, and iterate — closest to delegating work to a junior engineer. AI-native IDEs (Cursor, Windsurf) fork VS Code and bake the model into the editor: inline tab-completion, chat over your codebase, and agent modes that apply multi-file edits you review in a diff view. Cloud/async agents (Codex cloud tasks, Claude Code on the web, Devin-style products) run in sandboxes and come back with a pull request. Finally, browser app builders (Replit, v0, Lovable, Bolt) generate and deploy whole applications from a prompt — strongest for prototypes and internal tools.",
+        "Under all of them is the same architecture: a frontier LLM in an agentic loop with tools (read file, edit file, run shell command, search), plus context engineering to fit your repo into the model's window. The differentiation is in harness quality — how well the tool gathers context, how safely it executes commands, how readable its diffs are — and in pricing model: IDE tools are typically ~$15-30/month subscriptions, terminal agents meter usage against API tokens or a Pro/Max-style subscription, and heavy agentic use can cost real money if unmonitored.",
+        "How an AI engineer should think about it: these are not competitors to pick one of; they are layers. A typical 2026 setup is an AI IDE for interactive day-to-day editing, a terminal agent for bigger delegated tasks and CI/scripting (they are scriptable and run headless), and a builder like Replit for throwaway prototypes. The skill that transfers across all of them is the same: writing clear specs, curating context (rules files like `CLAUDE.md`/`AGENTS.md`), and reviewing AI output critically. Tools churn quarterly; that skill does not."
+      ],
+      "keyPoints": [
+        "Four form factors: terminal agents, AI-native IDEs, cloud/async agents, and browser app builders.",
+        "All share one architecture: an LLM in a tool-use loop (read, edit, run, search) over your repo.",
+        "Differentiation is harness quality (context gathering, safety, diff UX) and pricing model, more than raw model.",
+        "Subscriptions run ~$15-30/month for IDEs; agentic/API usage is metered and can spike — watch your spend.",
+        "Use them as layers, not alternatives: IDE for interactive work, terminal agent for delegation, builders for prototypes.",
+        "The durable skills are spec writing, context curation (rules files), and critical code review."
+      ],
+      "code": [],
+      "resources": [
+        { "title": "Claude Code on GitHub", "url": "https://github.com/anthropics/claude-code", "type": "opensource" },
+        { "title": "Gemini CLI on GitHub", "url": "https://github.com/google-gemini/gemini-cli", "type": "opensource" },
+        { "title": "OpenAI Codex on GitHub", "url": "https://github.com/openai/codex", "type": "opensource" }
+      ]
+    },
+    {
+      "id": "claude-code",
+      "title": "Claude Code",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Claude Code is Anthropic's agentic coding tool that runs in your terminal, reading your codebase, editing files, and executing commands to complete tasks end-to-end.",
+      "summary": [
+        "Claude Code is a terminal-first coding agent: you run `claude` inside a repo, describe what you want ('fix the failing auth tests', 'add rate limiting to this endpoint'), and it explores the codebase with search tools, plans, edits files, runs commands and tests, and iterates until done — asking permission before risky actions. Because it lives in the shell rather than an editor, it works with any IDE (with official VS Code and JetBrains integrations), runs over SSH, and is fully scriptable: headless mode (`claude -p \"...\"`) lets you wire it into CI pipelines and automation, and the GitHub Action reviews and fixes PRs autonomously.",
+        "Its power features set the patterns the rest of the industry copied. A `CLAUDE.md` file in your repo gives it persistent project context (conventions, build commands, gotchas). Custom slash commands and skills package repeatable workflows; hooks let you enforce policy around its actions; MCP (Model Context Protocol) servers connect it to external systems like Jira, databases, or browsers; and subagents let it fan work out in parallel. It is widely regarded as the strongest tool for large, multi-step tasks on real codebases — the tradeoff is that there is no GUI and you review changes as diffs in the terminal or your editor's git view.",
+        "Pricing feel: usage is included with Claude Pro (~$20/month, light-to-moderate use) and Max plans (~$100-200/month for heavy daily use), or metered API-token billing for teams — an intensive day of agentic work on API pricing can run into tens of dollars, so most individuals prefer the subscriptions. Day-to-day, engineers use it for the delegable chunks: refactors that touch many files, writing tests, dependency upgrades, triaging CI failures, and codebase Q&A ('where is retry logic implemented?'). The workflow that works: write a clear spec, let it plan first (plan mode), keep `CLAUDE.md` current, and review every diff before committing."
+      ],
+      "keyPoints": [
+        "Terminal-native agent: explores, edits, runs tests, and iterates with permission gates — IDE-agnostic and SSH-friendly.",
+        "`CLAUDE.md` gives persistent repo context; slash commands, skills, and hooks customize workflows.",
+        "MCP support connects it to external tools (issue trackers, DBs, browsers); subagents parallelize work.",
+        "Headless mode and the GitHub Action make it scriptable for CI and autonomous PR workflows.",
+        "Pricing: bundled with Claude Pro/Max subscriptions or metered API tokens; heavy agentic use is real money.",
+        "Best at large multi-step tasks on existing codebases; always review diffs before committing."
+      ],
+      "code": [
+        {
+          "title": "Install and run",
+          "language": "bash",
+          "code": "# Install (Node 18+)\nnpm install -g @anthropic-ai/claude-code\n\n# Start an interactive session in your repo\ncd my-project\nclaude\n\n# One-shot headless mode (great for scripts/CI)\nclaude -p \"Run the test suite and fix any failing tests\"\n\n# Generate a CLAUDE.md project-context file\n# (inside the session)  > /init"
+        }
+      ],
+      "resources": [
+        { "title": "Visit the Dedicated Claude Code Roadmap", "url": "https://roadmap.sh/claude-code", "type": "article" },
+        { "title": "Claude Code in Action", "url": "https://anthropic.skilljar.com/claude-code-in-action", "type": "course" },
+        { "title": "Claude Code Overview", "url": "https://code.claude.com/docs/en/overview", "type": "official" },
+        { "title": "Introducing Claude Code", "url": "https://www.youtube.com/watch?v=AJpK3YTTKZ4", "type": "video" }
+      ]
+    },
+    {
+      "id": "gemini-cli",
+      "title": "Gemini CLI",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Gemini CLI is Google's open-source terminal coding agent, bringing the Gemini models' huge context window to your shell with a generous free tier.",
+      "summary": [
+        "Gemini CLI is Google's answer to Claude Code: an open-source (Apache 2.0) agent you run as `gemini` in a repo, with the same loop of reading files, proposing edits, and executing shell commands under your approval. It is built around the Gemini model family, whose signature advantage is context size — a 1M-token window means it can ingest very large codebases or long documents in one shot — plus Google-ecosystem hooks like grounding answers with Google Search and multimodal input (hand it a screenshot or PDF). Project context lives in a `GEMINI.md` file, mirroring the `CLAUDE.md` pattern, and it supports MCP servers and a non-interactive mode for scripting.",
+        "Its killer feature is price: logging in with a personal Google account gives a free tier measured in hundreds of model requests per day at no cost — by far the most generous among the major agents — with paid Gemini API keys, Code Assist subscriptions, or Vertex AI for higher limits and enterprise controls. The same agent technology powers Gemini Code Assist in VS Code/JetBrains, so the terminal and IDE experiences share a brain. Being open source, its internals are inspectable and the community contributes extensions.",
+        "In practice, engineers reach for Gemini CLI when the task is context-heavy (sweeping analysis of a big repo, summarizing a mountain of logs or docs), when multimodality helps (build this UI from a mockup image), or simply as the free workhorse for everyday automation while reserving paid agents for the hardest work. Quality on complex multi-step edits is competitive but generally considered a step behind Claude Code on hard refactors — so a common pattern is: Gemini CLI for breadth and volume, a premium agent for depth."
+      ],
+      "keyPoints": [
+        "Open-source (Apache 2.0) terminal agent powered by Gemini models with a 1M-token context window.",
+        "The most generous free tier of any major agent — personal Google login grants ~1,000 requests/day free.",
+        "Multimodal and search-grounded: feed it screenshots/PDFs and let it cite live Google Search results.",
+        "`GEMINI.md` project context, MCP server support, and headless mode mirror Claude Code's patterns.",
+        "Same engine as Gemini Code Assist in VS Code/JetBrains; Vertex AI path for enterprise.",
+        "Use it for context-heavy and high-volume work; pair with a premium agent for the hardest refactors."
+      ],
+      "code": [
+        {
+          "title": "Install and run",
+          "language": "bash",
+          "code": "# Install (Node 20+)\nnpm install -g @google/gemini-cli\n\n# Start in your repo — log in with a Google account (free tier)\ncd my-project\ngemini\n\n# Non-interactive one-shot\ngemini -p \"Summarize the architecture of this codebase\""
+        }
+      ],
+      "resources": [
+        { "title": "Google Gemini", "url": "https://gemini.google.com/", "type": "official" },
+        { "title": "Helpful Tips for using Gemini at work", "url": "https://services.google.com/fh/files/misc/quick_start_guide_to_google_ai_at_work.pdf", "type": "official" },
+        { "title": "Welcome to the Gemini era", "url": "https://www.youtube.com/watch?v=_fuimO6ErKI", "type": "video" },
+        { "title": "Gemini CLI on GitHub", "url": "https://github.com/google-gemini/gemini-cli", "type": "opensource" }
+      ]
+    },
+    {
+      "id": "codex",
+      "title": "Codex",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Codex is OpenAI's coding agent, available as a terminal CLI, an IDE extension, and a cloud service that runs tasks in sandboxes and opens pull requests.",
+      "summary": [
+        "The Codex name has history: the original 2021 Codex model (a GPT-3 descendant trained on code) powered the first GitHub Copilot and was retired. Today 'Codex' means OpenAI's agentic coding product, driven by GPT-5-class models tuned for software engineering (the `gpt-5-codex` line). It comes in three forms that share one agent: the open-source Codex CLI for your terminal, IDE extensions for VS Code-family editors, and Codex cloud — the distinctive piece — where you assign tasks from chatgpt.com/codex or GitHub and the agent works in an isolated cloud sandbox, runs your tests, and returns a reviewable pull request.",
+        "That cloud mode is Codex's signature workflow: it is built for delegation and parallelism — fire off several tasks (fix this issue, bump this dependency, add tests for that module) and review the PRs as they land, rather than pair-programming interactively. The CLI covers the interactive side with configurable approval/sandbox levels (read-only suggest mode up to full-auto in a sandbox), `AGENTS.md` files for project instructions (the cross-tool standard OpenAI champions), and MCP support. Code review of PRs is a particular strength OpenAI leans into.",
+        "Pricing feel: Codex is bundled with ChatGPT plans — Plus (~$20/month) gives moderate usage, Pro (~$200/month) effectively removes limits for individuals, with Team/Enterprise tiers and metered API access for custom integrations. Day-to-day guidance: use Codex cloud for well-scoped, verifiable background tasks (the kind a clear issue description fully specifies), the CLI/IDE for interactive work, and let its automatic PR review catch bugs in your human-written code too. Its strength is tight GitHub integration and parallel task throughput; like all agents, it does best when tests exist for it to run against."
+      ],
+      "keyPoints": [
+        "Modern Codex = OpenAI's coding agent (CLI + IDE extension + cloud), not the retired 2021 model that powered early Copilot.",
+        "Cloud mode is the differentiator: delegate tasks, agent runs in a sandbox with your repo, returns a pull request.",
+        "Built for parallelism — run several scoped tasks at once and review PRs as they land.",
+        "Open-source CLI with approval levels from suggest-only to full-auto; uses `AGENTS.md` for project instructions.",
+        "Bundled with ChatGPT Plus/Pro/Team plans; API access is metered separately.",
+        "Best for well-specified, test-verifiable tasks and automated PR review on GitHub."
+      ],
+      "code": [
+        {
+          "title": "Install and run the Codex CLI",
+          "language": "bash",
+          "code": "# Install\nnpm install -g @openai/codex\n\n# Start interactively (sign in with your ChatGPT account)\ncd my-project\ncodex\n\n# One-shot with full-auto sandboxed execution\ncodex --full-auto \"Add input validation to the signup form\""
+        }
+      ],
+      "resources": [
+        { "title": "Codex - Official Website", "url": "https://chatgpt.com/codex", "type": "official" },
+        { "title": "Getting started with Codex", "url": "https://www.youtube.com/watch?v=px7XlbYgk7I", "type": "video" },
+        { "title": "OpenAI Codex CLI on GitHub", "url": "https://github.com/openai/codex", "type": "opensource" }
+      ]
+    },
+    {
+      "id": "cursor",
+      "title": "Cursor",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Cursor is an AI-native code editor — a VS Code fork with deep model integration for tab completion, codebase chat, and agentic multi-file edits.",
+      "summary": [
+        "Cursor (by Anysphere) is the most popular AI-native IDE. As a VS Code fork it imports your extensions, themes, and keybindings, so adoption is frictionless — but the AI is built into the editor's core rather than bolted on as a plugin. Three interaction modes cover the spectrum: Tab, a custom autocomplete model that predicts multi-line edits and even your next cursor location; inline edit (Cmd+K) for transforming selected code from an instruction; and Agent mode, a full agentic loop that plans, edits across files, runs terminal commands, and fixes its own lint/test errors, presenting everything as reviewable diffs. Background/parallel agents can run multiple tasks at once.",
+        "Its standout engineering is context: Cursor embeds and indexes your entire repo so chat and agents retrieve relevant code automatically; `@` symbols let you precisely reference files, folders, docs, or web results; and rules files (`.cursor/rules`) encode project conventions the AI must follow. It is model-pluggable — you choose Claude, GPT, Gemini, or Cursor's own models per request — which makes it a good hedge as frontier models leapfrog each other.",
+        "Pricing feel: a free Hobby tier, Pro at ~$20/month with usage-based limits on premium model calls (heavy agent users hit them and pay overages or upgrade to Ultra ~$200/month), plus Teams/Enterprise tiers. Day-to-day, Cursor shines as the interactive layer of your stack: Tab for the constant small completions, Cmd+K for local rewrites, Agent for medium-sized features where you want to watch and steer. Engineers commonly pair it with a terminal agent — Cursor for in-flow editing, Claude Code or Codex for big delegated jobs — and the skills transfer: good rules files, precise context, small reviewed iterations."
+      ],
+      "keyPoints": [
+        "VS Code fork: your extensions and keybindings carry over, but AI is native to the editor core.",
+        "Three modes: Tab (predictive multi-line autocomplete), Cmd+K inline edits, and Agent for multi-file tasks.",
+        "Indexes your whole repo for retrieval; `@` references and `.cursor/rules` give precise context control.",
+        "Model-pluggable: switch between Claude, GPT, and Gemini models per task.",
+        "Pricing: free Hobby tier, Pro ~$20/month with premium-usage limits, Ultra ~$200/month for heavy use.",
+        "Best as your interactive daily driver, often paired with a terminal agent for large delegated tasks."
+      ],
+      "code": [],
+      "resources": [
+        { "title": "Cursor Docs", "url": "https://cursor.com/docs", "type": "official" },
+        { "title": "Cursor Learn", "url": "https://cursor.com/learn", "type": "official" },
+        { "title": "Cursor AI Tutorial for Beginners", "url": "https://www.youtube.com/watch?v=3289vhOUdKA", "type": "video" }
+      ]
+    },
+    {
+      "id": "windsurf",
+      "title": "Windsurf",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "Windsurf is an AI-native IDE (formerly Codeium) whose Cascade agent emphasizes automatic context awareness and a guided, flow-state editing experience.",
+      "summary": [
+        "Windsurf began life as Codeium, a free Copilot alternative, and relaunched as a full VS Code-fork IDE billed as the first 'agentic IDE'. Its centerpiece is Cascade, an agent panel that combines deep codebase understanding with real-time awareness of your actions: it tracks what you have been editing, infers intent, and carries that state through multi-file edits, terminal commands, and automatic lint/error fixing. Supporting features include supercomplete-style autocomplete, inline commands, live preview of web apps inside the editor with click-to-fix, and rules/memories so the agent retains project conventions across sessions.",
+        "The design philosophy difference from Cursor is automation versus control: Windsurf leans toward figuring out context for you and keeping you 'in flow', where Cursor exposes more explicit knobs (`@` references, manual context pinning). Reviewers consistently describe Windsurf as the smoother onboarding for developers new to AI IDEs, and its pricing undercuts Cursor — a meaningful free tier and a Pro plan around ~$15/month using a credit system for premium model calls. The company had a turbulent 2025 (an abandoned OpenAI acquisition, leadership moving to Google, acquisition by Cognition, the makers of Devin), which is worth knowing when betting on it long-term — under Cognition it is being fused with Devin-style autonomous agents.",
+        "Practical take: Windsurf and Cursor are close substitutes, and the right answer is often to trial both on your real codebase for a week each. Choose Windsurf if you value automatic context, the cleaner UX, and lower price; choose Cursor if you want finer control and the larger ecosystem. Either way the workflow skills are identical — write rules files, scope tasks small, review diffs — and they transfer wholesale between editors as the market churns."
+      ],
+      "keyPoints": [
+        "Formerly Codeium; a VS Code fork whose Cascade agent pioneered the 'agentic IDE' framing.",
+        "Cascade tracks your recent edits and infers intent — more automatic context, fewer manual knobs than Cursor.",
+        "Includes live in-editor app preview with click-to-fix, plus rules and memories for persistent conventions.",
+        "Cheaper than Cursor: free tier plus Pro around ~$15/month on a credit system.",
+        "Now owned by Cognition (Devin) after a turbulent 2025 — expect deeper autonomous-agent integration.",
+        "Trial it head-to-head with Cursor on your own repo; the workflow skills transfer between them."
+      ],
+      "code": [],
+      "resources": [
+        { "title": "Windsurf Docs", "url": "https://docs.windsurf.com/windsurf/getting-started", "type": "official" },
+        { "title": "Windsurf Tutorial for Beginners (AI Code Editor) - Better than Cursor??", "url": "https://www.youtube.com/watch?v=8TcWGk1DJVs", "type": "video" },
+        { "title": "Windsurf AI Tutorial for Beginners", "url": "https://www.youtube.com/watch?v=x1VCmB__TDo", "type": "video" }
+      ]
+    },
+    {
+      "id": "replit",
+      "title": "Replit",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "Replit is a browser-based development platform whose Agent builds, runs, and deploys complete applications from natural-language prompts — no local setup required.",
+      "summary": [
+        "Replit started as an online IDE/REPL for 50+ languages and evolved into the leading prompt-to-app platform. Its differentiator is owning the entire stack in the browser: Replit Agent takes a natural-language description ('an internal tool to track customer feedback with login and a dashboard'), scaffolds the project, writes the code, provisions a Postgres database, handles auth and secrets, runs the app live, and deploys it to a public URL — steps that on any other tool in this section would require you to assemble hosting, database, and CI yourself. Collaboration is Google-Docs-style multiplayer, and everything works from a Chromebook or iPad.",
+        "The Agent has matured into a genuinely agentic system: it plans, shows its step-by-step progress, tests the app in a browser, fixes its own errors, and supports extended autonomous runs for bigger builds, with checkpoints you can roll back to. The honest assessment (echoed in the eesel review): it is outstanding for zero-to-one — prototypes, MVPs, internal tools, automations — and weaker for large, long-lived production codebases, where checkpoint-based effort pricing gets expensive and you eventually want local tooling, real CI, and finer control. Vibe-coded apps also still need a security and quality review before handling real user data.",
+        "Pricing feel: a limited free tier, a Core/standard plan around ~$20-25/month that includes monthly credits, with usage-based 'effort pricing' beyond that — complex agent builds consume credits fast, which is the most common user complaint. For an AI engineer the day-to-day role is speed: validate an idea in an afternoon, spin up demos for stakeholders, build internal utilities nobody wants to maintain infrastructure for, and prototype the UI of an ML product before committing to a real stack. Graduate to a conventional repo (you can export or push the code) once something proves out."
+      ],
+      "keyPoints": [
+        "Full stack in the browser: code, database, auth, secrets, hosting, and deployment in one platform.",
+        "Replit Agent goes prompt-to-deployed-app, testing and fixing its own errors with rollback checkpoints.",
+        "Best-in-class for zero-to-one: prototypes, MVPs, internal tools — not for large production codebases.",
+        "Pricing ~$20-25/month plus usage-based effort credits; complex agent builds burn credits quickly.",
+        "Vibe-coded apps need security/quality review before handling real users or data.",
+        "Workflow: validate fast on Replit, then export the code to a conventional repo when it proves out."
+      ],
+      "code": [],
+      "resources": [
+        { "title": "Replit", "url": "https://replit.com/", "type": "official" },
+        { "title": "What is Replit? An honest look at the AI app builder in 2025", "url": "https://www.eesel.ai/blog/replit", "type": "article" },
+        { "title": "Getting Started with Replit", "url": "https://www.youtube.com/watch?v=St95nPOwsa8&list=PLto9KpJAqHMTzEMDAFT4r5LlI4NByngyT", "type": "video" }
+      ]
+    }
+  ]
+}

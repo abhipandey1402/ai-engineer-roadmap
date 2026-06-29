@@ -1,0 +1,886 @@
+{
+  "id": "rag",
+  "title": "RAG & Implementation",
+  "description": "Retrieval-Augmented Generation end to end: the pipeline stages and the frameworks that implement them.",
+  "topics": [
+    {
+      "id": "what-is-rag",
+      "title": "What is RAG?",
+      "subsection": "Fundamentals",
+      "minutes": 5,
+      "intro": "Retrieval-Augmented Generation (RAG) pairs a retriever that finds relevant documents with an LLM that generates answers grounded in them.",
+      "summary": [
+        "RAG solves the core limitation of LLMs: they only know what was in their training data, which is frozen at a cutoff date and contains none of your private documents. Instead of retraining the model, RAG retrieves relevant information at query time and injects it into the prompt, so the model answers from real, current, verifiable sources. Architecturally it has two halves: a retriever (embeddings plus vector search over a knowledge base) and a generator (the LLM that writes the answer using the retrieved context).",
+        "The full pipeline has an offline and an online phase. Offline (ingestion): documents are loaded, split into chunks, each chunk is converted into an embedding vector, and the vectors are stored in a vector database along with the original text and metadata. Online (query time): the user's question is embedded with the same model, the vector database returns the top-k most similar chunks, those chunks are stuffed into the prompt alongside the question, and the LLM generates a grounded answer, often with citations back to the source chunks.",
+        "Why this works: embeddings place semantically similar text near each other in vector space, so a question and the passage that answers it end up close together even when they share no keywords. Similarity is measured with cosine similarity or dot product, and approximate nearest neighbor indexes make the search fast over millions of chunks. The result is dramatically fewer hallucinations, answers that cite sources, and knowledge that updates as fast as you can re-index a document, all without touching model weights.",
+        "RAG is the default architecture for question answering over private data, and as an AI engineer you will build some variant of it constantly. Understand it as a pipeline of independent, swappable stages (chunking, embedding, storage, retrieval, generation), because nearly every quality problem you debug traces back to one specific stage."
+      ],
+      "keyPoints": [
+        "RAG = retriever (embeddings + vector search) + generator (LLM); knowledge lives in your database, not in model weights.",
+        "Two phases: offline ingestion (load, chunk, embed, store) and online query (embed query, retrieve top-k, generate).",
+        "Updating knowledge means re-indexing documents, which takes minutes; no retraining or fine-tuning required.",
+        "Grounding the model in retrieved text sharply reduces hallucination and lets you cite sources for every claim.",
+        "The query and the documents must be embedded with the same embedding model or similarity scores are meaningless.",
+        "Most RAG quality issues are retrieval issues: if the right chunk is not in the context, no prompt can fix the answer."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "What is RAG?",
+          "url": "https://aws.amazon.com/what-is/retrieval-augmented-generation/",
+          "type": "article"
+        },
+        {
+          "title": "RAG Explained: Understanding Embeddings, Similarity, and Retrieval",
+          "url": "https://towardsdatascience.com/rag-explained-understanding-embeddings-similarity-and-retrieval/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration",
+          "type": "article"
+        },
+        {
+          "title": "What is Retrieval-Augmented Generation? IBM",
+          "url": "https://www.youtube.com/watch?v=T-D1OfcDW1M",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Build a complete RAG pipeline in about 60 lines with no frameworks: embed 5 documents, retrieve by cosine similarity, and generate a grounded answer.",
+        "steps": [
+          {
+            "title": "Setup",
+            "explanation": "Install the OpenAI SDK (plus numpy for Python vector math) and set your API key. This lab deliberately avoids vector databases and frameworks so you can see every moving part of RAG.",
+            "python": "pip install openai numpy\nexport OPENAI_API_KEY=\"sk-...\"",
+            "javascript": "npm init -y && npm install openai\nexport OPENAI_API_KEY=\"sk-...\""
+          },
+          {
+            "title": "Embed a tiny knowledge base",
+            "explanation": "Hardcode 5 documents and embed them all in one API call with `text-embedding-3-small`. Each document becomes a 1536-dimension vector — this is your entire 'index'.",
+            "python": "# rag_minimal.py\nfrom openai import OpenAI\nimport numpy as np\n\nclient = OpenAI()\n\nDOCS = [\n    \"Our return policy allows returns within 30 days of purchase with a receipt.\",\n    \"The Acme X100 laptop has 16GB RAM, a 512GB SSD, and 10-hour battery life.\",\n    \"Support is available Monday to Friday, 9am to 5pm Eastern, via chat or email.\",\n    \"Shipping is free on orders over $50; otherwise a flat $5.99 fee applies.\",\n    \"The Acme X100 ships with a 1-year limited warranty covering manufacturing defects.\",\n]\n\nresp = client.embeddings.create(model=\"text-embedding-3-small\", input=DOCS)\ndoc_vectors = np.array([d.embedding for d in resp.data])\nprint(doc_vectors.shape)  # (5, 1536)",
+            "javascript": "// rag_minimal.mjs\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nconst DOCS = [\n  \"Our return policy allows returns within 30 days of purchase with a receipt.\",\n  \"The Acme X100 laptop has 16GB RAM, a 512GB SSD, and 10-hour battery life.\",\n  \"Support is available Monday to Friday, 9am to 5pm Eastern, via chat or email.\",\n  \"Shipping is free on orders over $50; otherwise a flat $5.99 fee applies.\",\n  \"The Acme X100 ships with a 1-year limited warranty covering manufacturing defects.\",\n];\n\nconst resp = await client.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: DOCS,\n});\nconst docVectors = resp.data.map((d) => d.embedding);\nconsole.log(docVectors.length, docVectors[0].length); // 5 1536"
+          },
+          {
+            "title": "Retrieve with cosine similarity",
+            "explanation": "Embed the question, score it against every document vector with cosine similarity, and keep the top 2. This is literally all a vector database does at small scale — brute-force nearest neighbors.",
+            "python": "def cosine(a, b):\n    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))\n\ndef retrieve(question, k=2):\n    q = client.embeddings.create(model=\"text-embedding-3-small\", input=question)\n    q_vec = np.array(q.data[0].embedding)\n    scores = [cosine(q_vec, dv) for dv in doc_vectors]\n    top = sorted(range(len(DOCS)), key=lambda i: scores[i], reverse=True)[:k]\n    return [(DOCS[i], scores[i]) for i in top]\n\nfor doc, score in retrieve(\"How long do I have to return something?\"):\n    print(f\"{score:.3f}  {doc}\")",
+            "javascript": "function cosine(a, b) {\n  let dot = 0, na = 0, nb = 0;\n  for (let i = 0; i < a.length; i++) {\n    dot += a[i] * b[i]; na += a[i] ** 2; nb += b[i] ** 2;\n  }\n  return dot / (Math.sqrt(na) * Math.sqrt(nb));\n}\n\nasync function retrieve(question, k = 2) {\n  const q = await client.embeddings.create({\n    model: \"text-embedding-3-small\", input: question,\n  });\n  const qVec = q.data[0].embedding;\n  return DOCS.map((doc, i) => ({ doc, score: cosine(qVec, docVectors[i]) }))\n    .sort((a, b) => b.score - a.score)\n    .slice(0, k);\n}\n\nfor (const { doc, score } of await retrieve(\"How long do I have to return something?\"))\n  console.log(score.toFixed(3), doc);"
+          },
+          {
+            "title": "Stuff context into a prompt and generate",
+            "explanation": "Concatenate the retrieved documents into the prompt and ask `gpt-4o-mini` to answer only from that context. This is the 'augmented generation' half of RAG — the model never sees documents you did not retrieve.",
+            "python": "def answer(question):\n    hits = retrieve(question, k=2)\n    context = \"\\n\".join(f\"- {doc}\" for doc, _ in hits)\n    resp = client.chat.completions.create(\n        model=\"gpt-4o-mini\",\n        messages=[\n            {\"role\": \"system\", \"content\": \"Answer ONLY from the provided context.\"},\n            {\"role\": \"user\", \"content\": f\"Context:\\n{context}\\n\\nQuestion: {question}\"},\n        ],\n    )\n    return resp.choices[0].message.content\n\nprint(answer(\"What are the specs of the X100?\"))",
+            "javascript": "async function answer(question) {\n  const hits = await retrieve(question, 2);\n  const context = hits.map((h) => `- ${h.doc}`).join(\"\\n\");\n  const resp = await client.chat.completions.create({\n    model: \"gpt-4o-mini\",\n    messages: [\n      { role: \"system\", content: \"Answer ONLY from the provided context.\" },\n      { role: \"user\", content: `Context:\\n${context}\\n\\nQuestion: ${question}` },\n    ],\n  });\n  return resp.choices[0].message.content;\n}\n\nconsole.log(await answer(\"What are the specs of the X100?\"));"
+          },
+          {
+            "title": "Test the whole loop",
+            "explanation": "Run several questions through the pipeline, including one the knowledge base cannot answer. Watch which documents get retrieved for each — you now understand the entire RAG mechanism end to end.",
+            "python": "QUESTIONS = [\n    \"Is shipping free?\",\n    \"What warranty comes with the X100?\",\n    \"Who is the CEO of Acme?\",  # not in the docs — watch what happens\n]\nfor q in QUESTIONS:\n    print(f\"\\nQ: {q}\")\n    print(f\"A: {answer(q)}\")",
+            "javascript": "const QUESTIONS = [\n  \"Is shipping free?\",\n  \"What warranty comes with the X100?\",\n  \"Who is the CEO of Acme?\", // not in the docs — watch what happens\n];\nfor (const q of QUESTIONS) {\n  console.log(`\\nQ: ${q}`);\n  console.log(`A: ${await answer(q)}`);\n}"
+          }
+        ],
+        "practice": [
+          "Change `k` from 2 to 1 and to 5, and re-run the three test questions — note when the answer gets worse and why.",
+          "Add 5 more documents about a second product (the X200) and check that questions about each product retrieve the right documents.",
+          "Print the cosine scores for the unanswerable CEO question and add a threshold: if the best score is below 0.3, return 'I don't know' without calling the LLM.",
+          "Replace cosine similarity with a raw dot product and confirm the rankings are identical (OpenAI embeddings are unit-normalized).",
+          "Cache the document embeddings to a JSON file on disk so re-runs only embed the question, not the documents."
+        ]
+      }
+    },
+    {
+      "id": "rag-use-cases",
+      "title": "RAG Use Cases",
+      "subsection": "Fundamentals",
+      "minutes": 3,
+      "intro": "RAG powers any application that must answer from a specific, changing body of knowledge: support bots, enterprise search, document Q&A, and research assistants.",
+      "summary": [
+        "The canonical RAG use case is the knowledge-grounded chatbot: customer support agents that answer from help-center articles and product docs, internal helpdesk bots trained on HR policies and runbooks, and developer assistants that answer from API documentation. In each case the value is the same: the bot gives answers that are specific to your organization and current, instead of generic LLM knowledge, and it can link to the source so users can verify.",
+        "Beyond chat, RAG drives enterprise semantic search (finding the right document across wikis, tickets, and drives by meaning rather than keywords), document analysis workflows (contract review, due diligence, summarizing long reports against a question), and research copilots in legal, medical, and financial domains where citations are mandatory. It also powers personalization patterns, such as retrieving a customer's history and account context before generating a tailored response.",
+        "When evaluating whether RAG fits a problem, look for three signals: the answers depend on a corpus the base model has not seen (private, niche, or fresh data), the corpus changes often enough that fine-tuning would be a treadmill, and users need traceability to sources. High-volume question answering over docs hits all three, which is why support and enterprise search dominate production RAG deployments."
+      ],
+      "keyPoints": [
+        "Support chatbots over help docs are the most common production RAG deployment, often cutting ticket volume substantially.",
+        "RAG enables semantic enterprise search: retrieval by meaning across wikis, tickets, PDFs, and chat history.",
+        "Regulated domains (legal, medical, finance) favor RAG because every answer can cite its source document.",
+        "RAG fits when data is private, frequently changing, or too large to fit in a context window.",
+        "Combine RAG with conversation memory carefully: retrieve per user turn, not once per session.",
+        "Start with one high-value corpus and measurable questions; sprawling multi-source RAG is much harder to make accurate."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Retrieval augmented generation use cases: Transforming data into insights",
+          "url": "https://www.glean.com/blog/retrieval-augmented-generation-use-cases",
+          "type": "article"
+        },
+        {
+          "title": "Retrieval Augmented Generation (RAG) – 5 Use Cases",
+          "url": "https://theblue.ai/blog/rag-news/",
+          "type": "article"
+        },
+        {
+          "title": "How to Train a Chatbot Using RAG and Custom Data",
+          "url": "https://towardsdatascience.com/how-to-train-a-chatbot-using-rag-and-custom-data/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration",
+          "type": "article"
+        },
+        {
+          "title": "Introduction to RAG",
+          "url": "https://www.youtube.com/watch?v=LmiFeXH-kq8&list=PL-pTHQz4RcBbz78Z5QXsZhe9rHuCs1Jw-",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "rag-vs-fine-tuning",
+      "title": "RAG vs Fine-tuning",
+      "subsection": "Fundamentals",
+      "minutes": 4,
+      "intro": "RAG adds knowledge at query time; fine-tuning bakes behavior into model weights — they solve different problems and often combine.",
+      "summary": [
+        "The cleanest mental model: RAG changes what the model knows, fine-tuning changes how the model behaves. RAG retrieves external facts at inference time, so it excels at dynamic, factual, source-of-truth tasks. Fine-tuning continues training on your examples, so it excels at teaching style, tone, output format, domain vocabulary, and task-specific patterns, but it is poor at reliably injecting facts: fine-tuned facts go stale, can still be hallucinated, and cannot be cited or access-controlled.",
+        "Operationally the two differ sharply. RAG knowledge updates are instant (re-index a document) and per-user access control is enforceable at retrieval time, which matters enormously for enterprise data. Fine-tuning requires curated training data (typically hundreds to thousands of quality examples), training runs, evaluation, and redeployment for every update, and whatever it learned is served to every user identically. RAG adds latency and tokens per request (retrieval plus a stuffed context); fine-tuning can reduce per-request tokens because instructions and examples are baked in.",
+        "In practice the decision is rarely either/or. Start with prompt engineering, add RAG when answers must come from your data, and reach for fine-tuning when you need consistent format/style/behavior that prompting cannot lock down, or when you want a small cheap model to mimic an expensive one on a narrow task. Many production systems use both: RAG for the facts, a fine-tuned model for the domain voice and output structure."
+      ],
+      "keyPoints": [
+        "RAG = knowledge injection at query time; fine-tuning = behavior and style baked into weights.",
+        "Fine-tuning is a poor vehicle for facts: they go stale, cannot be cited, and cannot be access-controlled per user.",
+        "RAG updates take minutes (re-index); fine-tuning updates require data curation, training, evals, and redeploy.",
+        "Fine-tuning shines for output format, tone, domain jargon, and distilling a large model into a smaller cheaper one.",
+        "RAG costs show up per request (retrieval + longer prompts); fine-tuning costs are mostly upfront.",
+        "Default order of escalation: prompt engineering, then RAG, then fine-tuning, and combine RAG + fine-tuning when needed."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "RAG vs Fine Tuning: How to Choose the Right Method",
+          "url": "https://www.montecarlodata.com/blog-rag-vs-fine-tuning/",
+          "type": "article"
+        },
+        {
+          "title": "RAG vs Finetuning — Which Is the Best Tool to Boost Your LLM Application?",
+          "url": "https://towardsdatascience.com/rag-vs-finetuning-which-is-the-best-tool-to-boost-your-llm-application-94654b1eaba7",
+          "type": "article"
+        },
+        {
+          "title": "RAG vs Fine-tuning",
+          "url": "https://www.youtube.com/watch?v=00Q0G84kq3M",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "chunking",
+      "title": "Chunking",
+      "subsection": "The RAG Pipeline",
+      "minutes": 6,
+      "intro": "Chunking splits documents into retrieval-sized pieces; chunk size and strategy are the highest-leverage knobs in RAG quality.",
+      "summary": [
+        "You chunk because embeddings and retrieval both degrade on long text: an embedding of a 50-page document averages away the details a query needs, and you cannot stuff whole documents into the prompt anyway. The goal is chunks that each carry one coherent idea with enough surrounding context to be understood alone. Get this wrong in either direction and retrieval suffers: too small and chunks lose meaning (a lone sentence whose pronouns refer to a previous paragraph), too large and the embedding becomes a blurry average and you waste context-window tokens on irrelevant text.",
+        "The main strategies, in rough order of sophistication: fixed-size chunking splits every N tokens/characters with overlap, dumb but fast and a surprisingly strong baseline. Recursive character splitting (LangChain's `RecursiveCharacterTextSplitter` is the de facto standard) tries a priority list of separators, paragraphs first, then sentences, then words, so chunks tend to land on natural boundaries while respecting a max size. Document-structure-aware chunking splits on Markdown headers, HTML sections, or code functions/classes, preserving the author's own semantic units. Semantic chunking embeds sentences and starts a new chunk where the embedding similarity between adjacent sentences drops, producing topically coherent chunks at higher compute cost.",
+        "Two practical refinements matter in production. Overlap (typically 10-20% of chunk size) repeats the tail of one chunk at the head of the next so facts straddling a boundary are not lost. Metadata enrichment attaches source, title, section heading, and date to each chunk; prepending the document title and section to the chunk text before embedding measurably improves retrieval because isolated chunks regain their lost context. Some teams go further with contextual retrieval, using an LLM to prepend a one-sentence summary situating each chunk in its document.",
+        "There is no universal best chunk size: 256-512 tokens favors precise factoid Q&A, 512-1024 favors summarization and reasoning over longer passages. The only reliable method is to build a small evaluation set of real queries with known correct passages and measure retrieval hit rate across chunking configurations."
+      ],
+      "keyPoints": [
+        "Typical starting point: 256-1024 token chunks with 10-20% overlap; tune against an eval set, not intuition.",
+        "Recursive splitting on separators (`\\n\\n`, `\\n`, sentence, word) is the default strategy; fixed-size is the baseline; semantic chunking costs more and helps on heterogeneous prose.",
+        "Respect document structure when it exists: split Markdown on headers and code on functions/classes, not mid-block.",
+        "Small chunks retrieve precisely but lose context; large chunks keep context but dilute the embedding signal.",
+        "Prepend title/section metadata to chunk text before embedding; isolated chunks lose the context that headers carried.",
+        "Chunking is set at index time: changing strategy means re-embedding the whole corpus, so version your indexes."
+      ],
+      "code": [
+        {
+          "title": "LangChain recursive text splitter",
+          "language": "python",
+          "code": "# pip install langchain-text-splitters\nfrom langchain_text_splitters import RecursiveCharacterTextSplitter\n\nsplitter = RecursiveCharacterTextSplitter(\n    chunk_size=800,      # max chars per chunk (token-based also supported)\n    chunk_overlap=120,   # ~15% overlap so facts on boundaries survive\n    separators=[\"\\n\\n\", \"\\n\", \". \", \" \", \"\"],  # tried in order\n)\n\ntext = open(\"handbook.md\").read()\nchunks = splitter.split_text(text)\nprint(f\"{len(chunks)} chunks, first chunk:\\n{chunks[0][:200]}\")\n\n# Token-aware variant (counts tokens like the embedding model does)\ntok_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(\n    model_name=\"text-embedding-3-small\", chunk_size=512, chunk_overlap=64\n)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Understanding LangChain's RecursiveCharacterTextSplitter",
+          "url": "https://dev.to/eteimz/understanding-langchains-recursivecharactertextsplitter-2846",
+          "type": "article"
+        },
+        {
+          "title": "Chunking Strategies for LLM Applications",
+          "url": "https://www.pinecone.io/learn/chunking-strategies/",
+          "type": "article"
+        },
+        {
+          "title": "A Guide to Chunking Strategies for Retrieval Augmented Generation",
+          "url": "https://zilliz.com/learn/guide-to-chunking-strategies-for-rag",
+          "type": "article"
+        }
+      ],
+      "handsOn": {
+        "goal": "Implement fixed-size chunking with overlap by hand, then compare it against LangChain's RecursiveCharacterTextSplitter to see exactly where each strategy cuts the text.",
+        "steps": [
+          {
+            "title": "Setup",
+            "explanation": "Install the LangChain text-splitters package — a tiny standalone library with no API key required. This whole lab runs offline.",
+            "python": "pip install langchain-text-splitters",
+            "javascript": "npm init -y && npm install @langchain/textsplitters"
+          },
+          {
+            "title": "Create a long document",
+            "explanation": "Generate a multi-paragraph `doc.txt` to chunk. Using a known text with clear paragraph boundaries makes it easy to spot where each splitter cuts.",
+            "python": "# make_text.py\nparagraphs = [\n    \"Retrieval-Augmented Generation (RAG) combines a retriever with a generator. \"\n    \"The retriever finds relevant passages; the generator writes the answer.\",\n    \"Chunking decides how documents are split before embedding. \"\n    \"Chunks that are too large dilute meaning; chunks that are too small lose context.\",\n    \"Overlap repeats a little text between neighboring chunks so that sentences \"\n    \"straddling a boundary are not cut off from their surrounding context.\",\n] * 4\ntext = \"\\n\\n\".join(paragraphs)\nopen(\"doc.txt\", \"w\").write(text)\nprint(len(text), \"characters\")",
+            "javascript": "// makeText.mjs\nimport { writeFileSync } from \"node:fs\";\n\nconst paragraphs = [\n  \"Retrieval-Augmented Generation (RAG) combines a retriever with a generator. \" +\n    \"The retriever finds relevant passages; the generator writes the answer.\",\n  \"Chunking decides how documents are split before embedding. \" +\n    \"Chunks that are too large dilute meaning; chunks that are too small lose context.\",\n  \"Overlap repeats a little text between neighboring chunks so that sentences \" +\n    \"straddling a boundary are not cut off from their surrounding context.\",\n];\nconst text = Array(4).fill(paragraphs).flat().join(\"\\n\\n\");\nwriteFileSync(\"doc.txt\", text);\nconsole.log(text.length, \"characters\");"
+          },
+          {
+            "title": "Hand-roll fixed-size chunking with overlap",
+            "explanation": "Slide a window of `size` characters forward by `size - overlap` each step. Printing the start/end offsets and the last characters of each chunk exposes the core flaw: cuts land mid-word and mid-sentence.",
+            "python": "# manual_chunk.py\ntext = open(\"doc.txt\").read()\n\ndef chunk_fixed(text, size=300, overlap=50):\n    chunks, start = [], 0\n    while start < len(text):\n        end = min(start + size, len(text))\n        chunks.append((start, end, text[start:end]))\n        start += size - overlap\n    return chunks\n\nchunks = chunk_fixed(text)\nprint(f\"{len(chunks)} chunks of ~300 chars (50 overlap)\")\nfor start, end, c in chunks[:5]:\n    print(f\"[{start:4d}:{end:4d}] ends with: {c[-30:]!r}\")",
+            "javascript": "// manualChunk.mjs\nimport { readFileSync } from \"node:fs\";\n\nconst text = readFileSync(\"doc.txt\", \"utf8\");\n\nfunction chunkFixed(text, size = 300, overlap = 50) {\n  const chunks = [];\n  for (let start = 0; start < text.length; start += size - overlap) {\n    const end = Math.min(start + size, text.length);\n    chunks.push({ start, end, text: text.slice(start, end) });\n  }\n  return chunks;\n}\n\nconst chunks = chunkFixed(text);\nconsole.log(`${chunks.length} chunks of ~300 chars (50 overlap)`);\nfor (const c of chunks.slice(0, 5))\n  console.log(`[${c.start}:${c.end}] ends with: ${JSON.stringify(c.text.slice(-30))}`);"
+          },
+          {
+            "title": "Split with RecursiveCharacterTextSplitter",
+            "explanation": "The recursive splitter tries separators in order (`\\n\\n`, `\\n`, space, then character) so chunks end at paragraph or sentence boundaries when possible. Same target size, much cleaner cuts.",
+            "python": "# lc_chunk.py\nfrom langchain_text_splitters import RecursiveCharacterTextSplitter\n\ntext = open(\"doc.txt\").read()\nsplitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)\nchunks = splitter.split_text(text)\nprint(f\"{len(chunks)} chunks\")\nfor c in chunks[:5]:\n    print(f\"len={len(c):3d} ends with: {c[-30:]!r}\")",
+            "javascript": "// lcChunk.mjs\nimport { readFileSync } from \"node:fs\";\nimport { RecursiveCharacterTextSplitter } from \"@langchain/textsplitters\";\n\nconst text = readFileSync(\"doc.txt\", \"utf8\");\nconst splitter = new RecursiveCharacterTextSplitter({\n  chunkSize: 300,\n  chunkOverlap: 50,\n});\nconst chunks = await splitter.splitText(text);\nconsole.log(`${chunks.length} chunks`);\nfor (const c of chunks.slice(0, 5))\n  console.log(`len=${c.length} ends with: ${JSON.stringify(c.slice(-30))}`);"
+          },
+          {
+            "title": "Compare the cut points side by side",
+            "explanation": "Print where each strategy ends its chunks. The manual splitter chops words in half; the recursive splitter ends on paragraph breaks and sentence ends — which is why embeddings of recursive chunks carry cleaner meaning.",
+            "python": "# compare.py\nfrom langchain_text_splitters import RecursiveCharacterTextSplitter\n\ntext = open(\"doc.txt\").read()\n\ndef chunk_fixed(text, size=300, overlap=50):\n    return [text[i:i + size] for i in range(0, len(text), size - overlap)]\n\nmanual = chunk_fixed(text)\nrecursive = RecursiveCharacterTextSplitter(\n    chunk_size=300, chunk_overlap=50).split_text(text)\n\nprint(\"MANUAL cut points:\")\nfor c in manual[:6]:\n    print(f\"  ...{c[-25:]!r} |CUT|\")\nprint(\"RECURSIVE cut points:\")\nfor c in recursive[:6]:\n    print(f\"  ...{c[-25:]!r} |CUT|\")\nprint(f\"\\nmanual: {len(manual)} chunks, recursive: {len(recursive)} chunks\")",
+            "javascript": "// compare.mjs\nimport { readFileSync } from \"node:fs\";\nimport { RecursiveCharacterTextSplitter } from \"@langchain/textsplitters\";\n\nconst text = readFileSync(\"doc.txt\", \"utf8\");\n\nfunction chunkFixed(text, size = 300, overlap = 50) {\n  const out = [];\n  for (let i = 0; i < text.length; i += size - overlap)\n    out.push(text.slice(i, i + size));\n  return out;\n}\n\nconst manual = chunkFixed(text);\nconst recursive = await new RecursiveCharacterTextSplitter({\n  chunkSize: 300, chunkOverlap: 50 }).splitText(text);\n\nconsole.log(\"MANUAL cut points:\");\nfor (const c of manual.slice(0, 6))\n  console.log(`  ...${JSON.stringify(c.slice(-25))} |CUT|`);\nconsole.log(\"RECURSIVE cut points:\");\nfor (const c of recursive.slice(0, 6))\n  console.log(`  ...${JSON.stringify(c.slice(-25))} |CUT|`);\nconsole.log(`\\nmanual: ${manual.length} chunks, recursive: ${recursive.length} chunks`);"
+          }
+        ],
+        "practice": [
+          "Re-run the comparison with chunk_size=100/overlap=20 and chunk_size=1000/overlap=200 — count how many manual chunks end mid-word in each configuration.",
+          "Write a `count_bad_cuts(chunks)` function that counts chunks ending mid-word (the cut falls between two letters in the source) and score both strategies with it.",
+          "Replace `doc.txt` with a real README from one of your projects and inspect how the recursive splitter handles code blocks and headings.",
+          "Implement sentence-based chunking by splitting on '. ' and packing whole sentences into ~300-char chunks; compare its cut points with both strategies.",
+          "Use `MarkdownHeaderTextSplitter` (Python) or split on '#' headings yourself (JS) on a markdown file, and attach the nearest heading as metadata to each chunk."
+        ]
+      }
+    },
+    {
+      "id": "embedding",
+      "title": "Embedding",
+      "subsection": "The RAG Pipeline",
+      "minutes": 5,
+      "intro": "Embeddings map chunks and queries into a shared vector space where semantic similarity becomes measurable distance.",
+      "summary": [
+        "Embedding is the bridge between language and math in RAG. An embedding model converts text into a dense vector (commonly 384 to 3072 dimensions) such that semantically similar texts land close together. At index time every chunk is embedded once and stored; at query time the user's question is embedded with the same model and compared against the stored vectors with cosine similarity or dot product. Everything downstream depends on this step: if the embedding model does not place a question near its answer passage, retrieval fails silently and generation hallucinates.",
+        "Selecting an embedding model is a real engineering decision, not a default. Compare candidates on the MTEB leaderboard for retrieval tasks, but weigh practical factors: dimensionality (larger vectors are more expressive but cost more to store and search), max input tokens (must comfortably exceed your chunk size), language and domain coverage (legal, medical, and code benefit from specialized or fine-tuned embedders), latency and price per million tokens, and hosted versus open weights. Common picks in 2026: OpenAI `text-embedding-3-small/large` (with Matryoshka-style dimension truncation to trade quality for cost), Cohere embed v4, Voyage models, and open models like BGE and E5 served locally.",
+        "Two operational rules cause most embedding bugs when violated. First, index and query must use the exact same model and version; switching models means re-embedding the entire corpus because vector spaces from different models are incompatible. Second, some models are asymmetric and expect prefixes distinguishing queries from passages (E5's `query:` / `passage:`), or distinct input types (Cohere's `search_query` vs `search_document`); skipping these prefixes quietly degrades recall. Also remember embeddings of user data are derived data: cache them, batch the API calls during ingestion, and budget for re-embedding when you change models or chunking."
+      ],
+      "keyPoints": [
+        "Query and corpus must share one embedding model/version; changing models forces a full re-index.",
+        "Pick models via the MTEB retrieval leaderboard, then filter by dimension, max tokens, latency, price, and domain fit.",
+        "Typical dimensions run 384-3072; OpenAI's v3 models let you truncate dimensions to cut storage with modest quality loss.",
+        "Asymmetric models need query/passage prefixes (E5) or input types (Cohere); omitting them silently hurts recall.",
+        "Batch embedding calls at ingestion (e.g. 100+ chunks per request) to cut cost and wall-clock time.",
+        "Embedding similarity is fuzzy and semantic; it will miss exact identifiers like SKUs, which is why hybrid search exists."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Understanding the role of embeddings in RAG LLMs",
+          "url": "https://www.aporia.com/learn/understanding-the-role-of-embeddings-in-rag-llms/",
+          "type": "article"
+        },
+        {
+          "title": "Mastering RAG: How to Select an Embedding Model",
+          "url": "https://www.rungalileo.io/blog/mastering-rag-how-to-select-an-embedding-model",
+          "type": "article"
+        }
+      ],
+      "handsOn": {
+        "goal": "Batch-embed a set of texts with text-embedding-3-small, inspect the vectors, and compute a pairwise similarity matrix that proves related text scores higher.",
+        "steps": [
+          {
+            "title": "Setup",
+            "explanation": "Install the OpenAI SDK (numpy makes the matrix math one-liners in Python) and export your API key.",
+            "python": "pip install openai numpy\nexport OPENAI_API_KEY=\"sk-...\"",
+            "javascript": "npm init -y && npm install openai\nexport OPENAI_API_KEY=\"sk-...\""
+          },
+          {
+            "title": "Batch-embed five texts in one call",
+            "explanation": "Pass an array of texts to `embeddings.create` — one API call, one vector per text, returned in input order. Two texts are about Python, two about cooking, one about space, so we know in advance what 'related' should look like.",
+            "python": "# embeddings_lab.py\nfrom openai import OpenAI\nimport numpy as np\n\nclient = OpenAI()\n\nTEXTS = [\n    \"How to declare a list in Python\",\n    \"Python dictionaries store key-value pairs\",\n    \"Best way to roast garlic in the oven\",\n    \"A simple recipe for tomato pasta sauce\",\n    \"The James Webb telescope photographs distant galaxies\",\n]\n\nresp = client.embeddings.create(model=\"text-embedding-3-small\", input=TEXTS)\nvecs = np.array([d.embedding for d in resp.data])\nprint(vecs.shape)  # (5, 1536)",
+            "javascript": "// embeddingsLab.mjs\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nconst TEXTS = [\n  \"How to declare a list in Python\",\n  \"Python dictionaries store key-value pairs\",\n  \"Best way to roast garlic in the oven\",\n  \"A simple recipe for tomato pasta sauce\",\n  \"The James Webb telescope photographs distant galaxies\",\n];\n\nconst resp = await client.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: TEXTS,\n});\nconst vecs = resp.data.map((d) => d.embedding);\nconsole.log(vecs.length, vecs[0].length); // 5 1536"
+          },
+          {
+            "title": "Inspect dimensions and norms",
+            "explanation": "Each vector has 1536 dimensions and unit length (norm ~1.0), which means a plain dot product equals cosine similarity. The `dimensions` parameter can shorten vectors (e.g. to 512) to save storage with a small quality trade-off.",
+            "python": "print(\"dimensions:\", vecs.shape[1])              # 1536\nprint(\"norms:\", np.linalg.norm(vecs, axis=1))     # all ~1.0 (unit length)\n\nshort = client.embeddings.create(\n    model=\"text-embedding-3-small\", input=TEXTS[0], dimensions=512)\nprint(\"shortened:\", len(short.data[0].embedding))  # 512",
+            "javascript": "console.log(\"dimensions:\", vecs[0].length); // 1536\nconst norm = Math.sqrt(vecs[0].reduce((s, x) => s + x * x, 0));\nconsole.log(\"norm:\", norm.toFixed(4)); // ~1.0 (unit length)\n\nconst short = await client.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: TEXTS[0],\n  dimensions: 512,\n});\nconsole.log(\"shortened:\", short.data[0].embedding.length); // 512"
+          },
+          {
+            "title": "Compute the pairwise similarity matrix",
+            "explanation": "Because the vectors are unit length, `vecs @ vecs.T` gives every pairwise cosine similarity at once. Print it as a 5x5 grid — the diagonal is 1.0 (each text vs itself).",
+            "python": "sim = vecs @ vecs.T  # cosine similarity, since vectors are unit length\nprint(\" \" * 34 + \"  \".join(f\"t{j}\" for j in range(len(TEXTS))))\nfor i, row in enumerate(sim):\n    label = TEXTS[i][:30].ljust(32)\n    print(label, \"  \".join(f\"{v:.2f}\" for v in row))",
+            "javascript": "function dot(a, b) {\n  let s = 0;\n  for (let i = 0; i < a.length; i++) s += a[i] * b[i];\n  return s; // equals cosine similarity for unit-length vectors\n}\n\nconst sim = vecs.map((v) => vecs.map((w) => dot(v, w)));\nconsole.log(\" \".repeat(34) + TEXTS.map((_, j) => `t${j}    `).join(\"\"));\nsim.forEach((row, i) =>\n  console.log(\n    TEXTS[i].slice(0, 30).padEnd(32),\n    row.map((v) => v.toFixed(2)).join(\"  \")\n  )\n);"
+          },
+          {
+            "title": "Find the most and least similar pairs",
+            "explanation": "Scan the matrix (excluding the diagonal) for the highest and lowest scores. The two Python texts should win and a cooking-vs-space pair should lose — semantic similarity, not keyword matching.",
+            "python": "np.fill_diagonal(sim, -1)\ni, j = np.unravel_index(sim.argmax(), sim.shape)\nprint(f\"Most similar  ({sim[i, j]:.3f}): {TEXTS[i]!r} <-> {TEXTS[j]!r}\")\ni, j = np.unravel_index(sim.argmin(), sim.shape)\nprint(f\"Least similar ({sim[i, j]:.3f}): {TEXTS[i]!r} <-> {TEXTS[j]!r}\")",
+            "javascript": "let best = { s: -2, i: 0, j: 0 };\nlet worst = { s: 2, i: 0, j: 0 };\nfor (let i = 0; i < sim.length; i++)\n  for (let j = i + 1; j < sim.length; j++) {\n    if (sim[i][j] > best.s) best = { s: sim[i][j], i, j };\n    if (sim[i][j] < worst.s) worst = { s: sim[i][j], i, j };\n  }\nconsole.log(`Most similar  (${best.s.toFixed(3)}): \"${TEXTS[best.i]}\" <-> \"${TEXTS[best.j]}\"`);\nconsole.log(`Least similar (${worst.s.toFixed(3)}): \"${TEXTS[worst.i]}\" <-> \"${TEXTS[worst.j]}\"`);"
+          }
+        ],
+        "practice": [
+          "Add the text 'JavaScript arrays hold ordered values' and predict its closest neighbor before running — were you right?",
+          "Embed the same 5 texts with `dimensions=256` and rebuild the matrix — do the most/least similar pairs change?",
+          "Embed 'How do I cook pasta?' as a query and rank all 5 texts against it — verify the recipe texts win.",
+          "Embed a sentence and its translation into another language and measure their similarity — embeddings are surprisingly multilingual.",
+          "Time embedding 100 texts one-by-one vs in a single batch call, and compute the cost for each using the model's per-token price."
+        ]
+      }
+    },
+    {
+      "id": "vector-database",
+      "title": "Vector Database",
+      "subsection": "The RAG Pipeline",
+      "minutes": 5,
+      "intro": "A vector database stores chunk embeddings and answers nearest-neighbor queries fast, with filtering and metadata alongside.",
+      "summary": [
+        "The vector database is RAG's storage and search engine. It holds each chunk's embedding, the original text, and metadata (source, section, date, access tags), and given a query vector returns the top-k closest entries in milliseconds. At scale this is non-trivial: exact nearest-neighbor search over millions of high-dimensional vectors is too slow, so vector databases build approximate nearest neighbor (ANN) indexes, most commonly HNSW graphs or IVF partitions, trading a sliver of recall for orders-of-magnitude speed.",
+        "The 2026 landscape splits into three camps. Dedicated managed services (Pinecone, Weaviate Cloud, Qdrant Cloud, Zilliz) offer scale and operational ease. Extensions to databases you already run, above all Postgres with `pgvector`, are the pragmatic default for most products because vectors live next to your relational data with real transactions and access control. Embedded/local options (Chroma, FAISS, LanceDB, SQLite-vec) are perfect for prototypes and small corpora. Beyond raw similarity, evaluate metadata filtering (restrict search to `tenant_id = X` or `doc_type = policy` before/while searching), hybrid keyword+vector support, and multi-tenancy isolation, because production RAG almost always needs filtered search, not global search.",
+        "A growing complement is Graph RAG: alongside vector search over chunks, you extract entities and relationships into a knowledge graph and traverse it at query time. Vector search answers \"find text like this\"; the graph answers multi-hop, relational questions (\"which projects depend on the library that team X maintains?\") that similarity alone cannot. Many production systems combine both, retrieving from the vector store and enriching context with connected graph facts."
+      ],
+      "keyPoints": [
+        "ANN indexes (HNSW, IVF) make vector search fast by trading exactness for speed; recall is tunable per query.",
+        "`pgvector` on Postgres is the pragmatic default when you already run Postgres; dedicated stores earn their keep at large scale or high QPS.",
+        "Store text and metadata with the vector; retrieval must return prompt-ready content, not just IDs.",
+        "Metadata filtering (tenant, source, date, permissions) is a hard requirement in production; check filter support before choosing a DB.",
+        "Distance metric must match the embedding model's training (cosine vs dot product); normalized vectors make them equivalent.",
+        "Graph RAG adds a knowledge graph for multi-hop relational questions where pure similarity search fails."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "How to Implement Graph RAG Using Knowledge Graphs and Vector Databases",
+          "url": "https://towardsdatascience.com/how-to-implement-graph-rag-using-knowledge-graphs-and-vector-databases-60bb69a22759",
+          "type": "article"
+        },
+        {
+          "title": "Retrieval Augmented Generation (RAG) with Vector Databases: Expanding AI Capabilities",
+          "url": "https://objectbox.io/retrieval-augmented-generation-rag-with-vector-databases-expanding-ai-capabilities/",
+          "type": "article"
+        }
+      ],
+      "handsOn": {
+        "goal": "Stand up a Chroma vector database, upsert embedded chunks with metadata, and run similarity queries with metadata and document filters.",
+        "steps": [
+          {
+            "title": "Setup",
+            "explanation": "Python uses Chroma in embedded mode (no server needed). The JS client talks to a Chroma server, so start one with `chroma run` in a separate terminal. Both persist data to disk so it survives restarts.",
+            "python": "pip install chromadb openai\nexport OPENAI_API_KEY=\"sk-...\"",
+            "javascript": "npm init -y && npm install chromadb openai\nexport OPENAI_API_KEY=\"sk-...\"\n# JS client needs a server — in another terminal:\npip install chromadb\nchroma run --path ./chroma-data   # serves on http://localhost:8000"
+          },
+          {
+            "title": "Create a client and collection",
+            "explanation": "A collection is like a table for vectors. Setting `hnsw:space` to `cosine` makes returned distances cosine distances (0 = identical, 2 = opposite), which matches how we reason about embeddings.",
+            "python": "# vectordb_lab.py\nimport chromadb\n\nclient = chromadb.PersistentClient(path=\"./chroma-data\")\ncollection = client.get_or_create_collection(\n    \"docs\", metadata={\"hnsw:space\": \"cosine\"})\nprint(\"items in collection:\", collection.count())",
+            "javascript": "// vectordbLab.mjs\nimport { ChromaClient } from \"chromadb\";\n\nconst client = new ChromaClient(); // connects to localhost:8000\nconst collection = await client.getOrCreateCollection({\n  name: \"docs\",\n  metadata: { \"hnsw:space\": \"cosine\" },\n});\nconsole.log(\"items in collection:\", await collection.count());"
+          },
+          {
+            "title": "Embed and upsert chunks with metadata",
+            "explanation": "Embed the chunks yourself with `text-embedding-3-small` and pass the vectors explicitly — full control, no hidden embedding function. Each chunk carries metadata (`source`, `year`) that we will filter on later. `upsert` is idempotent, so re-running is safe.",
+            "python": "from openai import OpenAI\n\noa = OpenAI()\nCHUNKS = [\n    {\"id\": \"p1\", \"text\": \"Returns are accepted within 30 days with a receipt.\", \"source\": \"policy\", \"year\": 2025},\n    {\"id\": \"p2\", \"text\": \"Refunds are issued to the original payment method.\", \"source\": \"policy\", \"year\": 2025},\n    {\"id\": \"s1\", \"text\": \"The X100 laptop has 16GB RAM and a 512GB SSD.\", \"source\": \"specs\", \"year\": 2024},\n    {\"id\": \"s2\", \"text\": \"The X100 battery lasts about 10 hours of mixed use.\", \"source\": \"specs\", \"year\": 2024},\n]\nembs = oa.embeddings.create(\n    model=\"text-embedding-3-small\", input=[c[\"text\"] for c in CHUNKS])\ncollection.upsert(\n    ids=[c[\"id\"] for c in CHUNKS],\n    documents=[c[\"text\"] for c in CHUNKS],\n    embeddings=[d.embedding for d in embs.data],\n    metadatas=[{\"source\": c[\"source\"], \"year\": c[\"year\"]} for c in CHUNKS],\n)\nprint(\"count after upsert:\", collection.count())",
+            "javascript": "import OpenAI from \"openai\";\n\nconst oa = new OpenAI();\nconst CHUNKS = [\n  { id: \"p1\", text: \"Returns are accepted within 30 days with a receipt.\", source: \"policy\", year: 2025 },\n  { id: \"p2\", text: \"Refunds are issued to the original payment method.\", source: \"policy\", year: 2025 },\n  { id: \"s1\", text: \"The X100 laptop has 16GB RAM and a 512GB SSD.\", source: \"specs\", year: 2024 },\n  { id: \"s2\", text: \"The X100 battery lasts about 10 hours of mixed use.\", source: \"specs\", year: 2024 },\n];\nconst embs = await oa.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: CHUNKS.map((c) => c.text),\n});\nawait collection.upsert({\n  ids: CHUNKS.map((c) => c.id),\n  documents: CHUNKS.map((c) => c.text),\n  embeddings: embs.data.map((d) => d.embedding),\n  metadatas: CHUNKS.map((c) => ({ source: c.source, year: c.year })),\n});\nconsole.log(\"count after upsert:\", await collection.count());"
+          },
+          {
+            "title": "Run a similarity query",
+            "explanation": "Embed the question with the same model, then ask Chroma for the nearest neighbors. Lower distance = more similar. 'How do refunds work?' should hit the policy chunks even though it shares almost no exact keywords with them.",
+            "python": "q = oa.embeddings.create(\n    model=\"text-embedding-3-small\", input=\"how do refunds work?\")\nq_vec = q.data[0].embedding\n\nres = collection.query(query_embeddings=[q_vec], n_results=2)\nfor doc, dist, meta in zip(\n        res[\"documents\"][0], res[\"distances\"][0], res[\"metadatas\"][0]):\n    print(f\"dist={dist:.3f} [{meta['source']}] {doc}\")",
+            "javascript": "const q = await oa.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: \"how do refunds work?\",\n});\nconst qVec = q.data[0].embedding;\n\nconst res = await collection.query({ queryEmbeddings: [qVec], nResults: 2 });\nres.documents[0].forEach((doc, i) =>\n  console.log(\n    `dist=${res.distances[0][i].toFixed(3)} [${res.metadatas[0][i].source}] ${doc}`\n  )\n);"
+          },
+          {
+            "title": "Query with metadata and document filters",
+            "explanation": "`where` filters on metadata before the vector search runs; `where_document` filters on the chunk text itself. This is how you scope retrieval to one source, a date range, or a tenant in real applications.",
+            "python": "q2 = oa.embeddings.create(\n    model=\"text-embedding-3-small\", input=\"tell me about the laptop\")\nq2_vec = q2.data[0].embedding\n\nonly_specs = collection.query(\n    query_embeddings=[q2_vec], n_results=2, where={\"source\": \"specs\"})\nprint(\"specs only:\", only_specs[\"documents\"][0])\n\nrecent = collection.query(\n    query_embeddings=[q2_vec], n_results=2, where={\"year\": {\"$gte\": 2025}})\nprint(\"2025+ only:\", recent[\"documents\"][0])\n\nbattery = collection.query(\n    query_embeddings=[q2_vec], n_results=2,\n    where_document={\"$contains\": \"battery\"})\nprint(\"mentions battery:\", battery[\"documents\"][0])",
+            "javascript": "const q2 = await oa.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: \"tell me about the laptop\",\n});\nconst q2Vec = q2.data[0].embedding;\n\nconst onlySpecs = await collection.query({\n  queryEmbeddings: [q2Vec], nResults: 2, where: { source: \"specs\" },\n});\nconsole.log(\"specs only:\", onlySpecs.documents[0]);\n\nconst recent = await collection.query({\n  queryEmbeddings: [q2Vec], nResults: 2, where: { year: { $gte: 2025 } },\n});\nconsole.log(\"2025+ only:\", recent.documents[0]);\n\nconst battery = await collection.query({\n  queryEmbeddings: [q2Vec], nResults: 2,\n  whereDocument: { $contains: \"battery\" },\n});\nconsole.log(\"mentions battery:\", battery.documents[0]);"
+          }
+        ],
+        "practice": [
+          "Restart the script (or Node process) and confirm `collection.count()` still returns 4 — persistence works without re-ingesting.",
+          "Delete chunk `s2` with `collection.delete(ids=[\"s2\"])`, re-run the battery query, and confirm it no longer appears.",
+          "Combine filters with `$and`: find chunks where source is 'policy' AND year >= 2025.",
+          "Create a second collection with `hnsw:space` set to `l2`, insert the same data, and compare the distance values for the same query.",
+          "Ingest the chunked `doc.txt` from the chunking lab (20+ chunks) with a `chunk_index` metadata field, then retrieve only chunks where `chunk_index` < 5."
+        ]
+      }
+    },
+    {
+      "id": "retrieval-process",
+      "title": "Retrieval Process",
+      "subsection": "The RAG Pipeline",
+      "minutes": 6,
+      "intro": "Retrieval turns a user query into the top-k most relevant chunks, using vector search, often combined with keyword search and reranking.",
+      "summary": [
+        "The baseline retrieval flow: embed the query, run ANN search in the vector store, take the top-k chunks (k is typically 3-10). But pure vector search has known failure modes: it misses exact terms (product codes, error strings, names) and it can return chunks that are topically similar yet useless for the actual question. Production systems therefore layer techniques on top of the baseline, and this layering is where most RAG quality gains come from.",
+        "Hybrid search runs dense vector search and sparse keyword search (BM25) in parallel and fuses the ranked lists, usually with Reciprocal Rank Fusion (RRF). Keywords catch the exact-match cases embeddings miss; embeddings catch the paraphrases keywords miss. Most vector databases (Weaviate, Qdrant, OpenSearch, pgvector setups) support this natively. On top of hybrid retrieval, reranking adds a second, more accurate pass: retrieve a generous candidate set (top 25-100) with fast search, then score each query-chunk pair with a cross-encoder reranker (Cohere Rerank, BGE-reranker, Voyage rerank) that reads both texts together, and keep only the best 3-5 for the prompt. Rerankers are slower per pair but far more precise than embedding similarity, so the retrieve-wide-then-rerank pattern reliably lifts answer quality.",
+        "The query itself is also fair game. Query rewriting uses an LLM to turn a vague or conversational question (with pronouns referring to earlier turns) into a self-contained search query. Multi-query retrieval generates several phrasings and unions the results. HyDE embeds a hypothetical generated answer instead of the question, since answers look more like the passages that contain them. Measure all of it with retrieval metrics, hit rate (is a correct chunk in the top-k?) and MRR/NDCG (how high is it ranked?), over a labeled evaluation set, because retrieval failures are invisible in casual testing yet account for the majority of bad RAG answers."
+      ],
+      "keyPoints": [
+        "Baseline: embed query, ANN search, top-k of 3-10 chunks; tune k against context budget and noise.",
+        "Hybrid search (BM25 + vectors, fused with RRF) fixes exact-match misses on IDs, codes, and names.",
+        "Retrieve wide then rerank: take top 25-100 candidates, rescore with a cross-encoder, keep the best 3-5.",
+        "Rewrite conversational queries into self-contained ones before searching; pronouns kill retrieval in multi-turn chat.",
+        "Apply metadata/permission filters at search time so users can only retrieve documents they may see.",
+        "Evaluate with hit rate and MRR on a labeled query set; most bad RAG answers are retrieval misses, not generation errors."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "What is Retrieval-Augmented Generation (RAG)?",
+          "url": "https://cloud.google.com/use-cases/retrieval-augmented-generation",
+          "type": "article"
+        },
+        {
+          "title": "What Is Retrieval-Augmented Generation, aka RAG?",
+          "url": "https://blogs.nvidia.com/blog/what-is-retrieval-augmented-generation/",
+          "type": "article"
+        }
+      ],
+      "handsOn": {
+        "goal": "Build top-k retrieval over a small corpus, watch it surface a plausible-but-wrong distractor, then fix it with metadata filtering and a rerank step.",
+        "steps": [
+          {
+            "title": "Setup",
+            "explanation": "Install the OpenAI SDK and numpy. We keep retrieval in plain arrays so every scoring decision is visible — the same logic transfers directly to any vector database.",
+            "python": "pip install openai numpy\nexport OPENAI_API_KEY=\"sk-...\"",
+            "javascript": "npm init -y && npm install openai\nexport OPENAI_API_KEY=\"sk-...\""
+          },
+          {
+            "title": "Build and embed a corpus with metadata",
+            "explanation": "Eight documents across three sources: specs, policy, and blog. The blog posts about batteries are deliberate distractors — semantically close to spec questions but the wrong source for an answer.",
+            "python": "# retrieval_lab.py\nfrom openai import OpenAI\nimport numpy as np\n\nclient = OpenAI()\n\nCORPUS = [\n    {\"text\": \"The X100 laptop battery lasts about 10 hours.\", \"source\": \"specs\"},\n    {\"text\": \"The X100 weighs 1.3 kg and has a 14-inch screen.\", \"source\": \"specs\"},\n    {\"text\": \"The X200 desktop has 32GB RAM and a 1TB SSD.\", \"source\": \"specs\"},\n    {\"text\": \"Returns are accepted within 30 days with a receipt.\", \"source\": \"policy\"},\n    {\"text\": \"Refunds arrive 5-7 business days after we receive the item.\", \"source\": \"policy\"},\n    {\"text\": \"Warranty claims require proof of purchase and a serial number.\", \"source\": \"policy\"},\n    {\"text\": \"Our office battery recycling program runs every Friday.\", \"source\": \"blog\"},\n    {\"text\": \"Tips for extending laptop battery health: avoid full discharges.\", \"source\": \"blog\"},\n]\n\nresp = client.embeddings.create(\n    model=\"text-embedding-3-small\", input=[d[\"text\"] for d in CORPUS])\nvecs = np.array([d.embedding for d in resp.data])\nprint(\"indexed\", len(CORPUS), \"docs\")",
+            "javascript": "// retrievalLab.mjs\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nconst CORPUS = [\n  { text: \"The X100 laptop battery lasts about 10 hours.\", source: \"specs\" },\n  { text: \"The X100 weighs 1.3 kg and has a 14-inch screen.\", source: \"specs\" },\n  { text: \"The X200 desktop has 32GB RAM and a 1TB SSD.\", source: \"specs\" },\n  { text: \"Returns are accepted within 30 days with a receipt.\", source: \"policy\" },\n  { text: \"Refunds arrive 5-7 business days after we receive the item.\", source: \"policy\" },\n  { text: \"Warranty claims require proof of purchase and a serial number.\", source: \"policy\" },\n  { text: \"Our office battery recycling program runs every Friday.\", source: \"blog\" },\n  { text: \"Tips for extending laptop battery health: avoid full discharges.\", source: \"blog\" },\n];\n\nconst resp = await client.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: CORPUS.map((d) => d.text),\n});\nconst vecs = resp.data.map((d) => d.embedding);\nconsole.log(\"indexed\", CORPUS.length, \"docs\");"
+          },
+          {
+            "title": "Baseline top-k retrieval",
+            "explanation": "Embed the question, score every document, return the k best. Run the battery question and look closely: the blog distractors rank high even though the user wants the spec sheet. Naive top-k has no notion of intent.",
+            "python": "def embed(text):\n    r = client.embeddings.create(model=\"text-embedding-3-small\", input=text)\n    return np.array(r.data[0].embedding)\n\ndef top_k(question, k=3, idxs=None):\n    idxs = idxs if idxs is not None else range(len(CORPUS))\n    q = embed(question)\n    scored = [(float(q @ vecs[i]), i) for i in idxs]  # unit vectors: dot = cosine\n    return sorted(scored, reverse=True)[:k]\n\nprint(\"Q: How long does the X100 battery last?\")\nfor score, i in top_k(\"How long does the X100 battery last?\"):\n    print(f\"  {score:.3f} [{CORPUS[i]['source']}] {CORPUS[i]['text']}\")\n# note how blog posts about batteries sneak into the top 3",
+            "javascript": "function dot(a, b) {\n  let s = 0;\n  for (let i = 0; i < a.length; i++) s += a[i] * b[i];\n  return s; // unit vectors: dot = cosine\n}\n\nasync function embed(text) {\n  const r = await client.embeddings.create({\n    model: \"text-embedding-3-small\", input: text });\n  return r.data[0].embedding;\n}\n\nasync function topK(question, k = 3, idxs = null) {\n  const candidates = idxs ?? CORPUS.map((_, i) => i);\n  const q = await embed(question);\n  return candidates\n    .map((i) => ({ score: dot(q, vecs[i]), i }))\n    .sort((a, b) => b.score - a.score)\n    .slice(0, k);\n}\n\nconsole.log(\"Q: How long does the X100 battery last?\");\nfor (const { score, i } of await topK(\"How long does the X100 battery last?\"))\n  console.log(`  ${score.toFixed(3)} [${CORPUS[i].source}] ${CORPUS[i].text}`);\n// note how blog posts about batteries sneak into the top 3"
+          },
+          {
+            "title": "Add metadata filtering",
+            "explanation": "Restrict the candidate set to one source before scoring — exactly what a vector DB `where` clause does. The same battery question now only competes against spec documents, and the distractors are gone.",
+            "python": "def top_k_filtered(question, k=3, source=None):\n    idxs = [i for i, d in enumerate(CORPUS)\n            if source is None or d[\"source\"] == source]\n    return top_k(question, k, idxs=idxs)\n\nprint(\"Q (specs only): How long does the X100 battery last?\")\nfor score, i in top_k_filtered(\n        \"How long does the X100 battery last?\", source=\"specs\"):\n    print(f\"  {score:.3f} [{CORPUS[i]['source']}] {CORPUS[i]['text']}\")",
+            "javascript": "async function topKFiltered(question, k = 3, source = null) {\n  const idxs = CORPUS\n    .map((d, i) => ({ d, i }))\n    .filter(({ d }) => source === null || d.source === source)\n    .map(({ i }) => i);\n  return topK(question, k, idxs);\n}\n\nconsole.log(\"Q (specs only): How long does the X100 battery last?\");\nfor (const { score, i } of await topKFiltered(\n  \"How long does the X100 battery last?\", 3, \"specs\"))\n  console.log(`  ${score.toFixed(3)} [${CORPUS[i].source}] ${CORPUS[i].text}`);"
+          },
+          {
+            "title": "Overfetch and rerank",
+            "explanation": "The two-stage pattern: fetch a generous candidate set (k=6) with fast vector search, then rerank with a more precise signal — here, keyword overlap with the question — and keep the best 2. Production systems swap the keyword scorer for a cross-encoder or an LLM reranker.",
+            "python": "def rerank(question, candidates, final_k=2):\n    q_words = set(question.lower().replace(\"?\", \"\").split())\n    def keyword_overlap(i):\n        return len(q_words & set(CORPUS[i][\"text\"].lower().split()))\n    # sort by keyword overlap first, vector score as tiebreaker\n    rescored = sorted(candidates,\n                      key=lambda si: (keyword_overlap(si[1]), si[0]),\n                      reverse=True)\n    return rescored[:final_k]\n\nquestion = \"When do refunds arrive after a return?\"\ncandidates = top_k(question, k=6)\nprint(\"after rerank:\")\nfor score, i in rerank(question, candidates):\n    print(f\"  {score:.3f} [{CORPUS[i]['source']}] {CORPUS[i]['text']}\")",
+            "javascript": "function rerank(question, candidates, finalK = 2) {\n  const qWords = new Set(question.toLowerCase().replace(\"?\", \"\").split(\" \"));\n  const overlap = (i) =>\n    CORPUS[i].text.toLowerCase().split(\" \")\n      .filter((w) => qWords.has(w)).length;\n  // sort by keyword overlap first, vector score as tiebreaker\n  return [...candidates]\n    .sort((a, b) => overlap(b.i) - overlap(a.i) || b.score - a.score)\n    .slice(0, finalK);\n}\n\nconst question = \"When do refunds arrive after a return?\";\nconst candidates = await topK(question, 6);\nconsole.log(\"after rerank:\");\nfor (const { score, i } of rerank(question, candidates))\n  console.log(`  ${score.toFixed(3)} [${CORPUS[i].source}] ${CORPUS[i].text}`);"
+          }
+        ],
+        "practice": [
+          "Write 5 test questions with known correct documents and measure hit-rate@3 for baseline vs filtered retrieval.",
+          "Add a similarity threshold: if the best score is below 0.35, return an empty list — test it with the question 'What is the weather today?'.",
+          "Replace the keyword reranker with an LLM rerank: ask `gpt-4o-mini` to rate each candidate's relevance from 0-10 and sort by its scores.",
+          "Implement Reciprocal Rank Fusion: combine the vector ranking and a pure keyword ranking with score = sum of 1/(60 + rank), and compare against either alone.",
+          "Scale the corpus to 100 docs (generate variations) and time brute-force retrieval — estimate at what corpus size you would actually need a vector database."
+        ]
+      }
+    },
+    {
+      "id": "generation",
+      "title": "Generation",
+      "subsection": "The RAG Pipeline",
+      "minutes": 4,
+      "intro": "Generation assembles retrieved chunks and the question into a prompt and has the LLM produce a grounded, ideally cited, answer.",
+      "summary": [
+        "Generation is where retrieval pays off or gets squandered. The standard pattern: a system prompt establishing the assistant's role and grounding rules, the retrieved chunks formatted as a context block (each labeled with its source), and the user's question. The critical instructions are to answer only from the provided context, to say \"I don't know\" or ask for clarification when the context does not contain the answer, and to cite which source supports each claim. Without the explicit fallback instruction, models will smoothly blend retrieved facts with invented ones, which is the classic RAG failure mode.",
+        "Context assembly is a token-budgeting exercise. Order matters: models attend best to the beginning and end of the prompt (the lost-in-the-middle effect), so put the strongest chunks first or last rather than buried mid-context. More chunks is not better past a point; irrelevant chunks actively distract the model and dilute attention, which is another reason reranking down to a few high-precision chunks beats stuffing the window. Label chunks with identifiers (`[1] source: refund-policy.md`) so the model can emit verifiable citations your UI can render as links.",
+        "Finally, evaluate generation separately from retrieval. The standard RAG triad: faithfulness/groundedness (is every claim supported by the retrieved context?), answer relevance (does it address the question?), and context relevance (was the retrieved context useful?). Tools like Ragas and LLM-as-judge evals automate these. Streaming the response, caching frequent answers, and choosing the right model tier (a small fast model is often enough once context is good) round out the production concerns."
+      ],
+      "keyPoints": [
+        "Always instruct the model to answer only from context and to say \"I don't know\" when context lacks the answer.",
+        "Label chunks with source IDs and require citations; uncited RAG answers are unverifiable and erode trust.",
+        "Lost in the middle: place the best chunks at the start or end of the context block, not buried in between.",
+        "Fewer, better chunks beat a stuffed context window; irrelevant chunks measurably degrade answer quality.",
+        "Evaluate the RAG triad: faithfulness, answer relevance, and context relevance (e.g. with Ragas or LLM-as-judge).",
+        "Once retrieval is precise, a cheaper/faster model often suffices for generation; spend quality budget on retrieval first."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "What is RAG (Retrieval-Augmented Generation)?",
+          "url": "https://aws.amazon.com/what-is/retrieval-augmented-generation/",
+          "type": "article"
+        },
+        {
+          "title": "Retrieval Augmented Generation (RAG) Explained in 8 Minutes!",
+          "url": "https://www.youtube.com/watch?v=HREbdmOSQ18",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Turn retrieved chunks into a grounded, citation-rich answer — and make the model reliably say 'I don't know' when the context cannot answer the question.",
+        "steps": [
+          {
+            "title": "Setup",
+            "explanation": "Only the OpenAI SDK is needed — this lab focuses purely on the generation half of RAG, so we simulate the retriever's output with hardcoded chunks.",
+            "python": "pip install openai\nexport OPENAI_API_KEY=\"sk-...\"",
+            "javascript": "npm init -y && npm install openai\nexport OPENAI_API_KEY=\"sk-...\""
+          },
+          {
+            "title": "Simulate retrieved chunks",
+            "explanation": "In a real pipeline these come from your vector store. Each chunk has an `id` and a `source` so the model can cite them — citations are only possible if you pass identifying info into the prompt.",
+            "python": "# generation_lab.py\nCHUNKS = [\n    {\"id\": 1, \"source\": \"handbook.md\",\n     \"text\": \"Employees accrue 1.5 vacation days per month, capped at 30 days total.\"},\n    {\"id\": 2, \"source\": \"handbook.md\",\n     \"text\": \"Unused vacation days roll over for one year, then expire.\"},\n    {\"id\": 3, \"source\": \"benefits.md\",\n     \"text\": \"Health insurance enrollment opens every November for the next year.\"},\n]",
+            "javascript": "// generationLab.mjs\nconst CHUNKS = [\n  { id: 1, source: \"handbook.md\",\n    text: \"Employees accrue 1.5 vacation days per month, capped at 30 days total.\" },\n  { id: 2, source: \"handbook.md\",\n    text: \"Unused vacation days roll over for one year, then expire.\" },\n  { id: 3, source: \"benefits.md\",\n    text: \"Health insurance enrollment opens every November for the next year.\" },\n];"
+          },
+          {
+            "title": "Build a grounded prompt with numbered citations",
+            "explanation": "Number each passage and give the model three explicit rules: answer only from the passages, cite like `[1]`, and reply exactly 'I don't know.' when the context lacks the answer. Vague instructions like 'be accurate' do not work — the escape hatch must be explicit.",
+            "python": "def build_prompt(question, chunks):\n    context = \"\\n\".join(\n        f\"[{c['id']}] ({c['source']}) {c['text']}\" for c in chunks)\n    system = (\n        \"Answer using ONLY the numbered context passages. \"\n        \"Cite the passages you used like [1] or [1][2]. \"\n        \"If the passages do not contain the answer, reply exactly: I don't know.\"\n    )\n    user = f\"Context:\\n{context}\\n\\nQuestion: {question}\"\n    return system, user\n\nsystem, user = build_prompt(\"How many vacation days do I accrue?\", CHUNKS)\nprint(user)",
+            "javascript": "function buildPrompt(question, chunks) {\n  const context = chunks\n    .map((c) => `[${c.id}] (${c.source}) ${c.text}`)\n    .join(\"\\n\");\n  const system =\n    \"Answer using ONLY the numbered context passages. \" +\n    \"Cite the passages you used like [1] or [1][2]. \" +\n    \"If the passages do not contain the answer, reply exactly: I don't know.\";\n  const user = `Context:\\n${context}\\n\\nQuestion: ${question}`;\n  return { system, user };\n}\n\nconst { user } = buildPrompt(\"How many vacation days do I accrue?\", CHUNKS);\nconsole.log(user);"
+          },
+          {
+            "title": "Generate the grounded answer",
+            "explanation": "Call `gpt-4o-mini` with `temperature: 0` for reproducible behavior while testing. The answer should state the fact and carry a `[1]` citation you could render as a link in a UI.",
+            "python": "from openai import OpenAI\n\nclient = OpenAI()\n\ndef answer(question):\n    system, user = build_prompt(question, CHUNKS)\n    resp = client.chat.completions.create(\n        model=\"gpt-4o-mini\",\n        temperature=0,\n        messages=[\n            {\"role\": \"system\", \"content\": system},\n            {\"role\": \"user\", \"content\": user},\n        ],\n    )\n    return resp.choices[0].message.content\n\nprint(answer(\"How many vacation days do I accrue per month?\"))\n# e.g. \"You accrue 1.5 vacation days per month, capped at 30 days [1].\" ",
+            "javascript": "import OpenAI from \"openai\";\n\nconst client = new OpenAI();\n\nasync function answer(question) {\n  const { system, user } = buildPrompt(question, CHUNKS);\n  const resp = await client.chat.completions.create({\n    model: \"gpt-4o-mini\",\n    temperature: 0,\n    messages: [\n      { role: \"system\", content: system },\n      { role: \"user\", content: user },\n    ],\n  });\n  return resp.choices[0].message.content;\n}\n\nconsole.log(await answer(\"How many vacation days do I accrue per month?\"));\n// e.g. \"You accrue 1.5 vacation days per month, capped at 30 days [1].\" "
+          },
+          {
+            "title": "Test both cases: answerable and unanswerable",
+            "explanation": "The critical RAG failure mode is hallucinating when retrieval misses. Ask one question the context covers and one it does not, then assert the refusal — this assertion belongs in your test suite.",
+            "python": "answerable = answer(\"Do unused vacation days expire?\")\nunanswerable = answer(\"What is the parental leave policy?\")\n\nprint(\"ANSWERABLE:  \", answerable)\nprint(\"UNANSWERABLE:\", unanswerable)\n\nassert \"[2]\" in answerable, \"expected a citation of passage 2\"\nassert \"don't know\" in unanswerable.lower(), \"model hallucinated!\"\nprint(\"both checks passed\")",
+            "javascript": "const answerable = await answer(\"Do unused vacation days expire?\");\nconst unanswerable = await answer(\"What is the parental leave policy?\");\n\nconsole.log(\"ANSWERABLE:  \", answerable);\nconsole.log(\"UNANSWERABLE:\", unanswerable);\n\nif (!answerable.includes(\"[2]\"))\n  throw new Error(\"expected a citation of passage 2\");\nif (!unanswerable.toLowerCase().includes(\"don't know\"))\n  throw new Error(\"model hallucinated!\");\nconsole.log(\"both checks passed\");"
+          }
+        ],
+        "practice": [
+          "Remove the 'reply exactly: I don't know' instruction and re-run the parental-leave question 3 times — how often does the model invent a policy?",
+          "Add a chunk that contradicts chunk 1 (e.g. '2 vacation days per month') and see how the model handles the conflict; then add an instruction telling it to flag contradictions.",
+          "Write 5 question/expected-citation pairs and a loop that checks the right `[n]` appears in each answer — your first generation eval.",
+          "Ask a question answerable only by combining chunks 1 and 2 ('If I save all my days for 14 months, how many do I have?') and check that both get cited.",
+          "Switch the model to `gpt-5-mini` and compare citation accuracy and refusal behavior on the same test set."
+        ]
+      }
+    },
+    {
+      "id": "using-sdks-directly",
+      "title": "Using SDKs Directly",
+      "subsection": "Ways of Implementing RAG",
+      "minutes": 7,
+      "intro": "You can build a complete RAG system with plain SDK calls — an embeddings API, a vector store client, and a chat call — no framework required.",
+      "summary": [
+        "Frameworks like LangChain and LlamaIndex are conveniences, not requirements. RAG is just a sequence of API calls you can write yourself: split text (a utility package like `@langchain/textsplitters` or even a regex-based splitter), call an embeddings endpoint (OpenAI, Cohere, Voyage, or a local model) for each chunk, upsert vectors into any store (Supabase/pgvector, Pinecone, Qdrant, Chroma, or a NumPy array for small corpora), then at query time embed the question, fetch the nearest chunks, and pass them in a prompt to a chat model.",
+        "Building it once by hand is the best way to actually understand RAG, and many teams keep the hand-rolled version in production deliberately. The benefits: zero framework lock-in and breaking-change churn, fully transparent prompts and retrieval logic (no abstraction layers to debug through), trivially easy to add your own reranking, filtering, caching, or logging, and fewer dependencies. The costs appear when you need lots of integrations quickly: document loaders for 30 file formats, dozens of vector store backends, and prebuilt patterns like parent-document retrieval are where frameworks earn their keep.",
+        "A reasonable rule: if your RAG pipeline is one corpus, one embedding model, and one retrieval strategy, direct SDK calls are usually simpler and more maintainable than a framework. Reach for a framework when you are integrating many data sources and stores, or you want to prototype several retrieval strategies fast and swap components without rewriting glue code."
+      ],
+      "keyPoints": [
+        "A minimal RAG is roughly 30 lines: embed chunks, store vectors, embed query, cosine top-k, prompt the chat model.",
+        "Direct SDK code gives full prompt/retrieval transparency, easier debugging, and no framework version churn.",
+        "Use Postgres+pgvector or Supabase Vector to keep embeddings next to your existing app data with normal SQL.",
+        "Normalize vectors (or use cosine similarity) so dot products are valid similarity scores.",
+        "For corpora under ~100k chunks, in-process search (NumPy/FAISS/Chroma) is often fast enough; skip the managed DB.",
+        "Frameworks pay off for breadth (loaders, stores, retrieval patterns), not for the core loop, which is trivial."
+      ],
+      "code": [
+        {
+          "title": "Minimal RAG with the OpenAI SDK only",
+          "language": "python",
+          "code": "from openai import OpenAI\nimport numpy as np\n\nclient = OpenAI()\ndocs = [\n    \"Refunds are processed within 5 business days of approval.\",\n    \"Premium plans include 24/7 phone and chat support.\",\n    \"All customer data is encrypted at rest using AES-256.\",\n]\n\ndef embed(texts):\n    resp = client.embeddings.create(model=\"text-embedding-3-small\", input=texts)\n    return np.array([d.embedding for d in resp.data])\n\ndoc_vecs = embed(docs)                    # 1. index once (vectors are unit-norm)\n\nquery = \"How long do refunds take?\"\nq_vec = embed([query])[0]                 # 2. embed the query (same model!)\nscores = doc_vecs @ q_vec                 # 3. cosine similarity via dot product\ntop = docs[int(scores.argmax())]          # 4. retrieve best chunk\n\nanswer = client.responses.create(         # 5. generate, grounded in context\n    model=\"gpt-5\",\n    input=f\"Answer ONLY from this context:\\n{top}\\n\\nQuestion: {query}\",\n)\nprint(answer.output_text)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Langchain Text Splitter Package",
+          "url": "https://www.npmjs.com/package/@langchain/textsplitters",
+          "type": "official"
+        },
+        {
+          "title": "OpenAI Embedding API",
+          "url": "https://platform.openai.com/docs/guides/embeddings",
+          "type": "official"
+        },
+        {
+          "title": "Supabase AI & Vector Documentation",
+          "url": "https://supabase.com/docs/guides/ai",
+          "type": "official"
+        }
+      ],
+      "handsOn": {
+        "goal": "Assemble everything from this section into a clean two-file RAG app — ingest and query — using only the openai and chromadb SDKs, no frameworks.",
+        "steps": [
+          {
+            "title": "Setup the project",
+            "explanation": "Create a project folder with a `docs/` directory holding two source files. Python runs Chroma embedded; JS needs `chroma run` in a separate terminal.",
+            "python": "mkdir rag-app && cd rag-app && mkdir docs\nprintf 'Returns are accepted within 30 days of purchase with a receipt.\\nRefunds are issued to the original payment method within 5-7 business days.\\nWarranty claims require proof of purchase.\\n' > docs/policy.txt\nprintf 'The X100 laptop has 16GB RAM, a 512GB SSD, and 10-hour battery life.\\nThe X100 weighs 1.3 kg and has a 14-inch display.\\n' > docs/specs.txt\npip install openai chromadb\nexport OPENAI_API_KEY=\"sk-...\"",
+            "javascript": "mkdir rag-app && cd rag-app && mkdir docs && npm init -y\nprintf 'Returns are accepted within 30 days of purchase with a receipt.\\nRefunds are issued to the original payment method within 5-7 business days.\\nWarranty claims require proof of purchase.\\n' > docs/policy.txt\nprintf 'The X100 laptop has 16GB RAM, a 512GB SSD, and 10-hour battery life.\\nThe X100 weighs 1.3 kg and has a 14-inch display.\\n' > docs/specs.txt\nnpm install openai chromadb\nexport OPENAI_API_KEY=\"sk-...\"\n# in another terminal: pip install chromadb && chroma run --path ./chroma-data"
+          },
+          {
+            "title": "ingest part 1 — load and chunk",
+            "explanation": "Read every `.txt` file in `docs/` and split it with the fixed-size + overlap chunker you built earlier. Each record keeps an id and metadata so answers can cite their source file.",
+            "python": "# ingest.py (part 1)\nimport glob, os\n\ndef chunk(text, size=500, overlap=100):\n    out, start = [], 0\n    while start < len(text):\n        out.append(text[start:start + size])\n        start += size - overlap\n    return out\n\ndef load_chunks(folder=\"docs\"):\n    records = []\n    for path in sorted(glob.glob(f\"{folder}/*.txt\")):\n        name = os.path.basename(path)\n        for i, c in enumerate(chunk(open(path).read())):\n            records.append({\"id\": f\"{name}-{i}\", \"text\": c,\n                            \"meta\": {\"source\": name, \"chunk\": i}})\n    return records\n\nif __name__ == \"__main__\":\n    print(f\"{len(load_chunks())} chunks loaded\")",
+            "javascript": "// ingest.mjs (part 1)\nimport { readFileSync, readdirSync } from \"node:fs\";\n\nexport function chunk(text, size = 500, overlap = 100) {\n  const out = [];\n  for (let start = 0; start < text.length; start += size - overlap)\n    out.push(text.slice(start, start + size));\n  return out;\n}\n\nexport function loadChunks(folder = \"docs\") {\n  const records = [];\n  for (const file of readdirSync(folder).filter((f) => f.endsWith(\".txt\"))) {\n    const text = readFileSync(`${folder}/${file}`, \"utf8\");\n    chunk(text).forEach((c, i) =>\n      records.push({ id: `${file}-${i}`, text: c,\n                     meta: { source: file, chunk: i } }));\n  }\n  return records;\n}\n\nconsole.log(`${loadChunks().length} chunks loaded`);"
+          },
+          {
+            "title": "ingest part 2 — embed and store",
+            "explanation": "Batch-embed all chunks in one call and `upsert` into a persistent Chroma collection. Append this below part 1; re-running ingest is safe because upsert overwrites by id.",
+            "python": "# ingest.py (part 2) — append below part 1\nimport chromadb\nfrom openai import OpenAI\n\nif __name__ == \"__main__\":\n    records = load_chunks()\n    oa = OpenAI()\n    embs = oa.embeddings.create(\n        model=\"text-embedding-3-small\",\n        input=[r[\"text\"] for r in records])\n    db = chromadb.PersistentClient(path=\"./chroma-data\")\n    col = db.get_or_create_collection(\n        \"kb\", metadata={\"hnsw:space\": \"cosine\"})\n    col.upsert(\n        ids=[r[\"id\"] for r in records],\n        documents=[r[\"text\"] for r in records],\n        embeddings=[e.embedding for e in embs.data],\n        metadatas=[r[\"meta\"] for r in records],\n    )\n    print(f\"Ingested {col.count()} chunks into ./chroma-data\")",
+            "javascript": "// ingest.mjs (part 2) — append below part 1\nimport OpenAI from \"openai\";\nimport { ChromaClient } from \"chromadb\";\n\nconst records = loadChunks();\nconst oa = new OpenAI();\nconst embs = await oa.embeddings.create({\n  model: \"text-embedding-3-small\",\n  input: records.map((r) => r.text),\n});\nconst db = new ChromaClient();\nconst col = await db.getOrCreateCollection({\n  name: \"kb\",\n  metadata: { \"hnsw:space\": \"cosine\" },\n});\nawait col.upsert({\n  ids: records.map((r) => r.id),\n  documents: records.map((r) => r.text),\n  embeddings: embs.data.map((d) => d.embedding),\n  metadatas: records.map((r) => r.meta),\n});\nconsole.log(`Ingested ${await col.count()} chunks`);"
+          },
+          {
+            "title": "query part 1 — retrieve",
+            "explanation": "The query script opens the existing collection (no re-ingestion), embeds the question with the same model, and pulls the top 3 chunks with their source metadata.",
+            "python": "# query.py (part 1)\nimport sys\nimport chromadb\nfrom openai import OpenAI\n\noa = OpenAI()\ndb = chromadb.PersistentClient(path=\"./chroma-data\")\ncol = db.get_collection(\"kb\")\n\ndef retrieve(question, k=3):\n    q = oa.embeddings.create(\n        model=\"text-embedding-3-small\", input=question)\n    res = col.query(query_embeddings=[q.data[0].embedding], n_results=k)\n    return [{\"text\": d, \"source\": m[\"source\"]}\n            for d, m in zip(res[\"documents\"][0], res[\"metadatas\"][0])]",
+            "javascript": "// query.mjs (part 1)\nimport OpenAI from \"openai\";\nimport { ChromaClient } from \"chromadb\";\n\nconst oa = new OpenAI();\nconst db = new ChromaClient();\nconst col = await db.getCollection({ name: \"kb\" });\n\nasync function retrieve(question, k = 3) {\n  const q = await oa.embeddings.create({\n    model: \"text-embedding-3-small\",\n    input: question,\n  });\n  const res = await col.query({\n    queryEmbeddings: [q.data[0].embedding],\n    nResults: k,\n  });\n  return res.documents[0].map((text, i) => ({\n    text,\n    source: res.metadatas[0][i].source,\n  }));\n}"
+          },
+          {
+            "title": "query part 2 — generate with citations",
+            "explanation": "Format the retrieved chunks with their source names, instruct the model to cite sources and refuse when the context is silent, and expose it all behind a command-line argument.",
+            "python": "# query.py (part 2) — append below part 1\ndef answer(question):\n    hits = retrieve(question)\n    context = \"\\n\\n\".join(f\"[{h['source']}] {h['text']}\" for h in hits)\n    resp = oa.chat.completions.create(\n        model=\"gpt-4o-mini\",\n        messages=[\n            {\"role\": \"system\", \"content\":\n             \"Answer only from the context. Cite sources in brackets. \"\n             \"If the context lacks the answer, say: I don't know.\"},\n            {\"role\": \"user\", \"content\":\n             f\"Context:\\n{context}\\n\\nQuestion: {question}\"},\n        ],\n    )\n    return resp.choices[0].message.content\n\nif __name__ == \"__main__\":\n    q = sys.argv[1] if len(sys.argv) > 1 else \"What is the return window?\"\n    print(answer(q))",
+            "javascript": "// query.mjs (part 2) — append below part 1\nasync function answer(question) {\n  const hits = await retrieve(question);\n  const context = hits\n    .map((h) => `[${h.source}] ${h.text}`)\n    .join(\"\\n\\n\");\n  const resp = await oa.chat.completions.create({\n    model: \"gpt-4o-mini\",\n    messages: [\n      { role: \"system\", content:\n        \"Answer only from the context. Cite sources in brackets. \" +\n        \"If the context lacks the answer, say: I don't know.\" },\n      { role: \"user\", content:\n        `Context:\\n${context}\\n\\nQuestion: ${question}` },\n    ],\n  });\n  return resp.choices[0].message.content;\n}\n\nconsole.log(await answer(process.argv[2] ?? \"What is the return window?\"));"
+          },
+          {
+            "title": "Run the pipeline",
+            "explanation": "Ingest once, then query as many times as you like. The last question is not in your docs — confirm the app refuses instead of inventing an answer.",
+            "python": "python ingest.py\npython query.py \"What is the return window?\"\npython query.py \"How heavy is the X100?\"\npython query.py \"Who founded the company?\"   # expect: I don't know.",
+            "javascript": "# make sure `chroma run --path ./chroma-data` is still running\nnode ingest.mjs\nnode query.mjs \"What is the return window?\"\nnode query.mjs \"How heavy is the X100?\"\nnode query.mjs \"Who founded the company?\"   # expect: I don't know."
+          }
+        ],
+        "practice": [
+          "Add a third document `docs/faq.txt` with 5 Q&A lines, re-run ingest, and verify questions from it are answered with the right citation.",
+          "Add a `--source` CLI flag to query.py that passes a `where={\"source\": ...}` filter to the Chroma query.",
+          "Print the retrieval distances alongside answers, and refuse without calling the LLM when the best distance is worse than 0.6.",
+          "Make ingest incremental: store a hash of each file's content in metadata and skip files whose hash has not changed since the last run.",
+          "Wrap query.py in a minimal HTTP endpoint (FastAPI / Express) with a `POST /ask {question}` route — you now have a deployable RAG service."
+        ]
+      }
+    },
+    {
+      "id": "langchain",
+      "title": "LangChain",
+      "subsection": "Ways of Implementing RAG",
+      "minutes": 6,
+      "intro": "LangChain is the most widely used framework for composing LLM apps — loaders, splitters, vector stores, retrievers, and chains under one API.",
+      "summary": [
+        "LangChain's value for RAG is breadth of standardized components: hundreds of document loaders (PDF, Notion, Slack, S3, web), text splitters, every major embedding provider and vector store behind common interfaces, and retrievers implementing advanced patterns (multi-query, parent-document, self-query with metadata filters, contextual compression) that you compose rather than build. Swapping Chroma for pgvector or OpenAI embeddings for Cohere is a one-line change because everything conforms to shared abstractions.",
+        "Since the 0.3+ era, composition uses LCEL (LangChain Expression Language), piping components with the `|` operator into runnables that get streaming, async, batching, and retries for free; a classic RAG chain is `retriever | prompt | llm | parser`. The ecosystem around the core library matters as much as the library: LangGraph for stateful, graph-structured workflows and agents (now the recommended way to build anything beyond a simple chain), and LangSmith for tracing, debugging, and evaluating chains in production. LangChain ships in both Python and JavaScript/TypeScript with near-parity.",
+        "Fair criticism to be aware of: the abstraction layers can obscure the actual prompts being sent, and historically the API surface churned a lot. The practical stance for an engineer in 2026: use LangChain when you want batteries-included integrations and patterns, keep your prompts explicit, and instrument with tracing from day one so you always know exactly what the model received."
+      ],
+      "keyPoints": [
+        "LangChain's moat is integrations: hundreds of loaders, plus uniform interfaces over embeddings and vector stores.",
+        "LCEL pipes components (`retriever | prompt | llm`) and gives streaming, async, and batch for free.",
+        "LangGraph is the modern LangChain way to build agents and stateful multi-step workflows; plain chains for simple RAG.",
+        "LangSmith tracing shows the exact prompts and retrieved docs per call — essential for debugging chain behavior.",
+        "Available in Python and JS/TS; the JS package is the default choice for Node/Next.js RAG apps.",
+        "Watch the abstraction tax: always be able to print the final prompt a chain actually sends to the model."
+      ],
+      "code": [
+        {
+          "title": "RAG chain with LangChain (Python)",
+          "language": "python",
+          "code": "# pip install langchain langchain-openai\nfrom langchain_openai import ChatOpenAI, OpenAIEmbeddings\nfrom langchain_core.vectorstores import InMemoryVectorStore\nfrom langchain_core.prompts import ChatPromptTemplate\n\nstore = InMemoryVectorStore.from_texts(\n    [\"Our SLA guarantees 99.9% uptime.\",\n     \"Support tickets get a first response within 4 hours.\"],\n    embedding=OpenAIEmbeddings(model=\"text-embedding-3-small\"),\n)\nretriever = store.as_retriever(search_kwargs={\"k\": 2})\n\nprompt = ChatPromptTemplate.from_template(\n    \"Answer only from the context.\\n\\nContext:\\n{context}\\n\\nQuestion: {question}\"\n)\nllm = ChatOpenAI(model=\"gpt-5-mini\")\nchain = prompt | llm  # LCEL: components pipe into a runnable\n\nquestion = \"What uptime do we promise?\"\ndocs = retriever.invoke(question)\nresult = chain.invoke({\n    \"context\": \"\\n\".join(d.page_content for d in docs),\n    \"question\": question,\n})\nprint(result.content)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Langchain",
+          "url": "https://www.langchain.com/",
+          "type": "official"
+        },
+        {
+          "title": "What is LangChain?",
+          "url": "https://www.youtube.com/watch?v=1bUy-1hGZpI",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Rebuild the same document-Q&A pipeline with LangChain — loader, splitter, vector store, and a retrieval chain — and see exactly what the framework abstracts away.",
+        "steps": [
+          {
+            "title": "Setup",
+            "explanation": "Install the LangChain core package plus the OpenAI and Chroma integrations, and create the same `docs/` folder as the SDK lab so you can compare outputs directly. JS uses Chroma via `@langchain/community` and needs `chroma run`.",
+            "python": "mkdir -p docs\nprintf 'Returns are accepted within 30 days of purchase with a receipt.\\nRefunds are issued to the original payment method within 5-7 business days.\\n' > docs/policy.txt\nprintf 'The X100 laptop has 16GB RAM, a 512GB SSD, and 10-hour battery life.\\n' > docs/specs.txt\npip install langchain langchain-openai langchain-chroma langchain-community\nexport OPENAI_API_KEY=\"sk-...\"",
+            "javascript": "mkdir -p docs && npm init -y\nprintf 'Returns are accepted within 30 days of purchase with a receipt.\\nRefunds are issued to the original payment method within 5-7 business days.\\n' > docs/policy.txt\nprintf 'The X100 laptop has 16GB RAM, a 512GB SSD, and 10-hour battery life.\\n' > docs/specs.txt\nnpm install langchain @langchain/openai @langchain/community @langchain/core @langchain/textsplitters chromadb\nexport OPENAI_API_KEY=\"sk-...\"\n# in another terminal: pip install chromadb && chroma run --path ./chroma-data"
+          },
+          {
+            "title": "Load and split documents",
+            "explanation": "`DirectoryLoader` + `TextLoader` replace your file-reading loop, and the splitter replaces your hand-rolled chunker. Note that LangChain documents carry `metadata` (including `source`) automatically.",
+            "python": "# rag_lc.py (part 1)\nfrom langchain_community.document_loaders import DirectoryLoader, TextLoader\nfrom langchain_text_splitters import RecursiveCharacterTextSplitter\n\nloader = DirectoryLoader(\"docs\", glob=\"*.txt\", loader_cls=TextLoader)\ndocs = loader.load()\n\nsplitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)\nsplits = splitter.split_documents(docs)\n\nprint(f\"{len(docs)} docs -> {len(splits)} chunks\")\nprint(splits[0].metadata, \"|\", splits[0].page_content[:60])",
+            "javascript": "// ragLc.mjs (part 1)\nimport { DirectoryLoader } from \"langchain/document_loaders/fs/directory\";\nimport { TextLoader } from \"langchain/document_loaders/fs/text\";\nimport { RecursiveCharacterTextSplitter } from \"@langchain/textsplitters\";\n\nconst loader = new DirectoryLoader(\"docs\", {\n  \".txt\": (path) => new TextLoader(path),\n});\nconst docs = await loader.load();\n\nconst splitter = new RecursiveCharacterTextSplitter({\n  chunkSize: 300,\n  chunkOverlap: 50,\n});\nconst splits = await splitter.splitDocuments(docs);\n\nconsole.log(`${docs.length} docs -> ${splits.length} chunks`);\nconsole.log(splits[0].metadata, \"|\", splits[0].pageContent.slice(0, 60));"
+          },
+          {
+            "title": "Embed into a Chroma vector store",
+            "explanation": "`Chroma.from_documents` embeds every chunk and writes the vectors in one call — the embed + upsert loop from the SDK lab collapses to three lines. `as_retriever` wraps the store in the standard retriever interface that chains consume.",
+            "python": "# rag_lc.py (part 2)\nfrom langchain_openai import OpenAIEmbeddings\nfrom langchain_chroma import Chroma\n\nvectorstore = Chroma.from_documents(\n    splits,\n    OpenAIEmbeddings(model=\"text-embedding-3-small\"),\n    persist_directory=\"./chroma-lc\",\n)\nretriever = vectorstore.as_retriever(search_kwargs={\"k\": 3})\n\nfor d in retriever.invoke(\"return window\"):\n    print(d.metadata[\"source\"], \"|\", d.page_content[:60])",
+            "javascript": "// ragLc.mjs (part 2)\nimport { OpenAIEmbeddings } from \"@langchain/openai\";\nimport { Chroma } from \"@langchain/community/vectorstores/chroma\";\n\nconst vectorStore = await Chroma.fromDocuments(\n  splits,\n  new OpenAIEmbeddings({ model: \"text-embedding-3-small\" }),\n  { collectionName: \"rag-lc\" } // talks to chroma run on :8000\n);\nconst retriever = vectorStore.asRetriever(3);\n\nfor (const d of await retriever.invoke(\"return window\"))\n  console.log(d.metadata.source, \"|\", d.pageContent.slice(0, 60));"
+          },
+          {
+            "title": "Compose the retrieval chain",
+            "explanation": "Python uses LCEL: the `|` operator pipes retriever output into the prompt, the prompt into the model, and the model into a string parser. JS uses `createStuffDocumentsChain` + `createRetrievalChain`, which do the same wiring with named helpers.",
+            "python": "# rag_lc.py (part 3)\nfrom langchain_openai import ChatOpenAI\nfrom langchain_core.prompts import ChatPromptTemplate\nfrom langchain_core.runnables import RunnablePassthrough\nfrom langchain_core.output_parsers import StrOutputParser\n\nprompt = ChatPromptTemplate.from_template(\n    \"Answer ONLY from this context. If it lacks the answer, say I don't know.\\n\"\n    \"Context:\\n{context}\\n\\nQuestion: {question}\")\n\ndef fmt(docs):\n    return \"\\n\\n\".join(d.page_content for d in docs)\n\nchain = (\n    {\"context\": retriever | fmt, \"question\": RunnablePassthrough()}\n    | prompt\n    | ChatOpenAI(model=\"gpt-4o-mini\")\n    | StrOutputParser()\n)\nprint(chain.invoke(\"What is the return window?\"))",
+            "javascript": "// ragLc.mjs (part 3)\nimport { ChatOpenAI } from \"@langchain/openai\";\nimport { ChatPromptTemplate } from \"@langchain/core/prompts\";\nimport { createStuffDocumentsChain } from \"langchain/chains/combine_documents\";\nimport { createRetrievalChain } from \"langchain/chains/retrieval\";\n\nconst prompt = ChatPromptTemplate.fromTemplate(\n  \"Answer ONLY from this context. If it lacks the answer, say I don't know.\\n\" +\n    \"Context:\\n{context}\\n\\nQuestion: {input}\"\n);\nconst combineDocsChain = await createStuffDocumentsChain({\n  llm: new ChatOpenAI({ model: \"gpt-4o-mini\" }),\n  prompt,\n});\nconst chain = await createRetrievalChain({\n  retriever,\n  combineDocsChain,\n});\n\nconst res = await chain.invoke({ input: \"What is the return window?\" });\nconsole.log(res.answer);"
+          },
+          {
+            "title": "Query with sources",
+            "explanation": "Run a few questions and print which source files fed each answer. Compare this file to your SDK version — same behavior, roughly half the code, and every component (splitter, store, retriever, LLM) is now swappable through a common interface.",
+            "python": "for q in [\"What is the return window?\",\n          \"What are the X100 specs?\",\n          \"Who founded the company?\"]:\n    print(f\"\\nQ: {q}\")\n    sources = {d.metadata[\"source\"] for d in retriever.invoke(q)}\n    print(\"Sources:\", sorted(sources))\n    print(\"A:\", chain.invoke(q))",
+            "javascript": "for (const q of [\n  \"What is the return window?\",\n  \"What are the X100 specs?\",\n  \"Who founded the company?\",\n]) {\n  const res = await chain.invoke({ input: q });\n  console.log(`\\nQ: ${q}`);\n  console.log(\"Sources:\", [...new Set(res.context.map((d) => d.metadata.source))]);\n  console.log(\"A:\", res.answer);\n}"
+          }
+        ],
+        "practice": [
+          "Swap Chroma for the in-memory store (`InMemoryVectorStore` from `langchain_core.vectorstores` / `MemoryVectorStore` from `langchain/vectorstores/memory`) by changing only the store lines — the chain should run unchanged.",
+          "Change the retriever to `search_type=\"mmr\"` (max marginal relevance) and compare which chunks are retrieved for 'What are the X100 specs?'.",
+          "Modify the prompt to require bracketed source citations and verify the answers include them.",
+          "Use `chain.stream(...)` (Python) or `await chain.stream({ input })` (JS) to print the answer token by token.",
+          "Add a PDF to `docs/` and load it with `PyPDFLoader` / the community `PDFLoader` — how many lines did supporting a new file type cost?"
+        ]
+      }
+    },
+    {
+      "id": "llamaindex",
+      "title": "LlamaIndex",
+      "subsection": "Ways of Implementing RAG",
+      "minutes": 5,
+      "intro": "LlamaIndex is a data framework purpose-built for RAG: ingestion, indexing, and querying your data with LLMs in a few lines.",
+      "summary": [
+        "Where LangChain is a general LLM-app toolkit, LlamaIndex (formerly GPT Index) is laser-focused on the data side of RAG: getting documents in, indexed, and queryable. Its core flow is famously compact: `SimpleDirectoryReader` loads files (PDF, DOCX, Markdown, and more), `VectorStoreIndex.from_documents()` chunks, embeds, and stores them, and `index.as_query_engine()` gives you a retriever-plus-LLM question-answering interface, a working RAG system in roughly five lines. Defaults are sensible (token-based chunking around 1024 tokens with overlap, OpenAI embeddings) and everything is overridable.",
+        "Under the hood, documents become `Node` objects (chunks with metadata and relationships), and multiple index types serve different access patterns: vector indexes for semantic search, summary indexes, keyword indexes, and knowledge-graph/property-graph indexes for relational queries. Query engines compose retrieval with response synthesis strategies (refine, tree-summarize, compact) that handle context overflowing a single prompt. LlamaHub provides hundreds of community data connectors (Notion, Slack, Google Drive, databases), and the ingestion pipeline supports transformations, caching, and incremental updates. In the 0.12+ era it also ships agent workflows, and LlamaCloud/LlamaParse offers managed parsing that is notably strong on complex PDFs and tables.",
+        "Choosing between the big two: LlamaIndex usually gets a document Q&A system to high quality fastest, with cleaner data-pipeline abstractions; LangChain offers a broader canvas for arbitrary LLM workflows and agents. They interoperate fine, and plenty of teams use LlamaIndex for ingestion/retrieval inside an app orchestrated by something else."
+      ],
+      "keyPoints": [
+        "Five-line RAG: load with `SimpleDirectoryReader`, index with `VectorStoreIndex.from_documents`, query via `as_query_engine()`.",
+        "Defaults: ~1024-token chunks with overlap and OpenAI embeddings; swap any component via `Settings` or constructor args.",
+        "Persist with `storage_context.persist()` and reload to avoid re-embedding on every run.",
+        "LlamaHub has hundreds of connectors; LlamaParse handles gnarly PDFs and tables better than naive extraction.",
+        "Response synthesis modes (refine, tree-summarize) deal with retrieved context larger than one prompt.",
+        "Reach for LlamaIndex when the problem is 'Q&A over my documents'; reach for LangChain/LangGraph for broader orchestration."
+      ],
+      "code": [
+        {
+          "title": "LlamaIndex VectorStoreIndex quickstart",
+          "language": "python",
+          "code": "# pip install llama-index\nfrom llama_index.core import (\n    VectorStoreIndex, SimpleDirectoryReader, StorageContext,\n    load_index_from_storage,\n)\n\n# Ingest: load -> chunk -> embed -> store (all defaults)\ndocuments = SimpleDirectoryReader(\"./docs\").load_data()\nindex = VectorStoreIndex.from_documents(documents)\n\n# Query: retrieve top-k and synthesize an answer\nquery_engine = index.as_query_engine(similarity_top_k=3)\nresponse = query_engine.query(\"What does our refund policy say?\")\nprint(response)\nprint(response.source_nodes[0].metadata)  # provenance for citations\n\n# Persist so you don't re-embed every run\nindex.storage_context.persist(persist_dir=\"./storage\")\n# Later: index = load_index_from_storage(\n#     StorageContext.from_defaults(persist_dir=\"./storage\"))"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Llama Index",
+          "url": "https://docs.llamaindex.ai/en/stable/",
+          "type": "official"
+        },
+        {
+          "title": "Introduction to LlamaIndex with Python (2025)",
+          "url": "https://www.youtube.com/watch?v=cCyYGYyCka4",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Build the same document-Q&A app with LlamaIndex and see how few lines its document-centric API needs — index, query engine, cited sources.",
+        "steps": [
+          {
+            "title": "Setup",
+            "explanation": "Install LlamaIndex — the Python `llama-index` metapackage bundles the OpenAI integrations, while JS splits them into `@llamaindex/openai` and `@llamaindex/readers`. Reuse the same `docs/` folder as the previous labs.",
+            "python": "mkdir -p docs\nprintf 'Returns are accepted within 30 days of purchase with a receipt.\\nRefunds are issued to the original payment method within 5-7 business days.\\n' > docs/policy.txt\nprintf 'The X100 laptop has 16GB RAM, a 512GB SSD, and 10-hour battery life.\\n' > docs/specs.txt\npip install llama-index\nexport OPENAI_API_KEY=\"sk-...\"",
+            "javascript": "mkdir -p docs && npm init -y\nprintf 'Returns are accepted within 30 days of purchase with a receipt.\\nRefunds are issued to the original payment method within 5-7 business days.\\n' > docs/policy.txt\nprintf 'The X100 laptop has 16GB RAM, a 512GB SSD, and 10-hour battery life.\\n' > docs/specs.txt\nnpm install llamaindex @llamaindex/openai @llamaindex/readers\nexport OPENAI_API_KEY=\"sk-...\""
+          },
+          {
+            "title": "Configure the models once",
+            "explanation": "LlamaIndex reads global `Settings` for which LLM and embedding model to use. Set them explicitly so you control the models (and the bill) instead of relying on defaults.",
+            "python": "# rag_li.py (part 1)\nfrom llama_index.core import Settings\nfrom llama_index.llms.openai import OpenAI\nfrom llama_index.embeddings.openai import OpenAIEmbedding\n\nSettings.llm = OpenAI(model=\"gpt-4o-mini\")\nSettings.embed_model = OpenAIEmbedding(model=\"text-embedding-3-small\")",
+            "javascript": "// ragLi.mjs (part 1)\nimport { Settings } from \"llamaindex\";\nimport { OpenAI, OpenAIEmbedding } from \"@llamaindex/openai\";\n\nSettings.llm = new OpenAI({ model: \"gpt-4o-mini\" });\nSettings.embedModel = new OpenAIEmbedding({\n  model: \"text-embedding-3-small\",\n});"
+          },
+          {
+            "title": "Load docs and build the index — two lines",
+            "explanation": "`SimpleDirectoryReader` loads every file in the folder (txt, md, pdf, and more), and `VectorStoreIndex.from_documents` chunks, embeds, and indexes them. Loading, chunking, embedding, and storage — four labs of work — collapse into two lines.",
+            "python": "# rag_li.py (part 2)\nfrom llama_index.core import VectorStoreIndex, SimpleDirectoryReader\n\ndocuments = SimpleDirectoryReader(\"docs\").load_data()\nindex = VectorStoreIndex.from_documents(documents)\n\nprint(f\"Indexed {len(documents)} documents\")",
+            "javascript": "// ragLi.mjs (part 2)\nimport { VectorStoreIndex } from \"llamaindex\";\nimport { SimpleDirectoryReader } from \"@llamaindex/readers/directory\";\n\nconst documents = await new SimpleDirectoryReader().loadData({\n  directoryPath: \"./docs\",\n});\nconst index = await VectorStoreIndex.fromDocuments(documents);\n\nconsole.log(`Indexed ${documents.length} documents`);"
+          },
+          {
+            "title": "Ask questions through a query engine",
+            "explanation": "`as_query_engine` wires retrieval and generation together: it embeds the question, fetches `similarity_top_k` chunks, builds the prompt, and calls the LLM. One method call replaces your entire query script from the SDK lab.",
+            "python": "# rag_li.py (part 3)\nquery_engine = index.as_query_engine(similarity_top_k=3)\n\nfor q in [\"What is the return window?\", \"What are the X100 specs?\"]:\n    response = query_engine.query(q)\n    print(f\"\\nQ: {q}\\nA: {response}\")",
+            "javascript": "// ragLi.mjs (part 3)\nconst queryEngine = index.asQueryEngine({ similarityTopK: 3 });\n\nfor (const q of [\"What is the return window?\", \"What are the X100 specs?\"]) {\n  const response = await queryEngine.query({ query: q });\n  console.log(`\\nQ: ${q}\\nA: ${response.toString()}`);\n}"
+          },
+          {
+            "title": "Inspect the retrieved sources",
+            "explanation": "The response object keeps the source nodes that grounded the answer, with similarity scores and file metadata — the raw material for showing citations in a UI or debugging a bad answer.",
+            "python": "response = query_engine.query(\"What is the return window?\")\nfor node in response.source_nodes:\n    print(f\"score={node.score:.3f} \"\n          f\"file={node.metadata.get('file_name')}\")\n    print(\"  \", node.text[:80].replace(\"\\n\", \" \"))",
+            "javascript": "const response = await queryEngine.query({\n  query: \"What is the return window?\",\n});\nfor (const sn of response.sourceNodes ?? []) {\n  console.log(\n    `score=${sn.score?.toFixed(3)} file=${sn.node.metadata.file_name}`\n  );\n  console.log(\"  \", sn.node.getContent().slice(0, 80));\n}"
+          }
+        ],
+        "practice": [
+          "Count the non-blank lines in your LlamaIndex app vs your raw-SDK app from the 'Using SDKs Directly' lab — what exactly did the framework buy you?",
+          "Drop a PDF into `docs/` and re-run — `SimpleDirectoryReader` parses it with zero code changes; verify a question about its content works.",
+          "Change `similarity_top_k` to 1 and to 10 and compare answer quality and token usage for the same question.",
+          "Persist the index (`index.storage_context.persist()` then `load_index_from_storage` in Python; `storageContextFromDefaults({ persistDir })` in JS) so re-runs skip re-embedding.",
+          "Use `index.as_retriever().retrieve(\"refunds\")` (Python) / `index.asRetriever().retrieve(\"refunds\")` (JS) to get raw scored chunks without generation — useful for debugging retrieval in any framework."
+        ]
+      }
+    },
+    {
+      "id": "haystack",
+      "title": "Haystack",
+      "subsection": "Ways of Implementing RAG",
+      "minutes": 4,
+      "intro": "Haystack is deepset's open-source Python framework for building production search and RAG pipelines from explicit, composable components.",
+      "summary": [
+        "Haystack (by deepset) approaches RAG as explicit pipeline engineering. You instantiate components, converters, preprocessors/splitters, embedders, retrievers, rankers, and generators, then wire them into a directed graph with named connections: `pipeline.connect(\"retriever.documents\", \"prompt_builder.documents\")`. Compared with LangChain's chain-style composition, Haystack 2.x pipelines are more verbose but also more transparent and debuggable, which is why it has a strong reputation for production search systems; pipelines can even be serialized to YAML for review and deployment.",
+        "It is backend-agnostic across the search spectrum: document stores include Elasticsearch, OpenSearch, Qdrant, Weaviate, Pinecone, pgvector, and an in-memory store for development, and it treats keyword search (BM25) as a first-class citizen alongside dense embedding retrieval, with built-in support for hybrid retrieval and ranker components for reranking. Model access spans OpenAI, Anthropic, Cohere, Hugging Face, and local inference. That keyword-search DNA, deepset's roots are in extractive QA over Elasticsearch, makes Haystack especially comfortable for teams evolving an existing search product into RAG.",
+        "The ecosystem includes REST API deployment (Hayhooks), evaluation integrations, and deepset's commercial platform for managed pipelines. Choose Haystack when you want production search-plus-RAG with explicit, inspectable pipelines, strong hybrid retrieval, and Elasticsearch/OpenSearch compatibility; it is less sprawling than LangChain but very solid within its lane."
+      ],
+      "keyPoints": [
+        "Haystack 2.x builds RAG as explicit component graphs; verbose but transparent and easy to debug.",
+        "First-class BM25 and hybrid retrieval make it a natural upgrade path from existing Elasticsearch/OpenSearch search.",
+        "Supports many document stores (Elasticsearch, OpenSearch, Qdrant, Weaviate, Pinecone, pgvector) behind one interface.",
+        "Pipelines serialize to YAML, which suits review, versioning, and deployment workflows.",
+        "Ranker components give built-in reranking; generators cover OpenAI, Anthropic, Hugging Face, and local models.",
+        "Backed by deepset with a commercial platform; a strong pick for production search-centric RAG."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Haystack",
+          "url": "https://haystack.deepset.ai/",
+          "type": "official"
+        },
+        {
+          "title": "Haystack Overview",
+          "url": "https://docs.haystack.deepset.ai/docs/intro",
+          "type": "official"
+        },
+        {
+          "title": "deepset-ai/haystack",
+          "url": "https://github.com/deepset-ai/haystack",
+          "type": "opensource"
+        }
+      ]
+    },
+    {
+      "id": "ragflow",
+      "title": "RAGFlow",
+      "subsection": "Ways of Implementing RAG",
+      "minutes": 3,
+      "intro": "RAGFlow is an open-source RAG engine focused on deep document understanding — a self-hostable, UI-driven alternative to coding the pipeline yourself.",
+      "summary": [
+        "RAGFlow (from InfiniFlow) sits at a different altitude than LangChain or LlamaIndex: instead of a library you code against, it is a complete, self-hostable RAG engine with a web UI. You deploy it with Docker, upload documents, pick a chunking template, connect your LLM API keys, and get a working Q&A application with grounded, citation-backed answers, plus REST APIs to integrate it into your own products.",
+        "Its differentiator is deep document understanding. Real enterprise documents are messy PDFs, scans, tables, and forms, and naive text extraction butchers them. RAGFlow ships layout-aware parsing (its DeepDoc component) with OCR and table-structure recognition, and template-based chunking tuned to document types (papers, manuals, resumes, Q&A pairs, legal docs). Crucially, the UI lets humans inspect and edit chunks before they are indexed, acknowledging that parsing quality, not prompting, is where document RAG usually fails. It also offers hybrid retrieval with reranking, knowledge-graph extraction for multi-hop questions, and agent/workflow features in recent releases.",
+        "Consider RAGFlow when you want a ready-made, self-hosted RAG product over messy documents, when non-engineers need to manage the knowledge base through a UI, or when data must stay on your infrastructure. Prefer a code-first framework when RAG is a deeply customized component inside a larger application."
+      ],
+      "keyPoints": [
+        "RAGFlow is an engine with a UI, not a library: Docker-deploy, upload docs, connect an LLM, get cited Q&A plus APIs.",
+        "DeepDoc parsing (OCR, layout, table recognition) targets the messy-PDF problem that breaks naive RAG pipelines.",
+        "Template-based chunking adapts splitting to document type; humans can inspect and fix chunks before indexing.",
+        "Answers include citations to source chunks by default, reducing hallucination risk for end users.",
+        "Self-hosting keeps documents on your infrastructure — often a compliance requirement.",
+        "Pick it for turnkey document Q&A; pick LangChain/LlamaIndex when RAG must be custom code inside your app."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "RagFlow",
+          "url": "https://ragflow.io/",
+          "type": "official"
+        },
+        {
+          "title": "ragflow",
+          "url": "https://github.com/infiniflow/ragflow",
+          "type": "opensource"
+        },
+        {
+          "title": "RagFlow: Ultimate RAG Engine",
+          "url": "https://www.youtube.com/watch?v=ApA-7G7FGRc",
+          "type": "video"
+        }
+      ]
+    }
+  ]
+}

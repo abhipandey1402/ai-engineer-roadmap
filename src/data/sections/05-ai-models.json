@@ -1,0 +1,572 @@
+{
+  "id": "ai-models",
+  "title": "AI Models",
+  "description": "The model landscape: closed vs open source, major providers, and how to choose.",
+  "topics": [
+    {
+      "id": "types-of-models",
+      "title": "Types of Models",
+      "subsection": "Fundamentals",
+      "minutes": 4,
+      "intro": "A map of the main ways AI models are packaged and delivered: open vs closed, pre-trained vs fine-tuned, and hosted vs self-hosted.",
+      "summary": [
+        "Models differ along three practical axes. First, access: open-weight models (Llama, DeepSeek, Qwen, Gemma, Mistral's smaller models) publish their weights so you can download, inspect, fine-tune, and run them anywhere, while closed models (GPT-5.x, Claude Opus/Sonnet 4.x, Gemini 2.5/3) are only reachable through a vendor API. Second, training stage: virtually everything you use today is a pre-trained foundation model that has already learned language from trillions of tokens, then post-trained (instruction tuning, RLHF) into a chat or reasoning model; you rarely train from scratch. Third, deployment: API-hosted models trade control for convenience, while self-hosted models run on your own GPUs for privacy, compliance, or cost reasons.",
+        "There are also functional types worth recognizing. Chat/instruct models follow conversational instructions; reasoning models (OpenAI o-series and GPT-5 thinking modes, Claude extended thinking, DeepSeek R1, Qwen3 thinking mode) spend extra inference-time compute on hard problems; embedding models turn text into vectors for search and RAG; multimodal models accept images, audio, or video; and small language models (SLMs, roughly 1-10B parameters) run on laptops and phones. Agentic systems layer tool use, planning, and memory on top of these base capabilities, which is why understanding the underlying model type matters before you architect anything.",
+        "As an engineer, the type taxonomy is your decision tree: a private internal document Q&A tool might want a self-hosted open model; a consumer product with hard quality requirements probably starts on a frontier closed API; an offline mobile feature needs a small open model. Most teams end up mixing types, routing easy traffic to cheap small models and hard traffic to frontier ones."
+      ],
+      "keyPoints": [
+        "Three practical axes: open vs closed weights, pre-trained vs fine-tuned, API-hosted vs self-hosted.",
+        "Almost all modern work starts from a pre-trained foundation model; training from scratch is a lab-scale activity costing millions of dollars.",
+        "Reasoning models (o-series, R1, extended thinking) trade latency and cost for accuracy on math, code, and multi-step problems.",
+        "Open weights does not always mean open source: many releases (e.g. Llama) ship weights under custom licenses without training data or full reproducibility.",
+        "Embedding models are a separate model type from chat models — you need both for RAG.",
+        "Production systems commonly route between model types: small/cheap for easy traffic, frontier for hard traffic."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Recap of all types of LLM Agents",
+          "url": "http://towardsdatascience.com/recap-of-all-types-of-llm-agents/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "pre-trained-models",
+      "title": "Pre-trained Models",
+      "subsection": "Fundamentals",
+      "minutes": 4,
+      "intro": "Pre-trained models are foundation models that have already learned general patterns from massive datasets, so you adapt them instead of training from scratch.",
+      "summary": [
+        "Pre-training is the expensive first phase of building an LLM: a transformer is trained on trillions of tokens of web text, books, and code with a simple next-token-prediction objective. The result is a 'base model' that has absorbed grammar, facts, reasoning patterns, and coding conventions but is not yet helpful or safe in conversation. Post-training — supervised instruction tuning plus preference optimization like RLHF or DPO — turns that base model into the chat assistants you actually use. The GPT lineage popularized this recipe (generative pre-trained transformer), and every modern family from Claude to Llama follows it.",
+        "The practical payoff is transfer learning: because the heavy lifting happened once during pre-training, you can adapt a model to your domain with comparatively tiny resources. Options range from zero effort (prompting and in-context examples) to light effort (RAG over your documents) to moderate effort (parameter-efficient fine-tuning like LoRA on a few thousand examples) — none of which approach the cost of pre-training, which runs into millions of GPU-hours for frontier models.",
+        "Knowing a model is pre-trained also explains its failure modes. Its knowledge has a training cutoff date; it can hallucinate because it learned statistical patterns rather than a fact database; and it inherits biases from its corpus. That is why grounding techniques (RAG, tool use, web search) sit on top of pre-trained models in almost every production system."
+      ],
+      "keyPoints": [
+        "Pipeline: pre-training (next-token prediction on trillions of tokens) → post-training (instruction tuning + RLHF/DPO) → the chat model you use.",
+        "Pre-training costs millions of dollars in GPU compute; fine-tuning with LoRA can cost a few dollars — never train from scratch unless you are a lab.",
+        "Base models complete text; instruct/chat models follow instructions — always pick the instruct variant for applications.",
+        "Knowledge is frozen at the training cutoff; use RAG or tools for fresh or proprietary data.",
+        "Hallucination is a structural property of next-token prediction, not a bug you can prompt away entirely.",
+        "On Hugging Face, suffixes like `-base` vs `-instruct`/`-it` tell you which training stage a checkpoint represents."
+      ],
+      "code": [
+        {
+          "title": "Use a pre-trained model in three lines (Hugging Face)",
+          "language": "python",
+          "code": "from transformers import pipeline\n\nclf = pipeline(\"sentiment-analysis\")  # downloads a pre-trained model\nprint(clf(\"This roadmap is incredibly useful!\"))\n# [{'label': 'POSITIVE', 'score': 0.9998}]"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Pre-trained Models: Past, Present and Future",
+          "url": "https://www.sciencedirect.com/science/article/pii/S2666651021000231",
+          "type": "article"
+        },
+        {
+          "title": "Transforming Language with Generative Pre-trained Transformers (GPT)",
+          "url": "https://www.youtube.com/watch?v=bdICz_sBI34",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "closed-vs-open-source-models",
+      "title": "Closed vs Open Source Models",
+      "subsection": "Fundamentals",
+      "minutes": 5,
+      "intro": "Closed models are accessed only via a vendor's API, while open-weight models can be downloaded, inspected, fine-tuned, and run on your own hardware.",
+      "summary": [
+        "Closed models — GPT-5.x and the o-series from OpenAI, Claude Opus/Sonnet/Haiku 4.x from Anthropic, Gemini 2.5/3 from Google — generally lead benchmarks, ship with polished tooling (function calling, vision, structured outputs, safety filters), and require zero infrastructure: you pay per token and the vendor handles everything. The trade-offs are vendor lock-in, per-token costs that scale linearly with usage, data leaving your network, model deprecations you don't control, and no ability to inspect or modify the weights.",
+        "Open-weight models — Meta's Llama 3.x/4, DeepSeek V3/R1, Alibaba's Qwen 2.5/3, Google's Gemma, and Mistral's Apache-licensed models — give you the weights. You can run them on-prem for privacy and compliance, fine-tune them on proprietary data, quantize them to fit consumer GPUs, and never worry about a vendor sunsetting your model. The gap to frontier closed models has narrowed dramatically: DeepSeek R1 and Qwen3 matched or beat closed reasoning models on many benchmarks at a fraction of the cost. The trade-offs are that you own serving, scaling, and safety, and the very top of the quality curve still belongs to closed frontier models.",
+        "Note the licensing nuance the guides emphasize: 'open source' is often really 'open weights'. Llama's license has acceptable-use restrictions; training data and code are usually withheld. Truly permissive options (Apache 2.0 / MIT) include Qwen, DeepSeek, Mistral's small models, and Gemma's terms sit in between. In practice most teams adopt a hybrid: closed APIs for the hardest reasoning, open models for high-volume, privacy-sensitive, or cost-sensitive workloads, often behind an OpenAI-compatible gateway so they can switch."
+      ],
+      "keyPoints": [
+        "Closed = quality + convenience + zero ops; open = control + privacy + customization + no per-token vendor bill.",
+        "'Open weights' is not 'open source': check the license — Llama has usage restrictions, while Qwen3, DeepSeek, and Mistral's small models use Apache 2.0/MIT.",
+        "The capability gap has narrowed to months: open models like DeepSeek R1 and Llama 4 trail frontier closed models, not by generations.",
+        "Closed APIs make cost an operating expense (per token); self-hosted open models make it capital expense (GPUs) — break-even depends on volume.",
+        "Closed vendors deprecate models on their schedule; pin versions and plan migrations.",
+        "Hybrid routing (cheap/open for easy traffic, frontier/closed for hard traffic) is the most common production pattern."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Open Source vs Closed LLMs Guide (HatchWorks)",
+          "url": "https://hatchworks.com/blog/gen-ai/open-source-vs-closed-llms-guide/",
+          "type": "article"
+        },
+        {
+          "title": "Open Source vs Closed AI: LLMs, Agents & the AI Stack Explained",
+          "url": "https://www.youtube.com/watch?v=_QfxGZGITGw",
+          "type": "video"
+        },
+        {
+          "title": "Open-Source vs Closed-Source LLMs",
+          "url": "https://www.youtube.com/watch?v=710PDpuLwOc",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "self-hosted-models",
+      "title": "Self-Hosted Models",
+      "subsection": "Fundamentals",
+      "minutes": 5,
+      "intro": "Self-hosting means running open-weight models on infrastructure you control, trading operational effort for privacy, customization, and predictable costs.",
+      "summary": [
+        "Self-hosting an LLM means downloading open weights (Llama, Qwen, DeepSeek, Gemma, Mistral) and serving them from your own machines — a workstation, an on-prem GPU cluster, or cloud GPU instances you manage. The motivations are concrete: data never leaves your network (critical for healthcare, finance, legal), you escape per-token pricing at high volume, you can fine-tune and pin exact model versions, and you avoid rate limits and vendor outages. The DevOps reality is that you now own GPU procurement, inference servers, autoscaling, monitoring, and model updates.",
+        "The standard production stack is an inference engine like vLLM or SGLang (which add continuous batching, paged attention, and an OpenAI-compatible HTTP endpoint), often wrapped in Kubernetes for scaling; for single-machine or development use, Ollama and LM Studio make it a one-command affair. Quantization (4-bit/8-bit GGUF or AWQ) is the key lever for fitting models into available VRAM: a 70B model needs roughly 140 GB at FP16 but about 40 GB at 4-bit. Rule of thumb: parameters x bytes-per-weight, plus 20-40 percent overhead for KV cache.",
+        "The serverless-vs-self-hosted analysis from BentoML is worth internalizing: serverless API inference wins at low or spiky volume because you pay nothing when idle, while self-hosting wins at sustained high throughput where dedicated GPUs amortize. Many teams land in the middle with dedicated managed deployments or GPU rentals. Start with an API, measure real token volumes, and only self-host once the economics or compliance requirements clearly justify the ops burden."
+      ],
+      "keyPoints": [
+        "Top reasons to self-host: data privacy/compliance, cost at sustained high volume, fine-tuned custom models, and version pinning.",
+        "VRAM rule of thumb: FP16 needs ~2 GB per billion parameters; 4-bit quantization cuts that to ~0.5-0.6 GB per billion.",
+        "vLLM/SGLang are the production inference servers; Ollama/LM Studio are the local development tools.",
+        "Most self-host stacks expose an OpenAI-compatible endpoint, so application code barely changes.",
+        "Serverless APIs win at low/spiky traffic (pay per token, zero idle cost); self-hosting wins at high sustained throughput.",
+        "Budget for the hidden costs: GPU utilization monitoring, model upgrades, safety filtering, and on-call ops."
+      ],
+      "code": [
+        {
+          "title": "Serve an open model with an OpenAI-compatible endpoint (vLLM)",
+          "language": "bash",
+          "code": "pip install vllm\nvllm serve meta-llama/Llama-3.3-70B-Instruct \\\n  --quantization awq --max-model-len 32768\n# Now POST to http://localhost:8000/v1/chat/completions"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Self-Hosted LLM: A Practical Guide for DevOps",
+          "url": "https://www.plural.sh/blog/self-hosting-large-language-models/",
+          "type": "article"
+        },
+        {
+          "title": "Serverless vs. self-hosted LLM inference",
+          "url": "https://bentoml.com/llm/llm-inference-basics/serverless-vs-self-hosted-llm-inference",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "choosing-the-right-model",
+      "title": "Choosing the Right Model",
+      "subsection": "Fundamentals",
+      "minutes": 5,
+      "intro": "Model selection is an engineering decision balancing task complexity, quality, latency, cost, context needs, and deployment constraints — measured with evals, not vibes.",
+      "summary": [
+        "Start from the task, not the leaderboard. Classification, extraction, and routine summarization are handled well by small, cheap models (GPT-5 mini/nano, Claude Haiku 4.5, Gemini Flash, or an 8B open model); multi-step reasoning, hard coding, and agentic workflows justify frontier models (GPT-5.x, Claude Opus 4.x, Gemini 3 Pro) or dedicated reasoning modes. Pricing between tiers differs by 10-100x per token, so over-provisioning quality is the most common cost mistake. Also check the hard constraints early: required context window (frontier models offer 200K-1M+ tokens), modalities (vision, audio), function calling quality, structured output support, and data residency.",
+        "The AWS guidance captures the key cultural shift: go 'beyond vibes'. Public benchmarks (MMLU, LMArena, SWE-bench) are useful for shortlisting but are saturated and gameable; the only evaluation that matters is one built from your own task. Assemble a golden dataset of representative inputs with expected outputs, define metrics (exact match, rubric scores, LLM-as-judge with human spot checks), and run candidate models through it. Measure quality, latency (including time-to-first-token for streaming UX), and cost per request together — a model that is 2 percent better but 8x more expensive usually loses.",
+        "Treat the choice as reversible. Abstract the provider behind a thin client or gateway (OpenAI-compatible APIs, OpenRouter, LiteLLM) so you can swap models as the landscape shifts — which it does every few months. A pragmatic default workflow: prototype with a frontier model to establish the quality ceiling, then walk down the price ladder until your evals show degradation, and route heterogeneous traffic to different tiers."
+      ],
+      "keyPoints": [
+        "Prototype with a frontier model to find the quality ceiling, then downgrade until evals degrade — the cheapest model that passes your evals wins.",
+        "Token prices span roughly 100x between nano-tier and frontier reasoning tiers; matching model size to task difficulty is the biggest cost lever.",
+        "Build a golden eval set from your real data before committing; public leaderboards only shortlist candidates.",
+        "Score quality, latency, and cost together; for chat UX, time-to-first-token often matters more than total time.",
+        "Check hard constraints first: context window, modalities, structured outputs, tool-calling reliability, license, and data residency.",
+        "Keep the model swappable via an abstraction layer; re-run evals when vendors release or deprecate models.",
+        "Fine-tuning a smaller model is an option when prompting a big one is too slow or costly at scale."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Choosing the right model",
+          "url": "https://bentoml.com/llm/getting-started/choosing-the-right-model",
+          "type": "article"
+        },
+        {
+          "title": "Beyond vibes: How to properly select the right LLM for the right task",
+          "url": "https://aws.amazon.com/blogs/machine-learning/beyond-vibes-how-to-properly-select-the-right-llm-for-the-right-task/",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "anthropic-claude",
+      "title": "Anthropic Claude",
+      "subsection": "Closed Models",
+      "minutes": 6,
+      "intro": "Claude is Anthropic's family of frontier models, known for strong coding and agentic ability, long-context reliability, and a safety-first design philosophy.",
+      "summary": [
+        "Anthropic, founded by ex-OpenAI researchers, builds Claude with an explicit safety focus ('Constitutional AI' alignment). The current lineup follows a three-tier pattern: Opus 4.x is the frontier tier for the hardest reasoning, coding, and long-horizon agentic work; Sonnet 4.x is the balanced workhorse most products use; and Haiku 4.5 is the fast, low-cost tier for high-volume tasks. Claude models support a 200K-token context window standard (with 1M-token long-context available on recent Sonnet models), vision input, extended thinking (a controllable reasoning mode), tool use, and prompt caching that can cut input costs dramatically for repeated prefixes.",
+        "Claude's standout reputation is in software engineering and agents: Claude models consistently top real-world coding benchmarks like SWE-bench and power tools such as Claude Code, GitHub Copilot options, and many coding agents. Developers also pick Claude for long-document analysis, careful instruction following, and lower hallucination rates on grounded tasks. Pricing follows the tier ladder: Haiku is in the budget class (around a dollar per million input tokens), Sonnet mid-single-digits, and Opus the premium tier — with prompt caching and batch processing offering 50-90 percent discounts.",
+        "Access routes: the claude.ai consumer app (free, Pro, Max plans), the Claude API via the Messages endpoint with official Python and TypeScript SDKs, and cloud marketplaces (Amazon Bedrock, Google Vertex AI) for enterprises that want billing and compliance through their existing cloud. The Claude 101 course and docs walk through prompting patterns that Claude responds well to, such as XML-tagged structure and explicit role/system prompts."
+      ],
+      "keyPoints": [
+        "Three tiers: Opus 4.x (frontier reasoning/agents), Sonnet 4.x (balanced default), Haiku 4.5 (fast and cheap).",
+        "200K-token context standard, with 1M-token long context on recent Sonnet models; vision and tool use across the lineup.",
+        "Best-in-class reputation for coding and agentic tasks (SWE-bench leader; powers Claude Code).",
+        "Extended thinking is a togglable reasoning mode — pay for deeper reasoning only when the task needs it.",
+        "Prompt caching and the Batch API cut costs 50-90 percent for repeated prefixes and offline workloads.",
+        "Available via the Claude API, Amazon Bedrock, and Google Vertex AI; consumer app at claude.ai.",
+        "Claude responds especially well to structured prompts (XML tags, explicit system roles)."
+      ],
+      "code": [
+        {
+          "title": "Claude Messages API quickstart",
+          "language": "python",
+          "code": "# pip install anthropic\nfrom anthropic import Anthropic\n\nclient = Anthropic()  # reads ANTHROPIC_API_KEY\nmsg = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=[{\"role\": \"user\", \"content\": \"Explain prompt caching in one paragraph.\"}],\n)\nprint(msg.content[0].text)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Claude 101",
+          "url": "https://anthropic.skilljar.com/claude-101",
+          "type": "course"
+        },
+        {
+          "title": "Claude",
+          "url": "https://claude.ai",
+          "type": "official"
+        },
+        {
+          "title": "How To Use Claude Pro For Beginners",
+          "url": "https://www.youtube.com/watch?v=J3X_JWQkvo8",
+          "type": "video"
+        },
+        {
+          "title": "Claude FULL COURSE 1 HOUR (Build & Automate Anything)",
+          "url": "https://www.youtube.com/watch?v=KrKhfm2Xuho",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "google-gemini",
+      "title": "Google Gemini",
+      "subsection": "Closed Models",
+      "minutes": 6,
+      "intro": "Gemini is Google DeepMind's natively multimodal model family, distinguished by million-token context windows, strong reasoning, and deep integration across Google's ecosystem.",
+      "summary": [
+        "Gemini was designed multimodal from the ground up: the same model ingests text, images, audio, video, and PDFs rather than bolting vision onto a text model. The current generation spans Gemini 2.5 and Gemini 3. Gemini 2.5 Pro introduced built-in 'thinking' (inference-time reasoning) and a 1M-token context window; 2.5 Flash and Flash-Lite serve the fast/cheap tiers. Gemini 3 Pro pushed the frontier further on reasoning, coding, and agentic benchmarks, and specialized siblings handle generation (Imagen for images, Veo for video) and on-device use (Gemini Nano).",
+        "Gemini's signature strengths are context and modality: a 1M-token window means whole codebases, hour-long videos, or hundreds of pages can go into a single prompt, which simplifies many workflows that would otherwise need RAG. Pricing is aggressive — Flash models are among the cheapest capable models on the market, and Pro tiers undercut comparable frontier models — with a generous free tier through Google AI Studio that makes Gemini the lowest-friction way to start experimenting.",
+        "The ecosystem is the other differentiator. Consumers meet Gemini in the gemini.google.com app, Android, Chrome, and Workspace (Docs, Gmail, Sheets). Developers get the Gemini API through AI Studio for prototypes and Vertex AI for enterprise deployments with grounding (Google Search), code execution, function calling, and structured JSON output built in."
+      ],
+      "keyPoints": [
+        "Natively multimodal: one model handles text, images, audio, video, and PDFs as input.",
+        "1M-token context window on Pro-tier models — entire codebases or hour-long videos in one prompt.",
+        "Tiers: Pro (frontier reasoning), Flash (fast and very cheap), Flash-Lite (cheapest), Nano (on-device); Imagen and Veo cover image/video generation.",
+        "Gemini 2.5 introduced built-in thinking; Gemini 3 pushed frontier reasoning and agentic coding further.",
+        "Google AI Studio offers a generous free tier — the cheapest way to prototype with a frontier-class model.",
+        "Two developer paths: AI Studio API key for quick starts, Vertex AI for enterprise compliance and MLOps."
+      ],
+      "code": [
+        {
+          "title": "Gemini API quickstart",
+          "language": "python",
+          "code": "# pip install google-genai\nfrom google import genai\n\nclient = genai.Client()  # reads GEMINI_API_KEY\nresp = client.models.generate_content(\n    model=\"gemini-2.5-flash\",\n    contents=\"Summarize the difference between Gemini Pro and Flash.\",\n)\nprint(resp.text)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Google AI Training",
+          "url": "https://grow.google/ai/",
+          "type": "course"
+        },
+        {
+          "title": "Google Gemini",
+          "url": "https://gemini.google.com/",
+          "type": "official"
+        },
+        {
+          "title": "Google's Gemini Documentation",
+          "url": "https://workspace.google.com/solutions/ai/",
+          "type": "official"
+        },
+        {
+          "title": "Welcome to the Gemini era",
+          "url": "https://www.youtube.com/watch?v=_fuimO6ErKI",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "openai-gpt-o-series",
+      "title": "OpenAI (GPT, o-series)",
+      "subsection": "Closed Models",
+      "minutes": 6,
+      "intro": "OpenAI offers the GPT family for general intelligence and the o-series legacy of dedicated reasoning models, all served through the most widely adopted API in the industry.",
+      "summary": [
+        "OpenAI's lineup converged with GPT-5: earlier generations split 'fast' GPT models (GPT-4o, GPT-4.1) from 'thinking' o-series reasoning models (o1, o3, o4-mini), but GPT-5.x unifies them — a router or explicit reasoning-effort setting decides how much the model thinks per request. The current ladder is GPT-5.x (frontier), GPT-5 mini (balanced), and GPT-5 nano (high-volume cheap tier), with context windows in the 400K-token range and multimodal input. Specialized models round out the platform: GPT-image for image generation, Sora for video, Whisper and the gpt-4o-transcribe line for speech-to-text, dedicated TTS voices, and the text-embedding-3 family for embeddings.",
+        "Strengths: GPT-5.x models are at or near the frontier on reasoning, math, and coding; tool/function calling and structured outputs (strict JSON schema adherence) are mature; and the ecosystem is unmatched — most tutorials, libraries, and third-party tools assume the OpenAI API shape first. Pricing fits the standard ladder: nano around a few cents per million input tokens, mini in the budget tier, full GPT-5.x in the low-single-dollar input range with reasoning consuming additional 'thinking' tokens; caching and the Batch API halve costs for suitable workloads.",
+        "Developers access everything through the OpenAI Platform. The Responses API is the current primary interface (superseding Chat Completions for new projects), bundling tool use, web search, file search, and stateful conversations. ChatGPT (free/Plus/Pro) is the consumer surface, and Azure OpenAI offers the same models with enterprise contracts. Practical note: the 'o-series' in current marketing means the reasoning models (o1/o3/o4), not Whisper — although Whisper remains OpenAI's well-known open-source speech model."
+      ],
+      "keyPoints": [
+        "GPT-5.x unified the fast GPT line and the o-series reasoning line; reasoning effort is now a per-request setting.",
+        "Tier ladder: GPT-5.x (frontier) → GPT-5 mini (balanced) → GPT-5 nano (cheapest); ~400K-token context on the flagship line.",
+        "Reasoning models bill hidden 'thinking' tokens as output — budget for them on hard tasks.",
+        "The Responses API is the recommended interface for new projects, replacing Chat Completions and the Assistants API.",
+        "Structured Outputs guarantee schema-valid JSON — use it instead of parsing free text.",
+        "Beyond text: Whisper/transcribe (STT), TTS, GPT-image, Sora (video), and text-embedding-3 cover the full modality stack.",
+        "The OpenAI API shape is the de facto industry standard that most other providers emulate."
+      ],
+      "code": [
+        {
+          "title": "OpenAI Responses API quickstart",
+          "language": "python",
+          "code": "# pip install openai\nfrom openai import OpenAI\n\nclient = OpenAI()  # reads OPENAI_API_KEY\nresp = client.responses.create(\n    model=\"gpt-5-mini\",\n    input=\"Give me three test cases for an email validator.\",\n)\nprint(resp.output_text)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "OpenAI Platform",
+          "url": "https://openai.com/api/",
+          "type": "official"
+        },
+        {
+          "title": "OpenAI Models",
+          "url": "https://developers.openai.com/api/docs/models",
+          "type": "official"
+        },
+        {
+          "title": "Your guide to the complete OpenAI models list",
+          "url": "https://www.eesel.ai/blog/openai-models-list",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "mistral",
+      "title": "Mistral",
+      "subsection": "Closed Models",
+      "minutes": 5,
+      "intro": "Mistral AI is the European frontier lab known for efficient models, a hybrid open-weight/commercial strategy, and strong coding and multilingual performance.",
+      "summary": [
+        "Paris-based Mistral AI made its name with Mistral 7B and the Mixtral mixture-of-experts models — small open models that punched far above their weight — and has since grown into Europe's leading AI lab. Its catalog now spans both worlds: commercial API models (Mistral Large and Medium for frontier-tier work, Mistral Small for cost-sensitive tasks) and open-weight releases under Apache 2.0 (recent Small versions, the Magistral reasoning models, Devstral for coding agents, Codestral for code completion, and edge-focused Ministral models). This hybrid strategy means you can prototype on the API and later self-host related open weights.",
+        "Mistral's differentiators are efficiency (strong quality per parameter and per dollar, with fast inference), genuinely good multilingual performance across European languages, and EU data sovereignty — a major draw for companies subject to GDPR or wary of US-only providers. Le Chat is the consumer assistant, and La Plateforme is the developer API with function calling, JSON mode, embeddings, and OCR/document AI. Pricing sits below comparable OpenAI/Anthropic tiers, and the open models can be pulled straight into Ollama or vLLM for free local use.",
+        "For a busy engineer, Mistral is worth evaluating when you need solid mid-tier quality at low cost, European hosting, code-focused models, or an open-weight model you can fine-tune — Codestral in particular is widely used in IDE autocomplete products."
+      ],
+      "keyPoints": [
+        "Hybrid model strategy: commercial Large/Medium/Small API tiers plus genuinely Apache 2.0 open-weight releases.",
+        "Pioneered efficient mixture-of-experts (Mixtral) — strong quality per parameter and low latency.",
+        "Codestral and Devstral target code completion and coding agents; Magistral adds reasoning.",
+        "EU-based with data sovereignty options — a common enterprise reason to choose Mistral under GDPR.",
+        "Le Chat is the consumer app; La Plateforme is the developer API with function calling and JSON mode.",
+        "Open weights run locally: `ollama run mistral` gets you started in one command."
+      ],
+      "code": [
+        {
+          "title": "Run Mistral locally with Ollama",
+          "language": "bash",
+          "code": "ollama run mistral-small3.1\n# or via the API platform (OpenAI-compatible style):\n# pip install mistralai"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Mistral AI",
+          "url": "https://mistral.ai/",
+          "type": "official"
+        },
+        {
+          "title": "Mistral AI: The Gen AI Start-up you did not know existed",
+          "url": "https://www.youtube.com/watch?v=vzrRGd18tAg",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "cohere",
+      "title": "Cohere",
+      "subsection": "Closed Models",
+      "minutes": 4,
+      "intro": "Cohere builds enterprise-focused language models — the Command, Embed, and Rerank families — optimized for RAG, search, and secure business deployments.",
+      "summary": [
+        "Cohere positions itself differently from OpenAI and Anthropic: instead of chasing consumer chat, it targets enterprise NLP. Its flagship generative family is Command — currently led by Command A, an efficiency-focused model that runs on as few as two GPUs while delivering strong agentic and multilingual performance, alongside the earlier Command R+ and Command R models built specifically for retrieval-augmented generation with built-in citation support. The platform's secret weapons are its non-generative models: Embed (multilingual, multimodal embeddings) and Rerank, which re-orders search results and is one of the easiest single-step upgrades to any RAG pipeline's retrieval quality.",
+        "The enterprise angle is concrete: Cohere offers private deployments (VPC, on-prem, air-gapped), trains on business data only with permission, and supports 100+ languages — making it common in regulated industries. Its North platform packages agents and search for enterprises. Pricing is competitive with mid-tier models, and a free trial API key makes experimentation easy.",
+        "Cohere also runs LLM University, a genuinely good free curriculum covering LLM fundamentals, embeddings, semantic search, and RAG — worth bookmarking even if you never use Cohere's API."
+      ],
+      "keyPoints": [
+        "Three model families: Command (generation/agents), Embed (embeddings), Rerank (search re-ordering).",
+        "Command R/R+ and Command A were designed RAG-first, with grounded citations built into the API.",
+        "Rerank is a drop-in quality boost for almost any retrieval pipeline, independent of which LLM you generate with.",
+        "Enterprise focus: private/VPC/on-prem deployment options and strong multilingual support (100+ languages).",
+        "Command A targets efficiency — frontier-adjacent quality on just two GPUs.",
+        "LLM University is a free, high-quality course series on embeddings, search, and RAG."
+      ],
+      "code": [
+        {
+          "title": "Cohere chat quickstart",
+          "language": "python",
+          "code": "# pip install cohere\nimport cohere\n\nco = cohere.ClientV2()  # reads CO_API_KEY\nresp = co.chat(\n    model=\"command-a-03-2025\",\n    messages=[{\"role\": \"user\", \"content\": \"What is reranking in RAG?\"}],\n)\nprint(resp.message.content[0].text)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Cohere",
+          "url": "https://cohere.com/",
+          "type": "official"
+        },
+        {
+          "title": "LLM University - Cohere",
+          "url": "https://cohere.com/llmu",
+          "type": "official"
+        },
+        {
+          "title": "What Does Cohere Do?",
+          "url": "https://medium.com/geekculture/what-does-cohere-do-cdadf6d70435",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "meta-llama",
+      "title": "Meta Llama",
+      "subsection": "Open Source Models",
+      "minutes": 5,
+      "intro": "Llama is Meta's open-weight model family — the ecosystem default that kicked off the open LLM era and remains the most widely fine-tuned and deployed base.",
+      "summary": [
+        "Meta's Llama releases defined the open-weight movement: Llama 2 made open models commercially usable, Llama 3.1 brought a 405B frontier-class model, Llama 3.2 added small on-device and vision variants, and Llama 3.3 70B delivered near-405B quality at a fraction of the size. Llama 4 moved the family to a natively multimodal mixture-of-experts architecture: Scout (compact, with an extremely long context window) and Maverick (larger, stronger general model), both activating only a subset of parameters per token for efficient inference.",
+        "Llama's superpower is its ecosystem. Because the weights are downloadable, every tool supports them first: Ollama, LM Studio, vLLM, Hugging Face, llama.cpp, and all major clouds (Bedrock, Azure, Vertex) serve Llama. There are hundreds of thousands of fine-tunes on the Hugging Face Hub, and most open-source research builds on Llama baselines. Note the license: it's the permissive-but-custom Llama Community License (acceptable-use policy plus a clause requiring companies with over 700M monthly users to get a separate license) — fine for almost everyone, but it is 'open weights', not OSI open source.",
+        "Practically, Llama is the default choice when you want a capable self-hosted model with maximal tooling support: 8B-class models run on a laptop, 70B-class on one or two data-center GPUs (or quantized on a high-end workstation), and hosted Llama via providers like Groq or Together offers some of the cheapest fast inference available."
+      ],
+      "keyPoints": [
+        "Family spans laptop-sized (3B/8B) to frontier-class (70B, 405B, Llama 4 MoE) with vision variants.",
+        "Llama 4 (Scout, Maverick) is natively multimodal MoE with very long context windows.",
+        "Largest open-model ecosystem: first-class support in Ollama, vLLM, llama.cpp, Hugging Face, and every major cloud.",
+        "License is the custom Llama Community License — commercially friendly but with an acceptable-use policy and a 700M-MAU clause.",
+        "Llama 3.3 70B is a sweet spot: near-frontier quality, runs quantized on ~40 GB of VRAM.",
+        "Hosted Llama (Groq, Together, Bedrock) is often the cheapest way to get fast, capable inference."
+      ],
+      "code": [
+        {
+          "title": "Run Llama locally",
+          "language": "bash",
+          "code": "ollama run llama3.3\n# smaller machines:\nollama run llama3.2:3b"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Building with Llama 4",
+          "url": "https://www.deeplearning.ai/short-courses/building-with-llama-4/",
+          "type": "course"
+        },
+        {
+          "title": "Llama",
+          "url": "https://www.llama.com/",
+          "type": "official"
+        }
+      ]
+    },
+    {
+      "id": "deepseek",
+      "title": "DeepSeek",
+      "subsection": "Open Source Models",
+      "minutes": 5,
+      "intro": "DeepSeek is the Chinese lab whose open-weight V3 and R1 models proved frontier-level reasoning could be trained cheaply and given away, shaking the industry in early 2025.",
+      "summary": [
+        "DeepSeek's January 2025 release of R1 was a landmark: an MIT-licensed open-weight reasoning model matching OpenAI's o1 on math and coding benchmarks, reportedly trained for a tiny fraction of typical frontier budgets. It triggered a market-wide rethink of training economics (and a historic one-day Nvidia selloff). The foundation is DeepSeek-V3, a ~671B-parameter mixture-of-experts model that activates only ~37B parameters per token; R1 layers reinforcement-learning-trained chain-of-thought reasoning on top, and the lab also released distilled versions (1.5B-70B, built on Qwen and Llama bases) that bring reasoning ability to consumer hardware. Subsequent V3.x updates merged chat and reasoning into hybrid 'thinking' models and introduced sparse-attention efficiency gains.",
+        "The practical appeal is price-performance: DeepSeek's own API is famously cheap (roughly an order of magnitude below Western frontier pricing, with off-peak discounts), it speaks the OpenAI-compatible API shape so switching is a one-line base_url change, and the open weights mean you can self-host on your own GPUs with full data control. R1's visible chain-of-thought also made it a favorite for studying how reasoning models work.",
+        "Caveats to weigh: the hosted API stores data on servers in China, which many enterprises prohibit — self-hosting or using US/EU hosts (Together, Fireworks, Bedrock) sidesteps this; and the models apply content alignment reflecting Chinese regulations. For cost-sensitive reasoning workloads, math, and code, DeepSeek remains one of the strongest open options."
+      ],
+      "keyPoints": [
+        "DeepSeek-R1 matched o1-class reasoning with MIT-licensed open weights — a watershed for open models.",
+        "V3 architecture: ~671B MoE with only ~37B active parameters per token, enabling cheap inference.",
+        "API pricing is roughly 10x cheaper than Western frontier models, with an OpenAI-compatible endpoint.",
+        "Distilled R1 variants (1.5B-70B) run reasoning on laptops via Ollama.",
+        "Hosted API routes data through China — self-host or use Together/Fireworks/Bedrock for sensitive workloads.",
+        "R1 exposes its chain-of-thought, useful for learning and debugging reasoning behavior."
+      ],
+      "code": [
+        {
+          "title": "DeepSeek via OpenAI-compatible API",
+          "language": "python",
+          "code": "from openai import OpenAI\n\nclient = OpenAI(\n    base_url=\"https://api.deepseek.com\",\n    api_key=\"<DEEPSEEK_API_KEY>\",\n)\nresp = client.chat.completions.create(\n    model=\"deepseek-reasoner\",  # R1; use \"deepseek-chat\" for V3\n    messages=[{\"role\": \"user\", \"content\": \"Prove sqrt(2) is irrational.\"}],\n)\nprint(resp.choices[0].message.content)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "DeepSeek",
+          "url": "https://www.deepseek.com/en/",
+          "type": "official"
+        },
+        {
+          "title": "DeepSeek explained: Everything you need to know",
+          "url": "https://www.techtarget.com/whatis/feature/DeepSeek-explained-Everything-you-need-to-know",
+          "type": "article"
+        },
+        {
+          "title": "What is DeepSeek? AI Model Basics Explained",
+          "url": "https://www.youtube.com/watch?v=KTonvXhsxpc",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "gemma",
+      "title": "Gemma",
+      "subsection": "Open Source Models",
+      "minutes": 4,
+      "intro": "Gemma is Google's family of lightweight open-weight models, distilled from Gemini research and sized to run on laptops, workstations, and single GPUs.",
+      "summary": [
+        "Gemma is Google DeepMind's open counterpart to Gemini, built with the same research and tokenizer but released as downloadable weights. Gemma 2 (2B, 9B, 27B) established the family's reputation for best-in-class quality per parameter — the 27B model competed with models twice its size. Gemma 3 extended it substantially: sizes from 1B to 27B, multimodal vision input on the larger models, a 128K-token context window, and support for 140+ languages, all designed to run on a single GPU or TPU. Specialized variants cover specific niches: CodeGemma for code, ShieldGemma for safety filtering, PaliGemma for vision-language, and ultra-small quantization-aware releases for phones.",
+        "Gemma's terms allow commercial use with a responsible-use policy (open weights, not OSI open source). It is fully supported across the local stack — Ollama, LM Studio, llama.cpp, Hugging Face, Keras/JAX — and integrates with Google's tooling for fine-tuning on Vertex AI or free Colab TPUs. For engineers, Gemma is a top pick when you need a small, efficient, well-documented model for on-device or single-GPU deployment, edge inference, or as a cheap fine-tuning base."
+      ],
+      "keyPoints": [
+        "Distilled from Gemini research; consistently leads quality-per-parameter among small open models.",
+        "Gemma 3: 1B-27B sizes, vision input, 128K context, 140+ languages, single-GPU friendly.",
+        "Variants for niches: CodeGemma (code), ShieldGemma (safety), PaliGemma (vision-language).",
+        "Open weights with a responsible-use license — commercial use allowed.",
+        "Runs everywhere local: Ollama, LM Studio, llama.cpp; fine-tune free on Colab.",
+        "Best fit: on-device/edge apps and cheap fine-tuning bases, not frontier reasoning."
+      ],
+      "code": [
+        {
+          "title": "Run Gemma locally",
+          "language": "bash",
+          "code": "ollama run gemma3\n# tiny variant for low-RAM machines:\nollama run gemma3:1b"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Gemma",
+          "url": "https://deepmind.google/models/gemma/",
+          "type": "official"
+        },
+        {
+          "title": "Gemma explained: What's new in Gemma 2",
+          "url": "https://developers.googleblog.com/gemma-explained-new-in-gemma-2/",
+          "type": "official"
+        }
+      ]
+    },
+    {
+      "id": "qwen",
+      "title": "Qwen",
+      "subsection": "Open Source Models",
+      "minutes": 5,
+      "intro": "Qwen is Alibaba's prolific open-weight model family — Apache 2.0 licensed, spanning tiny to frontier-class sizes, and a leader in coding, multilingual, and hybrid reasoning.",
+      "summary": [
+        "Alibaba's Qwen team ships more open models than almost anyone. Qwen 2.5 covered 0.5B to 72B dense models plus standout specialists — Qwen2.5-Coder rivaled GPT-4-class coding, Qwen2.5-VL led open vision-language, and QwQ previewed reasoning. Qwen3 modernized the lineup with dense models (0.6B-32B) and mixture-of-experts flagships (including a 235B model with ~22B active parameters), introducing a hybrid 'thinking mode' you can toggle per request — fast answers for easy queries, step-by-step reasoning for hard ones. Later Qwen3 updates (Coder, VL, Max-tier hosted models) kept it at or near the top of open-model leaderboards.",
+        "Two things make Qwen especially attractive: licensing and language coverage. Most Qwen models ship under plain Apache 2.0 — no acceptable-use addenda — which simplifies legal review compared to Llama or Gemma. Multilingual support covers 100+ languages with particularly strong Chinese and other Asian-language performance. The Hugging Face ecosystem has embraced Qwen heavily; it became the most-downloaded base family for fine-tunes and distillations (DeepSeek's R1 distills are built on Qwen bases).",
+        "Access options: chat.qwen.ai for the hosted assistant, Alibaba Cloud's DashScope/Model Studio API (OpenAI-compatible) for hosted inference, or pull any size from Ollama and Hugging Face for local use. For coding agents and self-hosted assistants, Qwen3 and Qwen2.5-Coder are among the strongest open choices available."
+      ],
+      "keyPoints": [
+        "Apache 2.0 license on most models — the cleanest legal story among major open families.",
+        "Qwen3 spans 0.6B dense to 235B MoE (~22B active), with a togglable hybrid thinking mode.",
+        "Qwen2.5-Coder and Qwen3-Coder are top-tier open coding models.",
+        "100+ languages supported, with leading Chinese-language performance.",
+        "Most-forked base family on Hugging Face — many popular fine-tunes and distills (including R1 distills) build on Qwen.",
+        "Hosted via Alibaba Cloud's OpenAI-compatible API or run locally with `ollama run qwen3`."
+      ],
+      "code": [
+        {
+          "title": "Run Qwen locally",
+          "language": "bash",
+          "code": "ollama run qwen3\n# strong open coding model:\nollama run qwen2.5-coder:7b"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Qwen",
+          "url": "https://chat.qwen.ai/",
+          "type": "official"
+        },
+        {
+          "title": "What is Qwen AI?",
+          "url": "https://zapier.com/blog/qwen/",
+          "type": "article"
+        }
+      ]
+    }
+  ]
+}

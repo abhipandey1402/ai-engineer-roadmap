@@ -1,0 +1,96 @@
+SECTION 15: AI-Assisted Coding Tools
+DESCRIPTION: The agentic coding tools that are changing how software gets built.
+======================================================================
+
+
+### TOPIC: Development Tools Overview  (id: development-tools-overview)  [group: -]
+
+# Development Tools
+
+AI has given rise to a collection of AI-powered development tools of various varieties. We have IDEs like Cursor that have AI baked into it, live context capturing tools such as Pieces, and a variety of browser-based tools like V0, Claude, and more.
+
+----------------------------------------------------------------------
+
+### TOPIC: Claude Code  (id: claude-code)  [group: -]
+
+# Claude Code
+
+Claude Code refers to the code-generation capabilities of Anthropic's Claude AI model. It's designed to assist developers by understanding natural language prompts and translating them into functional code across various programming languages. This allows developers to automate repetitive coding tasks, generate code snippets, and even create entire functions or modules based on descriptive instructions.
+
+Visit the following resources to learn more:
+
+- [@roadmap@Visit the Dedicated Claude Code Roadmap](https://roadmap.sh/claude-code)
+- [@course@Claude Code in Action](https://anthropic.skilljar.com/claude-code-in-action)
+- [@official@Claude Code Overview](https://code.claude.com/docs/en/overview)
+- [@video@Introducing Claude Code](https://www.youtube.com/watch?v=AJpK3YTTKZ4)
+
+----------------------------------------------------------------------
+
+### TOPIC: Gemini CLI  (id: gemini-cli)  [group: -]
+
+# Gemini
+
+Gemini is a multimodal AI model developed by Google. It's designed to understand and reason across different types of information, including text, code, audio, images, and video. This allows Gemini to solve complex problems and potentially generate new types of content, offering a more holistic approach compared to models focused on a single modality.
+
+Visit the following resources to learn more:
+
+- [@official@Google Gemini](https://gemini.google.com/)
+- [@official@Helpful Tips for using Gemini at work](https://services.google.com/fh/files/misc/quick_start_guide_to_google_ai_at_work.pdf)
+- [@video@Welcome to the Gemini era](https://www.youtube.com/watch?v=_fuimO6ErKI)
+
+----------------------------------------------------------------------
+
+### TOPIC: Codex  (id: codex)  [group: -]
+
+# Codex
+
+Codex is an AI model created by OpenAI that translates natural language into code. It's designed to understand and generate code in a variety of programming languages, including Python, JavaScript, and more. Codex is particularly adept at interpreting comments and instructions to produce functional code snippets, making it a powerful tool for automating and accelerating the software development process.
+
+Visit the following resources to learn more:
+
+- [@official@Codex - Official Webste](https://chatgpt.com/codex)
+- [@video@Getting started with Codex](https://www.youtube.com/watch?v=px7XlbYgk7I)
+
+----------------------------------------------------------------------
+
+### TOPIC: Cursor  (id: cursor)  [group: -]
+
+# Cursor
+
+Cursor is an AI-powered code editor designed to enhance developer productivity. It leverages large language models to provide features such as code generation, intelligent autocompletion, and code refactoring suggestions, all within a familiar editor environment. Cursor aims to streamline the coding process and accelerate software development.
+
+Visit the following resources to learn more:
+
+- [@official@Cursor Docs](https://cursor.com/docs)
+- [@official@Cursor Learn](https://cursor.com/learn)
+- [@video@Cursor AI Tutorial for Beginners](https://www.youtube.com/watch?v=3289vhOUdKA)
+
+----------------------------------------------------------------------
+
+### TOPIC: Windsurf  (id: windsurf)  [group: -]
+
+# Windsurf
+
+Windsurf is a tool specifically designed to enhance code navigation and understanding within large codebases. It leverages AI to provide intelligent code search, relationship discovery between different code elements, and code completion suggestions that are contextually aware. It's intended to reduce the time developers spend exploring and understanding code, enabling them to write more efficient and accurate code.
+
+Visit the following resources to learn more:
+
+- [@official@Windsurf Docs](https://docs.windsurf.com/windsurf/getting-started)
+- [@video@Windsurf Tutorial for Beginners (AI Code Editor) - Better than Cursor??](https://www.youtube.com/watch?v=8TcWGk1DJVs)
+- [@video@Windsurf AI Tutorial for Beginners](https://www.youtube.com/watch?v=x1VCmB__TDo)
+
+----------------------------------------------------------------------
+
+### TOPIC: Replit  (id: replit)  [group: -]
+
+# Replit
+
+Replit is an online integrated development environment (IDE) that allows users to write and run code in various programming languages directly in their web browser. It provides a collaborative coding environment with features like real-time collaboration, version control, and package management, making it easy to build and deploy projects without needing to install software locally. Replit also incorporates AI features like code completion and generation to help streamline the coding process.
+
+Visit the following resources to learn more:
+
+- [@official@Replit](https://replit.com/)
+- [@article@What is Replit? An honest look at the AI app builder in 2025](https://www.eesel.ai/blog/replit)
+- [@video@Getting Started with Replit](https://www.youtube.com/watch?v=St95nPOwsa8&list=PLto9KpJAqHMTzEMDAFT4r5LlI4NByngyT)
+
+----------------------------------------------------------------------

@@ -1,0 +1,567 @@
+{
+  "id": "mcp",
+  "title": "Model Context Protocol (MCP)",
+  "description": "The open standard for connecting LLMs to tools and data: architecture, servers, clients, and transports.",
+  "topics": [
+    {
+      "id": "what-is-mcp",
+      "title": "What is MCP?",
+      "subsection": "Fundamentals",
+      "minutes": 5,
+      "intro": "MCP is an open standard, introduced by Anthropic in late 2024, that gives LLM applications one uniform protocol for connecting to external tools, data, and prompts.",
+      "summary": [
+        "Before MCP, every AI app that wanted to talk to Slack, GitHub, a database, or your filesystem needed a custom, one-off integration. MCP solves this N-times-M integration problem the way USB-C solved cables: a tool or data source is wrapped once as an MCP server, and any MCP-compatible app (Claude Desktop, Claude Code, Cursor, VS Code, ChatGPT, custom agents) can use it. The protocol is open, model-agnostic, and has been adopted across the industry, with thousands of community servers covering everything from Postgres to Figma.",
+        "Architecturally, MCP defines three roles. The host is the AI application the user interacts with (e.g. Claude Desktop). The host creates one client per connection, and each client maintains a stateful 1:1 session with one server. Servers expose three core primitives: tools (model-controlled functions the LLM can call, like `search_issues`), resources (application-controlled data the host can read, like file contents or DB schemas), and prompts (user-controlled templates, like slash commands). Servers can also request things from the client: sampling (ask the host's LLM to generate text), elicitation (ask the user for input), and logging.",
+        "Under the hood MCP is split into two layers. The data layer is JSON-RPC 2.0: lifecycle handshake (`initialize`, capability negotiation, version agreement), then methods like `tools/list` and `tools/call`, plus notifications such as `notifications/tools/list_changed` for dynamic updates. The transport layer moves those JSON-RPC messages: stdio for local servers launched as subprocesses, and Streamable HTTP (a single endpoint using POST plus optional Server-Sent Events, with OAuth-based auth) for remote servers. Because the data layer is transport-agnostic, the same server logic works locally and in the cloud.",
+        "For an AI engineer, MCP matters because it turns 'integrating tools into my agent' from bespoke glue code into a plug-in ecosystem: you can consume existing servers immediately and expose your own product's capabilities to every MCP host by writing one server."
+      ],
+      "keyPoints": [
+        "MCP standardizes LLM-to-tool/data connections: build a server once, use it from any MCP host (Claude, Cursor, VS Code, custom agents).",
+        "Three roles: host (the AI app), client (one per connection, lives in the host), server (exposes capabilities); each client-server link is a stateful 1:1 session.",
+        "Three server primitives with different control models: tools (model decides), resources (app decides), prompts (user decides).",
+        "Data layer = JSON-RPC 2.0 with lifecycle/capability negotiation; transport layer = stdio (local) or Streamable HTTP (remote).",
+        "Official SDKs exist for Python, TypeScript, Java, Kotlin, C#, Go, Ruby, Rust, and more; FastMCP-style decorators make servers a few lines of code.",
+        "Think of it as 'USB-C for AI': it removes the N x M custom-integration problem between AI apps and external systems."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Model Context Protocol (MCP) Course",
+          "url": "https://huggingface.co/learn/mcp-course/en/unit0/introduction",
+          "type": "course"
+        },
+        {
+          "title": "Model Context Protocol",
+          "url": "https://modelcontextprotocol.io/",
+          "type": "official"
+        },
+        {
+          "title": "Model Context Protocol (GitHub)",
+          "url": "https://github.com/modelcontextprotocol",
+          "type": "opensource"
+        },
+        {
+          "title": "Discover more articles on MCP",
+          "url": "https://towardsdatascience.com/tag/mcp/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "mcp-host",
+      "title": "MCP Host",
+      "subsection": "Core Components",
+      "minutes": 4,
+      "intro": "The host is the user-facing AI application (Claude Desktop, an IDE, your agent) that coordinates one or more MCP clients and decides how server capabilities reach the model.",
+      "summary": [
+        "In MCP's architecture the host is the application the user actually runs: Claude Desktop, Claude Code, Cursor, VS Code, or your own agent loop. The host owns the LLM conversation and is the coordination point for everything MCP-related. For each server the user connects, the host instantiates a dedicated MCP client, so a host managing five servers runs five clients, each with its own isolated 1:1 session. This isolation is deliberate: servers never see each other or the full conversation, only the requests routed to them.",
+        "The host's responsibilities go beyond plumbing. It aggregates tools from all connected servers and presents them to the LLM in its tool-calling format; it enforces security and consent, prompting the user before a tool runs or a resource is shared; it manages server lifecycles (spawning local stdio subprocesses, opening and authorizing remote HTTP connections); and it decides context policy, i.e. which resources get attached to the prompt and how results are fed back to the model.",
+        "When a server makes a reverse request, such as sampling (asking for an LLM completion) or elicitation (asking the user a question), the host mediates it. This keeps the trust model clean: servers get capability without ever holding your API keys or seeing the rest of your context. When you build a custom agent that consumes MCP servers, you are building a host, and the security/consent decisions above become your job."
+      ],
+      "keyPoints": [
+        "Host = the AI application itself; it can manage many clients, but each client connects to exactly one server.",
+        "The host merges tools from all servers into one tool list for the LLM and routes each tool call to the right client.",
+        "Security lives in the host: user consent for tool execution, permission boundaries, and isolation between servers.",
+        "Servers never see the full conversation or each other; the host only forwards what is needed for each request.",
+        "Server-initiated features (sampling, elicitation, logging) are fulfilled by the host, so servers don't need their own LLM keys.",
+        "Examples of hosts: Claude Desktop, Claude Code, Cursor, VS Code Copilot, and any custom agent you wire up with an MCP client library."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Model Context Protocol (MCP) Course",
+          "url": "https://huggingface.co/learn/mcp-course/en/unit0/introduction",
+          "type": "course"
+        },
+        {
+          "title": "Concepts of MCP",
+          "url": "https://modelcontextprotocol.io/docs/learn/architecture#concepts-of-mcp",
+          "type": "official"
+        }
+      ]
+    },
+    {
+      "id": "mcp-client",
+      "title": "MCP Client",
+      "subsection": "Core Components",
+      "minutes": 4,
+      "intro": "The client is the protocol-speaking component inside the host that maintains a stateful 1:1 session with a single MCP server.",
+      "summary": [
+        "An MCP client is not a standalone app; it is the connector object a host creates for each server connection. It handles the protocol mechanics: opening the transport, performing the `initialize` handshake (exchanging protocol versions and capabilities), serializing JSON-RPC requests like `tools/list`, `tools/call`, `resources/read`, and `prompts/get`, matching responses to requests, and surfacing notifications (e.g. `tools/list_changed`) back to the host. SDKs like the Python `mcp` package or the TypeScript SDK give you a `ClientSession` abstraction so you rarely touch raw JSON-RPC.",
+        "Capability negotiation during initialization matters: client and server each declare what they support, and only mutually supported features are used in the session. A client may declare support for sampling, roots (telling the server which directories it may operate in), and elicitation; the server declares tools, resources, prompts, and logging. The agreed protocol version (a date string like `2025-06-18`) governs the session.",
+        "Clients also implement the 'server-to-client' half of MCP. When a server sends a `sampling/createMessage` request, the client (via the host) runs an LLM completion, typically with human review, and returns it. When a server sends an elicitation request, the client collects user input. This bidirectionality is what separates MCP from a plain REST wrapper: the session is stateful and either side can initiate messages."
+      ],
+      "keyPoints": [
+        "One client per server: a host with N connected servers runs N independent client sessions.",
+        "The session starts with `initialize` (version + capability negotiation) followed by an `initialized` notification; only then can normal requests flow.",
+        "Core client calls: `tools/list`, `tools/call`, `resources/list`, `resources/read`, `prompts/list`, `prompts/get`.",
+        "Clients listen for change notifications so the host can refresh tool lists at runtime without restarting.",
+        "Clients can expose capabilities to servers too: sampling (LLM access), roots (filesystem boundaries), elicitation (ask the user).",
+        "SDK abstractions (`ClientSession` in Python, `Client` in TypeScript) hide JSON-RPC framing, retries, and request/response correlation."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Model Context Protocol (MCP) Course",
+          "url": "https://huggingface.co/learn/mcp-course/en/unit0/introduction",
+          "type": "course"
+        },
+        {
+          "title": "Understanding MCP clients",
+          "url": "https://modelcontextprotocol.io/docs/learn/client-concepts#understanding-mcp-clients",
+          "type": "official"
+        },
+        {
+          "title": "The Complete Guide to Building AI Agents for Beginners",
+          "url": "https://youtu.be/MOyl58VF2ak?si=-QjRD_5y3iViprJX",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "mcp-server",
+      "title": "MCP Server",
+      "subsection": "Core Components",
+      "minutes": 5,
+      "intro": "An MCP server is a program that exposes tools, resources, and prompts to any MCP client, wrapping an API, database, or local capability in the standard protocol.",
+      "summary": [
+        "The server is where the actual capability lives. A GitHub MCP server wraps the GitHub API; a filesystem server wraps local file access; a Postgres server wraps SQL queries. Whatever it wraps, the server speaks the same protocol, advertising its capabilities at initialization and then answering JSON-RPC requests. Servers can be tiny local scripts spawned over stdio or production web services serving thousands of users over Streamable HTTP.",
+        "Servers expose up to three primitives, each with a distinct control model. Tools are executable functions the model chooses to call: each has a name, description, and JSON Schema for inputs (and optionally outputs); good descriptions are critical because the LLM relies on them to decide when and how to call the tool. Resources are read-only data identified by URIs (e.g. `file:///report.pdf`, `postgres://db/customers/schema`), listed via `resources/list` and fetched via `resources/read`; resource templates like `weather://{city}/current` allow parameterized access. Prompts are reusable interaction templates with arguments, surfaced in hosts as slash commands or menu items.",
+        "Servers can also initiate requests: sampling to ask the client's LLM for a completion (useful for servers that need intelligence without bundling their own model key), elicitation to ask the user for missing input mid-operation, and logging to stream debug output to the client. The ecosystem is large: directories like mcpservers.org list official and community servers, so before writing one, check whether it already exists.",
+        "Security is the flip side: a server runs with whatever permissions you give it and its tool results enter the model's context. Treat third-party servers like dependencies — review what they access, prefer official ones, and run least-privilege."
+      ],
+      "keyPoints": [
+        "Servers expose three primitives: tools (model-controlled actions), resources (app-controlled data, URI-addressed), prompts (user-controlled templates).",
+        "Tool schemas are contracts: name, description, and JSON Schema inputs; the quality of descriptions directly affects how well the LLM uses the tool.",
+        "Discovery + execution pattern everywhere: `*/list` to enumerate, then `tools/call`, `resources/read`, or `prompts/get` to use.",
+        "Servers can send `list_changed` notifications so clients pick up dynamically added tools or resources mid-session.",
+        "Sampling and elicitation let a server borrow the host's LLM and user, so servers stay model-agnostic and key-free.",
+        "One server, any host: the same server works in Claude Desktop, Cursor, VS Code, or a custom agent without changes.",
+        "Audit third-party servers before connecting them; they execute with real permissions and inject text into your model's context."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Model Context Protocol (MCP) Course",
+          "url": "https://huggingface.co/learn/mcp-course/en/unit0/introduction",
+          "type": "course"
+        },
+        {
+          "title": "Understanding MCP Servers",
+          "url": "https://modelcontextprotocol.io/docs/learn/server-concepts#understanding-mcp-servers",
+          "type": "official"
+        },
+        {
+          "title": "Awesome MCP Servers",
+          "url": "https://mcpservers.org/",
+          "type": "article"
+        },
+        {
+          "title": "The Complete Guide to Building AI Agents for Beginners",
+          "url": "https://youtu.be/MOyl58VF2ak?si=-QjRD_5y3iViprJX",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "data-layer",
+      "title": "Data Layer",
+      "subsection": "Core Components",
+      "minutes": 4,
+      "intro": "MCP's data layer is the JSON-RPC 2.0 protocol that defines message formats, the lifecycle handshake, and the semantics of every MCP operation.",
+      "summary": [
+        "MCP splits its design into a data layer (what messages mean) and a transport layer (how they move). The data layer is built on JSON-RPC 2.0: every message is a request (`method`, `params`, `id`), a response (`result` or `error` matched by `id`), or a notification (no `id`, no response expected). This gives MCP a well-understood, language-neutral wire format with batched and bidirectional messaging for free.",
+        "The data layer starts every session with lifecycle management. The client sends `initialize` carrying its protocol version (a date string such as `2025-06-18`) and capabilities; the server responds with its own version, capabilities, and server info; the client then sends a `notifications/initialized` notification. Only mutually declared capabilities may be used afterwards — this negotiation is what lets old clients and new servers interoperate.",
+        "After the handshake, the data layer defines the method vocabulary: `tools/list` and `tools/call`, `resources/list`, `resources/read` and resource subscriptions, `prompts/list` and `prompts/get`, plus client-bound methods like `sampling/createMessage` and `elicitation/create`, and notifications like `notifications/tools/list_changed`. Because all of this is transport-independent, a server's logic is identical whether it talks over stdio or Streamable HTTP — only the byte-shuttling differs.",
+        "Note the roadmap.sh blurb frames this loosely as 'managing data access'; in the actual MCP spec the data layer is precisely this JSON-RPC protocol definition — the schema is published as a TypeScript/JSON Schema document that all SDKs implement."
+      ],
+      "keyPoints": [
+        "Data layer = JSON-RPC 2.0: requests have ids and get responses; notifications are one-way fire-and-forget.",
+        "Session lifecycle: `initialize` request -> server response -> `notifications/initialized`; version and capabilities are negotiated here.",
+        "Capability negotiation means features are opt-in: a client must not call methods the server didn't declare, and vice versa.",
+        "Method families map to primitives: `tools/*`, `resources/*`, `prompts/*` (server-side); `sampling/*`, `elicitation/*`, `roots/*` (client-side).",
+        "Errors use standard JSON-RPC error objects with codes and messages, so failures are machine-readable across languages.",
+        "The same data layer runs over any transport — write your server logic once, swap stdio for Streamable HTTP with one line."
+      ],
+      "code": [
+        {
+          "title": "JSON-RPC messages in an MCP session",
+          "language": "json",
+          "code": "// client -> server: handshake\n{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"initialize\",\n \"params\": {\"protocolVersion\": \"2025-06-18\",\n            \"capabilities\": {\"sampling\": {}},\n            \"clientInfo\": {\"name\": \"my-agent\", \"version\": \"1.0.0\"}}}\n\n// client -> server: call a tool\n{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/call\",\n \"params\": {\"name\": \"get_weather\",\n            \"arguments\": {\"city\": \"Austin\"}}}\n\n// server -> client: tool result\n{\"jsonrpc\": \"2.0\", \"id\": 2,\n \"result\": {\"content\": [{\"type\": \"text\",\n                          \"text\": \"72F, sunny\"}]}}\n\n// server -> client: notification (no id, no reply)\n{\"jsonrpc\": \"2.0\",\n \"method\": \"notifications/tools/list_changed\"}"
+        }
+      ],
+      "resources": [
+        {
+          "title": "MCP Architecture: Layers",
+          "url": "https://modelcontextprotocol.io/docs/learn/architecture#layers",
+          "type": "official"
+        }
+      ]
+    },
+    {
+      "id": "transport-layer",
+      "title": "Transport Layer",
+      "subsection": "Core Components",
+      "minutes": 4,
+      "intro": "The transport layer moves MCP's JSON-RPC messages between client and server, via stdio for local subprocesses or Streamable HTTP for remote services.",
+      "summary": [
+        "Transports are how MCP bytes actually travel. The spec defines two standard ones. Stdio transport: the host launches the server as a child process and exchanges newline-delimited JSON-RPC over stdin/stdout. It is the default for local servers — zero network setup, no ports, no auth needed (the server inherits your local user's permissions), and minimal latency. One rule bites everyone at least once: a stdio server must never print to stdout (use stderr for logs), because any stray `print()` corrupts the protocol stream.",
+        "Streamable HTTP transport is the standard for remote servers, replacing the older HTTP+SSE transport from protocol version 2024-11-05. The server exposes a single endpoint (e.g. `https://api.example.com/mcp`): clients POST JSON-RPC messages to it, and the server can answer with a plain JSON response or upgrade to a Server-Sent Events stream for progress updates and server-initiated messages. Sessions are tracked with an `Mcp-Session-Id` header, and streams can resume after disconnects. Authorization for remote servers is OAuth 2.1-based, with bearer tokens on every request.",
+        "Choosing is straightforward: stdio for anything running on the user's machine (file access, local dev tools, personal scripts); Streamable HTTP for shared, multi-user, or SaaS-backed servers that need central deployment, scaling, and real auth. Because transports are pluggable beneath the data layer, SDKs let you switch with a parameter — e.g. FastMCP's `mcp.run(transport=\"stdio\")` vs `mcp.run(transport=\"streamable-http\")`."
+      ],
+      "keyPoints": [
+        "Two standard transports: stdio (local subprocess, stdin/stdout) and Streamable HTTP (single remote endpoint, POST + optional SSE).",
+        "Streamable HTTP superseded the legacy HTTP+SSE transport; modern servers should use it for remote deployment.",
+        "stdio gotcha: never write logs to stdout in a stdio server — it corrupts JSON-RPC framing; use stderr.",
+        "Remote sessions are tracked via the `Mcp-Session-Id` header and secured with OAuth 2.1 bearer tokens over HTTPS.",
+        "SSE streaming lets remote servers push progress notifications and sampling requests during long-running tool calls.",
+        "Transport choice doesn't change server logic; SDKs swap transports with a single argument."
+      ],
+      "code": [
+        {
+          "title": "Same server, either transport (FastMCP)",
+          "language": "python",
+          "code": "from mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"my-server\")\n\n@mcp.tool()\ndef ping() -> str:\n    \"\"\"Health check.\"\"\"\n    return \"pong\"\n\nif __name__ == \"__main__\":\n    # Local: spawned by the host, talks over stdin/stdout\n    mcp.run(transport=\"stdio\")\n\n    # Remote: serves a single /mcp endpoint over HTTP\n    # mcp.run(transport=\"streamable-http\")  # default port 8000"
+        }
+      ],
+      "resources": [
+        {
+          "title": "MCP Architecture: Layers",
+          "url": "https://modelcontextprotocol.io/docs/learn/architecture#layers",
+          "type": "official"
+        }
+      ]
+    },
+    {
+      "id": "building-an-mcp-server",
+      "title": "Building an MCP Server",
+      "subsection": "Hands-On",
+      "minutes": 7,
+      "intro": "With the official SDKs, building an MCP server is mostly decorating plain functions: the SDK generates schemas, handles JSON-RPC, and runs the transport.",
+      "summary": [
+        "The fastest path is the Python SDK's FastMCP class (`pip install \"mcp[cli]\"` or `uv add \"mcp[cli]\"`). You create a `FastMCP` instance and decorate ordinary functions with `@mcp.tool()`, `@mcp.resource()`, or `@mcp.prompt()`. The SDK introspects type hints and docstrings to auto-generate the JSON Schema and descriptions the LLM sees — so precise type annotations and a clear one-line docstring per tool are not optional polish, they are the model's API documentation. Async functions are supported for I/O-bound work, and a `Context` parameter gives you logging, progress reporting, and sampling from inside a tool.",
+        "The TypeScript SDK (`@modelcontextprotocol/sdk`) follows the same shape: instantiate `McpServer`, call `server.registerTool()` with a Zod schema for inputs, then connect a `StdioServerTransport` or the Streamable HTTP transport. Whichever language, the workflow is identical: define capabilities, pick a transport, run, then test. The MCP Inspector (`npx @modelcontextprotocol/inspector`) is the standard debugging tool — it connects to your server in a browser UI and lets you list and invoke tools interactively before any LLM is involved.",
+        "Design advice from the official guides and the Composio walkthrough: keep tools task-shaped rather than API-shaped (one `create_github_issue` tool beats three generic HTTP tools), return concise human-readable text in `content` blocks (tool output is fed straight into model context, so giant JSON dumps waste tokens), validate inputs and return helpful error messages (the model will read them and retry), and log to stderr only when using stdio. Once it works in the Inspector, wire it into a real host (Claude Desktop or Claude Code) and iterate on descriptions until the model uses the tool correctly without prompting."
+      ],
+      "keyPoints": [
+        "Python: `FastMCP` + `@mcp.tool()` turns a typed, docstring'd function into a fully described MCP tool automatically.",
+        "Type hints and docstrings become the tool schema and description — write them for the LLM, not just for humans.",
+        "Test with MCP Inspector (`npx @modelcontextprotocol/inspector`) before connecting any model; it exercises tools directly.",
+        "Design task-shaped tools with small, meaningful outputs; results land in the model's context window verbatim.",
+        "Return useful error strings — the model reads them and can self-correct its next call.",
+        "In stdio servers, print debugging to stdout breaks the protocol; route logs to stderr or use `ctx.info()`.",
+        "The same code serves locally (stdio) or remotely (Streamable HTTP) by changing the `transport` argument."
+      ],
+      "code": [
+        {
+          "title": "Weather server with FastMCP (Python)",
+          "language": "python",
+          "code": "# server.py — uv add \"mcp[cli]\" httpx\nfrom mcp.server.fastmcp import FastMCP\nimport httpx\n\nmcp = FastMCP(\"weather\")\n\n@mcp.tool()\nasync def get_forecast(latitude: float, longitude: float) -> str:\n    \"\"\"Get the weather forecast for a location.\"\"\"\n    async with httpx.AsyncClient() as client:\n        r = await client.get(\n            f\"https://api.weather.gov/points/{latitude},{longitude}\",\n            headers={\"User-Agent\": \"weather-mcp\"},\n        )\n        url = r.json()[\"properties\"][\"forecast\"]\n        periods = (await client.get(url)).json()[\"properties\"][\"periods\"]\n    return \"\\n\".join(\n        f\"{p['name']}: {p['temperature']}F, {p['shortForecast']}\"\n        for p in periods[:4]\n    )\n\n@mcp.resource(\"config://app-version\")\ndef app_version() -> str:\n    \"\"\"Current app version.\"\"\"\n    return \"2.1.0\"\n\nif __name__ == \"__main__\":\n    mcp.run(transport=\"stdio\")"
+        },
+        {
+          "title": "Equivalent tool in TypeScript",
+          "language": "typescript",
+          "code": "// npm i @modelcontextprotocol/sdk zod\nimport { McpServer } from \"@modelcontextprotocol/sdk/server/mcp.js\";\nimport { StdioServerTransport } from \"@modelcontextprotocol/sdk/server/stdio.js\";\nimport { z } from \"zod\";\n\nconst server = new McpServer({ name: \"weather\", version: \"1.0.0\" });\n\nserver.registerTool(\n  \"get_forecast\",\n  {\n    description: \"Get the weather forecast for a location\",\n    inputSchema: { latitude: z.number(), longitude: z.number() },\n  },\n  async ({ latitude, longitude }) => {\n    const text = `Forecast for ${latitude},${longitude}: 72F, sunny`;\n    return { content: [{ type: \"text\", text }] };\n  }\n);\n\nawait server.connect(new StdioServerTransport());"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Build an MCP server",
+          "url": "https://modelcontextprotocol.io/docs/develop/build-server#build-an-mcp-server",
+          "type": "official"
+        },
+        {
+          "title": "MCP server: A step-by-step guide to building from scratch",
+          "url": "https://composio.dev/blog/mcp-server-step-by-step-guide-to-building-from-scrtch",
+          "type": "article"
+        },
+        {
+          "title": "Build and Ship Any MCP Server in MINUTES (Full Guide)",
+          "url": "https://www.youtube.com/watch?v=Zw3sfAIpeH8",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Build a notes MCP server with two tools (`add_note`, `list_notes`) and one resource, run it over stdio, and poke at it with MCP Inspector.",
+        "steps": [
+          {
+            "title": "Install the MCP SDK",
+            "explanation": "The official SDKs do all the protocol work (JSON-RPC framing, capability negotiation, schema generation). Python uses the `mcp` package with its built-in FastMCP server; JavaScript uses `@modelcontextprotocol/sdk` plus `zod` for input schemas. Create a fresh folder for the lab first.",
+            "python": "mkdir notes-mcp && cd notes-mcp\npython -m venv .venv && source .venv/bin/activate\npip install \"mcp[cli]\"",
+            "javascript": "mkdir notes-mcp && cd notes-mcp\nnpm init -y && npm pkg set type=module\nnpm install @modelcontextprotocol/sdk zod"
+          },
+          {
+            "title": "Create the server with two tools",
+            "explanation": "Decorate plain functions (Python) or register handlers (JS) — the SDK turns type hints / zod schemas into the JSON Schema the client sees. Docstrings and descriptions matter: they are how the LLM decides when to call your tool.",
+            "python": "# server.py\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"notes\")\nnotes: list[str] = []\n\n@mcp.tool()\ndef add_note(text: str) -> str:\n    \"\"\"Save a note for the user.\"\"\"\n    notes.append(text)\n    return f\"Saved note #{len(notes)}\"\n\n@mcp.tool()\ndef list_notes() -> str:\n    \"\"\"List all saved notes.\"\"\"\n    if not notes:\n        return \"No notes yet.\"\n    return \"\\n\".join(f\"{i+1}. {n}\" for i, n in enumerate(notes))",
+            "javascript": "// server.js\nimport { McpServer } from \"@modelcontextprotocol/sdk/server/mcp.js\";\nimport { z } from \"zod\";\n\nexport const server = new McpServer({ name: \"notes\", version: \"1.0.0\" });\nconst notes = [];\n\nserver.tool(\"add_note\", \"Save a note for the user\",\n  { text: z.string().describe(\"The note text\") },\n  async ({ text }) => {\n    notes.push(text);\n    return { content: [{ type: \"text\", text: `Saved note #${notes.length}` }] };\n  });\n\nserver.tool(\"list_notes\", \"List all saved notes\", {}, async () => ({\n  content: [{\n    type: \"text\",\n    text: notes.length\n      ? notes.map((n, i) => `${i + 1}. ${n}`).join(\"\\n\")\n      : \"No notes yet.\",\n  }],\n}));"
+          },
+          {
+            "title": "Add a resource and run over stdio",
+            "explanation": "Tools are model-controlled actions; resources are app-controlled data the host can read directly (like a GET endpoint). Expose all notes at the `notes://all` URI, then start the server on stdio — it reads JSON-RPC from stdin and writes to stdout, which is why you must never `print()` to stdout in a stdio server (use stderr for logging).",
+            "python": "# append to server.py\n@mcp.resource(\"notes://all\")\ndef all_notes() -> str:\n    \"\"\"All notes as one document.\"\"\"\n    return \"\\n\".join(notes) or \"(empty)\"\n\nif __name__ == \"__main__\":\n    mcp.run(transport=\"stdio\")\n\n# run it (it will sit waiting for a client -- that's correct):\n# python server.py",
+            "javascript": "// append to server.js\nimport { StdioServerTransport } from \"@modelcontextprotocol/sdk/server/stdio.js\";\n\nserver.resource(\"all-notes\", \"notes://all\", async (uri) => ({\n  contents: [{ uri: uri.href, text: notes.join(\"\\n\") || \"(empty)\" }],\n}));\n\nconst transport = new StdioServerTransport();\nawait server.connect(transport);\nconsole.error(\"notes server running on stdio\"); // stderr, never stdout!\n\n// run it (it will sit waiting for a client -- that's correct):\n// node server.js"
+          },
+          {
+            "title": "Test with MCP Inspector",
+            "explanation": "MCP Inspector is a web UI that spawns your server as a subprocess and lets you call tools and read resources interactively — no LLM involved. Open the URL it prints, hit Connect, then try `add_note` and `list_notes` from the Tools tab and `notes://all` from the Resources tab.",
+            "python": "npx @modelcontextprotocol/inspector python server.py",
+            "javascript": "npx @modelcontextprotocol/inspector node server.js"
+          }
+        ],
+        "practice": [
+          "Add a `delete_note(index)` tool and watch it appear in MCP Inspector after a reconnect.",
+          "Persist notes to a `notes.json` file so they survive server restarts; verify with two Inspector sessions.",
+          "Add a resource template `notes://{id}` that returns a single note by number.",
+          "Make `add_note` reject empty strings with a useful error message and confirm Inspector shows the error result.",
+          "Add a prompt named `summarize_notes` to the server and find it in Inspector's Prompts tab."
+        ]
+      }
+    },
+    {
+      "id": "building-an-mcp-client",
+      "title": "Building an MCP Client",
+      "subsection": "Hands-On",
+      "minutes": 7,
+      "intro": "Building a client means opening a session to a server, listing its tools, exposing them to an LLM, and executing the tool calls the model makes — the core loop of every MCP-powered agent.",
+      "summary": [
+        "A client embeds MCP into your own application. In the Python SDK the pattern is: create transport parameters (for stdio, the command and args used to spawn the server), open the transport, wrap it in a `ClientSession`, call `session.initialize()` to perform the handshake, then use `session.list_tools()`, `session.call_tool(name, args)`, `session.read_resource(uri)`, and so on. The TypeScript SDK mirrors this with `Client` and `StdioClientTransport`. For remote servers you swap in the Streamable HTTP transport with a URL instead of a spawn command.",
+        "The interesting part is bridging MCP to an LLM. The standard agent loop: (1) fetch the server's tools and convert each tool's name/description/JSON Schema into your model provider's tool format (Anthropic and OpenAI tool definitions map almost 1:1); (2) send the user message plus tool definitions to the model; (3) when the model returns a tool-use block, route it to `session.call_tool()`; (4) append the result to the conversation and call the model again; (5) repeat until the model produces a final text answer. That loop is the whole trick — MCP supplies discovery and execution, your code supplies orchestration.",
+        "Production concerns covered in the official guide and Composio's walkthrough: keep sessions alive rather than reconnecting per call (the protocol is stateful), handle `list_changed` notifications by refreshing your cached tool list, set timeouts around `call_tool`, surface tool errors back to the model instead of crashing (it will often retry sensibly), and gate dangerous tools behind human confirmation. If you connect multiple servers, namespace tool names to avoid collisions before handing them to the model."
+      ],
+      "keyPoints": [
+        "Client lifecycle: open transport -> `ClientSession` -> `initialize()` -> `list_tools()` -> `call_tool()`; sessions are stateful, so keep them open.",
+        "MCP tool schemas convert almost directly into Anthropic/OpenAI tool-definition formats — one small mapping function suffices.",
+        "The agent loop alternates model calls and `call_tool` executions until the model stops requesting tools.",
+        "Feed tool errors back to the model as results; LLMs frequently self-correct on the next attempt.",
+        "Refresh tools on `list_changed` notifications and namespace tools when aggregating multiple servers.",
+        "Put human-in-the-loop confirmation in the client for destructive operations — the protocol won't do it for you."
+      ],
+      "code": [
+        {
+          "title": "Minimal Python client + LLM loop",
+          "language": "python",
+          "code": "import asyncio\nfrom mcp import ClientSession, StdioServerParameters\nfrom mcp.client.stdio import stdio_client\n\nasync def main():\n    params = StdioServerParameters(\n        command=\"python\", args=[\"server.py\"]\n    )\n    async with stdio_client(params) as (read, write):\n        async with ClientSession(read, write) as session:\n            await session.initialize()\n\n            tools = await session.list_tools()\n            print([t.name for t in tools.tools])\n\n            # Convert to your LLM provider's tool format, then,\n            # when the model emits a tool call, execute it:\n            result = await session.call_tool(\n                \"get_forecast\",\n                {\"latitude\": 30.27, \"longitude\": -97.74},\n            )\n            print(result.content[0].text)\n\nasyncio.run(main())"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Build an MCP client",
+          "url": "https://modelcontextprotocol.io/docs/develop/build-client",
+          "type": "official"
+        },
+        {
+          "title": "MCP Client - Step by Step Guide to Building from Scratch",
+          "url": "https://composio.dev/blog/mcp-client-step-by-step-guide-to-building-from-scratch",
+          "type": "article"
+        },
+        {
+          "title": "Create an MCP Client in Python - FastAPI Tutorial",
+          "url": "https://www.youtube.com/watch?v=mhdGVbJBswA",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Write a minimal MCP client that spawns your notes server over stdio, lists its tools, calls one, and then hands the tool list to an LLM loop.",
+        "steps": [
+          {
+            "title": "Install client dependencies",
+            "explanation": "The same SDK packages contain the client classes: Python has `ClientSession` + `StdioServerParameters`, JavaScript has `Client` + `StdioClientTransport`. You also need the Anthropic SDK for the final step. Reuse the lab folder containing `server.py` / `server.js`.",
+            "python": "pip install \"mcp[cli]\" anthropic\nexport ANTHROPIC_API_KEY=sk-ant-...",
+            "javascript": "npm install @modelcontextprotocol/sdk @anthropic-ai/sdk\nexport ANTHROPIC_API_KEY=sk-ant-..."
+          },
+          {
+            "title": "Spawn the server and list its tools",
+            "explanation": "The client launches your server as a subprocess and talks JSON-RPC over its stdin/stdout — this is exactly what Claude Desktop does under the hood. `initialize()` performs the capability handshake; `list_tools` returns each tool's name, description, and JSON Schema.",
+            "python": "# client.py\nimport asyncio\nfrom mcp import ClientSession, StdioServerParameters\nfrom mcp.client.stdio import stdio_client\n\nparams = StdioServerParameters(command=\"python\", args=[\"server.py\"])\n\nasync def main():\n    async with stdio_client(params) as (read, write):\n        async with ClientSession(read, write) as session:\n            await session.initialize()\n            tools = await session.list_tools()\n            for t in tools.tools:\n                print(f\"{t.name}: {t.description}\")\n\nasyncio.run(main())",
+            "javascript": "// client.js\nimport { Client } from \"@modelcontextprotocol/sdk/client/index.js\";\nimport { StdioClientTransport } from \"@modelcontextprotocol/sdk/client/stdio.js\";\n\nconst transport = new StdioClientTransport({\n  command: \"node\",\n  args: [\"server.js\"],\n});\nconst client = new Client({ name: \"notes-client\", version: \"1.0.0\" });\nawait client.connect(transport);\n\nconst { tools } = await client.listTools();\nfor (const t of tools) console.log(`${t.name}: ${t.description}`);\n\nawait client.close();"
+          },
+          {
+            "title": "Call a tool programmatically",
+            "explanation": "`call_tool` / `callTool` takes the tool name and a plain object of arguments matching the tool's input schema. The result comes back as a list of content blocks — text in this case. Add this inside the session block from step 2.",
+            "python": "# inside the ClientSession block, after initialize():\nresult = await session.call_tool(\n    \"add_note\", {\"text\": \"MCP is just JSON-RPC with a handshake\"}\n)\nprint(result.content[0].text)\n\nresult = await session.call_tool(\"list_notes\", {})\nprint(result.content[0].text)",
+            "javascript": "// after client.connect(), before client.close():\nlet result = await client.callTool({\n  name: \"add_note\",\n  arguments: { text: \"MCP is just JSON-RPC with a handshake\" },\n});\nconsole.log(result.content[0].text);\n\nresult = await client.callTool({ name: \"list_notes\", arguments: {} });\nconsole.log(result.content[0].text);"
+          },
+          {
+            "title": "Wire the tools into an LLM loop",
+            "explanation": "This is the whole point of MCP: convert each MCP tool definition into the LLM's tool format (a near 1:1 mapping), then loop — the model picks a tool, you forward the call to the MCP session, return the result, and repeat until it answers in plain text.",
+            "python": "# llm_loop.py\nimport asyncio, anthropic\nfrom mcp import ClientSession, StdioServerParameters\nfrom mcp.client.stdio import stdio_client\n\nparams = StdioServerParameters(command=\"python\", args=[\"server.py\"])\nllm = anthropic.Anthropic()\n\nasync def main():\n    async with stdio_client(params) as (r, w):\n        async with ClientSession(r, w) as session:\n            await session.initialize()\n            tools = [{\"name\": t.name, \"description\": t.description,\n                      \"input_schema\": t.inputSchema}\n                     for t in (await session.list_tools()).tools]\n            messages = [{\"role\": \"user\",\n                         \"content\": \"Save a note saying 'ship it', then list my notes.\"}]\n            while True:\n                resp = llm.messages.create(model=\"claude-sonnet-4-6\",\n                                           max_tokens=1024, tools=tools,\n                                           messages=messages)\n                if resp.stop_reason != \"tool_use\":\n                    print(resp.content[0].text); break\n                messages.append({\"role\": \"assistant\", \"content\": resp.content})\n                results = []\n                for block in resp.content:\n                    if block.type == \"tool_use\":\n                        out = await session.call_tool(block.name, block.input)\n                        results.append({\"type\": \"tool_result\",\n                                        \"tool_use_id\": block.id,\n                                        \"content\": out.content[0].text})\n                messages.append({\"role\": \"user\", \"content\": results})\n\nasyncio.run(main())",
+            "javascript": "// llm_loop.js\nimport Anthropic from \"@anthropic-ai/sdk\";\nimport { Client } from \"@modelcontextprotocol/sdk/client/index.js\";\nimport { StdioClientTransport } from \"@modelcontextprotocol/sdk/client/stdio.js\";\n\nconst llm = new Anthropic();\nconst client = new Client({ name: \"llm-client\", version: \"1.0.0\" });\nawait client.connect(\n  new StdioClientTransport({ command: \"node\", args: [\"server.js\"] }));\n\nconst tools = (await client.listTools()).tools.map((t) => ({\n  name: t.name, description: t.description, input_schema: t.inputSchema,\n}));\nconst messages = [{ role: \"user\",\n  content: \"Save a note saying 'ship it', then list my notes.\" }];\n\nwhile (true) {\n  const resp = await llm.messages.create({\n    model: \"claude-sonnet-4-6\", max_tokens: 1024, tools, messages,\n  });\n  if (resp.stop_reason !== \"tool_use\") {\n    console.log(resp.content[0].text);\n    break;\n  }\n  messages.push({ role: \"assistant\", content: resp.content });\n  const results = [];\n  for (const block of resp.content) {\n    if (block.type !== \"tool_use\") continue;\n    const out = await client.callTool({ name: block.name, arguments: block.input });\n    results.push({ type: \"tool_result\", tool_use_id: block.id,\n                   content: out.content[0].text });\n  }\n  messages.push({ role: \"user\", content: results });\n}\nawait client.close();"
+          }
+        ],
+        "practice": [
+          "Print each tool's full `inputSchema` JSON next to its name in step 2.",
+          "Call `add_note` three times, then assert `list_notes` returns exactly three lines.",
+          "Read the `notes://all` resource from the client (`session.read_resource` / `client.readResource`) and print it.",
+          "Call `add_note` with a wrong argument name and inspect the error result the server returns.",
+          "Change the user prompt in the LLM loop so the model must call both tools, and log how many round trips the loop takes."
+        ]
+      }
+    },
+    {
+      "id": "connect-to-a-local-server",
+      "title": "Connect to a Local Server",
+      "subsection": "Hands-On",
+      "minutes": 5,
+      "intro": "Local MCP servers run as subprocesses on your machine over stdio, wired into hosts like Claude Desktop, Claude Code, or Cursor through a small JSON config.",
+      "summary": [
+        "A local server is one your host launches on your own machine — ideal for filesystem access, local dev tooling, personal scripts, and anything touching private data, since nothing leaves your computer and there is no hosting cost. The host config tells it how to spawn each server: a command, its args, and optional environment variables (the standard place for API keys). On launch, the host starts the process, speaks MCP over stdio, and the server's tools appear in the UI.",
+        "For Claude Desktop the file is `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`; Windows: `%APPDATA%\\Claude\\`), edited directly or via Settings -> Developer. Each entry under `mcpServers` maps a name to a launch spec. Claude Code and Cursor use the same shape in `.mcp.json` (project scope) or via `claude mcp add`. After editing, fully restart the app; look for the tools/connectors indicator to confirm the server loaded.",
+        "Practical gotchas: GUI apps on macOS often don't inherit your shell PATH, so use absolute paths to `node`, `python`, or `uv` (`which uv`) and absolute paths to your script or working directory. Pass secrets through the `env` block rather than hardcoding them. If a server doesn't appear, check the host's MCP logs (Claude Desktop writes `mcp*.log` files under `~/Library/Logs/Claude/`) — the most common failures are a wrong path, a missing runtime, or a server that printed to stdout and broke the stdio stream."
+      ],
+      "keyPoints": [
+        "Local = host spawns the server as a subprocess and talks stdio; nothing is networked, data stays on the machine.",
+        "Claude Desktop config lives at `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\\Claude\\` (Windows).",
+        "Use absolute paths for commands and scripts — GUI hosts frequently lack your shell's PATH.",
+        "Put API keys in the server entry's `env` block, not in code or args.",
+        "A full app restart is required after config changes; then verify the server in the tools/connectors menu.",
+        "Debug failures via host logs (`~/Library/Logs/Claude/mcp*.log`) and by running the server standalone in MCP Inspector first."
+      ],
+      "code": [
+        {
+          "title": "claude_desktop_config.json with two local servers",
+          "language": "json",
+          "code": "{\n  \"mcpServers\": {\n    \"weather\": {\n      \"command\": \"/Users/me/.local/bin/uv\",\n      \"args\": [\n        \"--directory\", \"/Users/me/projects/weather-mcp\",\n        \"run\", \"server.py\"\n      ],\n      \"env\": { \"WEATHER_API_KEY\": \"sk-...\" }\n    },\n    \"filesystem\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\", \"@modelcontextprotocol/server-filesystem\",\n        \"/Users/me/Desktop\"\n      ]\n    }\n  }\n}"
+        },
+        {
+          "title": "Project-scoped .mcp.json (Claude Code / Cursor)",
+          "language": "json",
+          "code": "{\n  \"mcpServers\": {\n    \"weather\": {\n      \"command\": \"python\",\n      \"args\": [\"server.py\"],\n      \"env\": { \"WEATHER_API_KEY\": \"${WEATHER_API_KEY}\" }\n    }\n  }\n}\n// or: claude mcp add weather -- python server.py"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Connect to local MCP servers",
+          "url": "https://modelcontextprotocol.io/docs/develop/connect-local-servers",
+          "type": "official"
+        },
+        {
+          "title": "How to Build and Host Your Own MCP Servers in Easy Steps",
+          "url": "https://collabnix.com/how-to-build-and-host-your-own-mcp-servers-in-easy-steps/",
+          "type": "article"
+        },
+        {
+          "title": "Local MCP Servers for Cursor (Step by step)",
+          "url": "https://www.youtube.com/watch?v=_Qr0WTgR5EM",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Register your notes server in Claude Desktop and Claude Code so a real host app can launch it and call its tools.",
+        "steps": [
+          {
+            "title": "Find the config files",
+            "explanation": "Hosts discover local servers via JSON config files. Claude Desktop reads `claude_desktop_config.json` (macOS path shown; on Windows it lives in `%APPDATA%\\Claude\\`). Claude Code reads a `.mcp.json` at the project root (shareable, checked into git) or per-user config via `claude mcp add`. Note: this lab's code blocks are shell + JSON, not Python/JS — the tabs just separate the Python-server setup from the Node-server setup.",
+            "python": "# Claude Desktop config (create it if missing):\nopen \"$HOME/Library/Application Support/Claude/claude_desktop_config.json\"\n\n# You'll need the absolute paths to your interpreter and server:\nwhich python   # or: .venv/bin/python\nrealpath server.py",
+            "javascript": "# Claude Code project config lives next to your code:\ntouch .mcp.json\n\n# You'll need the absolute paths to node and your server:\nwhich node\nrealpath server.js"
+          },
+          {
+            "title": "Register the server (config JSON)",
+            "explanation": "Both files use the same `mcpServers` shape: a name mapping to the command + args that launch your server over stdio. Here the python tab shows `claude_desktop_config.json` (launching the Python server) and the javascript tab shows `.mcp.json` for Claude Code (launching the Node server) — swap the command/args to match whichever server you built. Always use absolute paths; hosts don't run from your project directory.",
+            "python": "{\n  \"mcpServers\": {\n    \"notes\": {\n      \"command\": \"/absolute/path/to/.venv/bin/python\",\n      \"args\": [\"/absolute/path/to/notes-mcp/server.py\"]\n    }\n  }\n}",
+            "javascript": "{\n  \"mcpServers\": {\n    \"notes\": {\n      \"command\": \"node\",\n      \"args\": [\"/absolute/path/to/notes-mcp/server.js\"]\n    }\n  }\n}"
+          },
+          {
+            "title": "Or register via the Claude Code CLI",
+            "explanation": "`claude mcp add` writes the config for you. The default scope is `local` (just you, this project); `--scope project` writes `.mcp.json` so teammates get the server too. Everything after `--` is the launch command.",
+            "python": "claude mcp add notes -- /absolute/path/to/.venv/bin/python /absolute/path/to/notes-mcp/server.py\n\n# share it with the team instead:\nclaude mcp add --scope project notes -- /absolute/path/to/.venv/bin/python /absolute/path/to/notes-mcp/server.py",
+            "javascript": "claude mcp add notes -- node /absolute/path/to/notes-mcp/server.js\n\n# share it with the team instead:\nclaude mcp add --scope project notes -- node /absolute/path/to/notes-mcp/server.js"
+          },
+          {
+            "title": "Restart and verify",
+            "explanation": "Claude Desktop only reads its config at startup, so fully quit and relaunch — then look for the tools (hammer/plug) icon and ask: \"Add a note that says hello MCP, then list my notes.\" In Claude Code, run `claude mcp list` to check the connection and `/mcp` inside a session to see server status and tools.",
+            "python": "# Claude Desktop: Cmd+Q, relaunch, then in the chat:\n#   \"Add a note that says hello MCP, then list my notes\"\n# If it fails, check the logs:\ntail -f \"$HOME/Library/Logs/Claude/mcp-server-notes.log\"",
+            "javascript": "claude mcp list          # shows notes + connection status\nclaude                   # start a session, then type:\n# /mcp                   -> inspect servers, auth, and tools\n# \"Add a note that says hello MCP, then list my notes\""
+          }
+        ],
+        "practice": [
+          "Register the notes server in Claude Desktop and have Claude save and list a note end to end.",
+          "Add the official filesystem server (`npx -y @modelcontextprotocol/server-filesystem ~/Desktop`) alongside notes and confirm both show up.",
+          "Use `claude mcp add --scope project`, commit `.mcp.json`, and re-open the project to see Claude Code ask for approval.",
+          "Pass an env var via the config's `\"env\"` key (e.g. `NOTES_FILE`) and use it in the server for the persistence path.",
+          "Break the server path on purpose, then diagnose the failure from `~/Library/Logs/Claude/mcp*.log` and `claude mcp list`."
+        ]
+      }
+    },
+    {
+      "id": "connect-to-a-remote-server",
+      "title": "Connect to a Remote Server",
+      "subsection": "Hands-On",
+      "minutes": 5,
+      "intro": "Remote MCP servers run as hosted web services reachable at an HTTPS URL via Streamable HTTP, typically secured with OAuth, and shared by many users.",
+      "summary": [
+        "A remote server is a normal web service that speaks MCP over the Streamable HTTP transport: one HTTPS endpoint (commonly `/mcp`) accepting POSTed JSON-RPC and optionally streaming responses via SSE. Companies like GitHub, Sentry, Linear, Atlassian, Stripe, and Cloudflare publish remote MCP servers so any user can connect by URL — no install, no local runtime, always up to date. Directories such as mcpservers.org maintain lists of available remote servers.",
+        "Connecting is host-specific but converges on 'paste the URL'. In Claude Desktop / claude.ai, remote servers are added as Connectors (Settings -> Connectors -> Add custom connector, paste the URL); in Claude Code it's `claude mcp add --transport http <name> <url>`; in JSON configs you use a `url` field (plus optional `headers` for bearer tokens) instead of `command`/`args`. Authentication for user-facing servers is OAuth 2.1: on first use, the host opens a browser flow, you grant access, and the client attaches the resulting token to every request. Machine-to-machine setups often just use an API key in an `Authorization` header.",
+        "Deploying your own remote server is largely standard web ops: build with an SDK's Streamable HTTP transport (FastMCP's `streamable-http` mode, or the TypeScript equivalent), containerize, and run it behind HTTPS on your cloud of choice — Cloudflare Workers, AWS, GCP, Azure, Fly.io all work; add a load balancer and autoscaling for fan-out. Because remote servers serve many users, you must handle authentication, per-user authorization, rate limiting, logging/metrics, and (if sessions matter) sticky routing or shared session storage keyed by `Mcp-Session-Id`. The trade-off vs local: scalability and easy updates, in exchange for hosting cost, latency, and the responsibility of protecting user data in transit and at rest."
+      ],
+      "keyPoints": [
+        "Remote servers use Streamable HTTP: a single HTTPS endpoint, POSTed JSON-RPC, optional SSE streaming, `Mcp-Session-Id` for session tracking.",
+        "Config difference: `url` (+ optional `headers`) instead of `command`/`args`; in Claude Code use `claude mcp add --transport http`.",
+        "User-facing remote servers authenticate with OAuth 2.1 browser flows; service-to-service setups commonly use bearer tokens.",
+        "Major vendors (GitHub, Sentry, Linear, Stripe, Cloudflare) ship official remote servers — prefer those over community mirrors.",
+        "When self-hosting: TLS everywhere, auth on every request, rate limits, and centralized logs/metrics are table stakes.",
+        "Only connect to remote servers you trust — their tool descriptions and outputs flow directly into your model's context."
+      ],
+      "code": [
+        {
+          "title": "Remote server entries in MCP config",
+          "language": "json",
+          "code": "{\n  \"mcpServers\": {\n    \"github\": {\n      \"url\": \"https://api.githubcopilot.com/mcp/\"\n    },\n    \"internal-tools\": {\n      \"url\": \"https://mcp.mycompany.com/mcp\",\n      \"headers\": {\n        \"Authorization\": \"Bearer ${MCP_TOKEN}\"\n      }\n    }\n  }\n}\n// Claude Code equivalent:\n// claude mcp add --transport http github \\\n//   https://api.githubcopilot.com/mcp/"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Connect to remote MCP Servers",
+          "url": "https://modelcontextprotocol.io/docs/develop/connect-remote-servers",
+          "type": "official"
+        },
+        {
+          "title": "Remote MCP Servers",
+          "url": "https://mcpservers.org/remote-mcp-servers",
+          "type": "article"
+        },
+        {
+          "title": "Deploy Remote MCP Servers in Python (Step by Step)",
+          "url": "https://www.youtube.com/watch?v=wXAqv8uvY0M",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Connect to an MCP server over Streamable HTTP — via host config with auth headers, and programmatically from your own client.",
+        "steps": [
+          {
+            "title": "Install dependencies",
+            "explanation": "Remote servers run as web services and speak Streamable HTTP: the client POSTs JSON-RPC to a single endpoint (usually `/mcp`) and responses may arrive as SSE streams. The same SDK packages cover it; no subprocess spawning involved. You'll also build a tiny local HTTP server to test against in step 4 (`express` for JS).",
+            "python": "pip install \"mcp[cli]\"",
+            "javascript": "npm install @modelcontextprotocol/sdk zod express"
+          },
+          {
+            "title": "Register a remote server (config with url + headers)",
+            "explanation": "In host configs a remote server is a `url` (plus optional `headers` for auth tokens) instead of a `command`. The python tab shows the `.mcp.json` / config-file shape; the javascript tab shows the `claude mcp add --transport http` CLI equivalent — both are config, not program code. Never commit real tokens; Claude Code expands `${VAR}` from your environment.",
+            "python": "{\n  \"mcpServers\": {\n    \"notes-remote\": {\n      \"type\": \"http\",\n      \"url\": \"https://mcp.example.com/mcp\",\n      \"headers\": {\n        \"Authorization\": \"Bearer ${MCP_TOKEN}\"\n      }\n    }\n  }\n}",
+            "javascript": "claude mcp add --transport http notes-remote https://mcp.example.com/mcp \\\n  --header \"Authorization: Bearer $MCP_TOKEN\"\n\n# verify:\nclaude mcp list"
+          },
+          {
+            "title": "Connect programmatically with the StreamableHTTP transport",
+            "explanation": "Same `ClientSession` / `Client` API as the stdio lab — only the transport changes. Pass auth headers at transport construction. Point `URL` at any Streamable HTTP server; step 4 gives you a local one at `http://127.0.0.1:8000/mcp`.",
+            "python": "# remote_client.py\nimport asyncio\nfrom mcp import ClientSession\nfrom mcp.client.streamable_http import streamablehttp_client\n\nURL = \"http://127.0.0.1:8000/mcp\"  # or your real remote endpoint\nHEADERS = {\"Authorization\": \"Bearer YOUR_TOKEN\"}\n\nasync def main():\n    async with streamablehttp_client(URL, headers=HEADERS) as (read, write, _):\n        async with ClientSession(read, write) as session:\n            await session.initialize()\n            tools = await session.list_tools()\n            print(\"tools:\", [t.name for t in tools.tools])\n            result = await session.call_tool(\"ping\", {})\n            print(result.content[0].text)\n\nasyncio.run(main())",
+            "javascript": "// remote_client.js\nimport { Client } from \"@modelcontextprotocol/sdk/client/index.js\";\nimport { StreamableHTTPClientTransport } from \"@modelcontextprotocol/sdk/client/streamableHttp.js\";\n\nconst transport = new StreamableHTTPClientTransport(\n  new URL(\"http://127.0.0.1:8000/mcp\"), // or your real remote endpoint\n  { requestInit: { headers: { Authorization: \"Bearer YOUR_TOKEN\" } } },\n);\nconst client = new Client({ name: \"remote-client\", version: \"1.0.0\" });\nawait client.connect(transport);\n\nconst { tools } = await client.listTools();\nconsole.log(\"tools:\", tools.map((t) => t.name));\nconst result = await client.callTool({ name: \"ping\", arguments: {} });\nconsole.log(result.content[0].text);\nawait client.close();"
+          },
+          {
+            "title": "Run your own Streamable HTTP server to test against",
+            "explanation": "FastMCP can serve over HTTP with a one-line change; in JS you mount the SDK's `StreamableHTTPServerTransport` on an Express route (stateless mode: a fresh transport per request). Start it, then run the step-3 client against `http://127.0.0.1:8000/mcp`.",
+            "python": "# http_server.py\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP(\"notes-remote\", host=\"127.0.0.1\", port=8000)\n\n@mcp.tool()\ndef ping() -> str:\n    \"\"\"Health check.\"\"\"\n    return \"pong\"\n\nif __name__ == \"__main__\":\n    # serves at http://127.0.0.1:8000/mcp\n    mcp.run(transport=\"streamable-http\")",
+            "javascript": "// http_server.js\nimport express from \"express\";\nimport { McpServer } from \"@modelcontextprotocol/sdk/server/mcp.js\";\nimport { StreamableHTTPServerTransport } from \"@modelcontextprotocol/sdk/server/streamableHttp.js\";\n\nconst app = express();\napp.use(express.json());\n\napp.post(\"/mcp\", async (req, res) => {\n  const server = new McpServer({ name: \"notes-remote\", version: \"1.0.0\" });\n  server.tool(\"ping\", \"Health check\", {}, async () => ({\n    content: [{ type: \"text\", text: \"pong\" }],\n  }));\n  const transport = new StreamableHTTPServerTransport({\n    sessionIdGenerator: undefined, // stateless\n  });\n  res.on(\"close\", () => transport.close());\n  await server.connect(transport);\n  await transport.handleRequest(req, res, req.body);\n});\n\napp.listen(8000, () =>\n  console.log(\"MCP at http://127.0.0.1:8000/mcp\"));"
+          }
+        ],
+        "practice": [
+          "Start the local HTTP server and confirm the step-3 client lists `ping` and gets back `pong`.",
+          "Make the server reject requests without an `Authorization` header (401) and fix the client by sending one.",
+          "Register your local HTTP server in `.mcp.json` with `\"type\": \"http\"` and call `ping` from Claude Code.",
+          "Connect MCP Inspector to the HTTP endpoint (`npx @modelcontextprotocol/inspector`, transport: Streamable HTTP) and call `ping` from the UI.",
+          "Time 20 `ping` calls over stdio vs Streamable HTTP and compare per-call latency."
+        ]
+      }
+    }
+  ]
+}

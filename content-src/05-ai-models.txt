@@ -1,0 +1,193 @@
+SECTION 5: AI Models
+DESCRIPTION: The model landscape: closed vs open source, major providers, and how to choose.
+======================================================================
+
+
+### TOPIC: Types of Models  (id: types-of-models)  [group: Fundamentals]
+
+# Types of AI Models
+
+AI models come in various forms. Open models provide transparent access to their architecture and training data, fostering collaboration and customization, while closed models keep these details proprietary. Pre-trained models are trained on massive datasets and can be fine-tuned for specific tasks, saving time and resources. Self-hosted models, on the other hand, offer greater control and privacy as they are deployed and managed on your own infrastructure.
+
+Visit the following resources to learn more:
+
+- [@article@Recap of all types of LLM Agents](http://towardsdatascience.com/recap-of-all-types-of-llm-agents/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+
+----------------------------------------------------------------------
+
+### TOPIC: Pre-trained Models  (id: pre-trained-models)  [group: Fundamentals]
+
+# Pre-trained Models
+
+Pre-trained models are Machine Learning (ML) models that have been previously trained on a large dataset to solve a specific task or set of tasks. These models learn patterns, features, and representations from the training data, which can then be fine-tuned or adapted for other related tasks. Pre-training provides a good starting point, reducing the amount of data and computation required to train a new model from scratch.
+
+Visit the following resources to learn more:
+
+- [@article@Pre-trained Models: Past, Present and Future](https://www.sciencedirect.com/science/article/pii/S2666651021000231)
+- [@video@Transforming Language with Generative Pre-trained Transformers (GPT)](https://www.youtube.com/watch?v=bdICz_sBI34)
+
+----------------------------------------------------------------------
+
+### TOPIC: Closed vs Open Source Models  (id: closed-vs-open-source-models)  [group: Fundamentals]
+
+# Open vs Closed Source Models
+
+Open-source models are freely available for customization and collaboration, promoting transparency and flexibility, while closed-source models are proprietary, offering ease of use but limiting modification and transparency.
+
+Visit the following resources to learn more:
+
+- [@article@https://hatchworks.com/blog/gen-ai/open-source-vs-closed-llms-guide/](https://hatchworks.com/blog/gen-ai/open-source-vs-closed-llms-guide/)
+- [@video@Open Source vs Closed AI: LLMs, Agents & the AI Stack Explained](https://www.youtube.com/watch?v=_QfxGZGITGw)
+- [@video@Open-Source vs Closed-Source LLMs](https://www.youtube.com/watch?v=710PDpuLwOc)
+
+----------------------------------------------------------------------
+
+### TOPIC: Self-Hosted Models  (id: self-hosted-models)  [group: Fundamentals]
+
+# Self-Hosted AI Models
+
+Self-hosted AI models are machine learning models that are deployed and run on your own infrastructure, rather than relying on a third-party service or cloud provider. This means you have complete control over the hardware, software, and data used to run the model, allowing for greater customization, security, and potentially lower long-term costs, depending on your specific needs and scale.
+
+Visit the following resources to learn more:
+
+- [@article@Self-Hosted LLM: A Practical Guide for DevOps](https://www.plural.sh/blog/self-hosting-large-language-models/)
+- [@article@Serverless vs. self-hosted LLM inference](https://bentoml.com/llm/llm-inference-basics/serverless-vs-self-hosted-llm-inference)
+
+----------------------------------------------------------------------
+
+### TOPIC: Choosing the Right Model  (id: choosing-the-right-model)  [group: Fundamentals]
+
+# Choosing the Right Model
+
+Selecting the appropriate large language model (LLM) involves considering factors like task complexity, budget, and desired performance. Simpler tasks may only require smaller, more efficient models, while more complex problems benefit from larger models with greater capacity. Cost is also a crucial factor, as larger models generally require more computational resources. You'll also need to assess the model's accuracy, speed, and ability to generalize to new, unseen data. Consider fine-tuning existing models on your specific dataset if you need specialized performance.
+
+Visit the following resources to learn more:
+
+- [@article@Choosing the right model](https://bentoml.com/llm/getting-started/choosing-the-right-model)
+- [@article@Beyond vibes: How to properly select the right LLM for the right task](https://aws.amazon.com/blogs/machine-learning/beyond-vibes-how-to-properly-select-the-right-llm-for-the-right-task/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Anthropic Claude  (id: anthropic-claude)  [group: Closed Models]
+
+# Anthropic's Claude
+
+Anthropic's Claude is an AI language model designed to facilitate safe and scalable AI systems. Named after Claude Shannon, the father of information theory, Claude focuses on responsible AI use, emphasizing safety, alignment with human intentions, and minimizing harmful outputs.
+
+Visit the following resources to learn more:
+
+- [@course@Claude 101](https://anthropic.skilljar.com/claude-101)
+- [@official@Claude](https://claude.ai)
+- [@video@How To Use Claude Pro For Beginners](https://www.youtube.com/watch?v=J3X_JWQkvo8)
+- [@video@Claude FULL COURSE 1 HOUR (Build & Automate Anything)](https://www.youtube.com/watch?v=KrKhfm2Xuho)
+
+----------------------------------------------------------------------
+
+### TOPIC: Google Gemini  (id: google-gemini)  [group: Closed Models]
+
+# Google's Gemini
+
+Google Gemini is an advanced AI model by Google DeepMind, designed to integrate natural language processing with multimodal capabilities, enabling it to understand and generate not just text but also images, videos, and other data types. It combines generative AI with reasoning skills, making it effective for complex tasks requiring logical analysis and contextual understanding.
+
+Visit the following resources to learn more:
+
+- [@course@Google AI Training](https://grow.google/ai/)
+- [@official@Google Gemini](https://gemini.google.com/)
+- [@official@Google's Gemini Documentation](https://workspace.google.com/solutions/ai/)
+- [@video@Welcome to the Gemini era](https://www.youtube.com/watch?v=_fuimO6ErKI)
+
+----------------------------------------------------------------------
+
+### TOPIC: OpenAI (GPT, o-series)  (id: openai-gpt-o-series)  [group: Closed Models]
+
+# OpenAI Models (GPT, o-series)
+
+OpenAI models, including the GPT and "o-series" (like Whisper), are pre-trained AI models offered by OpenAI, accessible via their API. GPT models excel at natural language tasks like text generation, translation, and question answering. The "o-series" refers to OpenAI's other specialized models; for example, Whisper is a speech-to-text transcription model.
+
+Visit the following resources to learn more:
+
+- [@official@OpenAI Platform](https://openai.com/api/)
+- [@official@OpenAI Models](https://developers.openai.com/api/docs/models)
+- [@article@Your guide to the complete OpenAI models list](https://www.eesel.ai/blog/openai-models-list)
+
+----------------------------------------------------------------------
+
+### TOPIC: Mistral  (id: mistral)  [group: Closed Models]
+
+# Mistral AI
+
+Mistral AI is a company focused on developing open-weight, large language models (LLMs) to provide high-performance AI solutions. Mistral aims to create models that are both efficient and versatile, making them suitable for a wide range of natural language processing tasks, including text generation, translation, and summarization. By releasing open-weight models, Mistral promotes transparency and accessibility, allowing developers to customize and deploy AI solutions more flexibly compared to proprietary models.
+
+Visit the following resources to learn more:
+
+- [@official@Mistral AI](https://mistral.ai/)
+- [@video@Mistral AI: The Gen AI Start-up you did not know existed](https://www.youtube.com/watch?v=vzrRGd18tAg)
+
+----------------------------------------------------------------------
+
+### TOPIC: Cohere  (id: cohere)  [group: Closed Models]
+
+# Cohere
+
+Cohere offers a suite of closed large language models (LLMs) designed for various natural language processing tasks. These models are accessible through an API and are trained and maintained by Cohere, meaning users don't have to worry about the complexities of training and fine-tuning their own models from scratch. Cohere focuses on providing enterprise-grade NLP solutions emphasizing safety, reliability, and ease of integration.
+
+Visit the following resources to learn more:
+
+- [@official@Cohere](https://cohere.com/)
+- [@official@LLM University - Cohere](https://cohere.com/llmu)
+- [@article@What Does Cohere Do?](https://medium.com/geekculture/what-does-cohere-do-cdadf6d70435)
+
+----------------------------------------------------------------------
+
+### TOPIC: Meta Llama  (id: meta-llama)  [group: Open Source Models]
+
+# Meta Llama
+
+Meta Llama is a family of large language models (LLMs) developed by Meta AI. These models are designed to be open-source and accessible, allowing researchers and developers to build and experiment with LLMs without the restrictions of proprietary models. Llama models have different versions and sizes, and they aim to provide a capable and efficient base for various natural language processing tasks.
+
+Visit the following resources to learn more:
+
+- [@course@Building with Llama 4](https://www.deeplearning.ai/short-courses/building-with-llama-4/)
+- [@official@Llama](https://www.llama.com/)
+
+----------------------------------------------------------------------
+
+### TOPIC: DeepSeek  (id: deepseek)  [group: Open Source Models]
+
+# DeepSeek
+
+DeepSeek refers to a family of large language models (LLMs) developed by DeepSeek AI. These models are designed to be powerful and efficient, capable of handling various natural language processing tasks such as text generation, translation, and question answering. They are made available with open weights, allowing developers and researchers to use, study, and modify the model architecture and parameters.
+
+Visit the following resources to learn more:
+
+- [@official@Deepseek](https://www.deepseek.com/en/)
+- [@article@DeepSeek explained: Everything you need to know](https://www.techtarget.com/whatis/feature/DeepSeek-explained-Everything-you-need-to-know)
+- [@video@What is DeepSeek? AI Model Basics Explained](https://www.youtube.com/watch?v=KTonvXhsxpc)
+
+----------------------------------------------------------------------
+
+### TOPIC: Gemma  (id: gemma)  [group: Open Source Models]
+
+# Gemma2
+
+Gemma2 is a family of open-source large language models (LLMs) developed by Google. These models are designed to be lightweight and high-performing, making them suitable for a variety of tasks, including text generation, question answering, and code completion. Gemma models are available in different sizes, allowing developers to select the best model for their specific resource constraints and performance requirements.
+
+Visit the following resources to learn more:
+
+- [@official@Gemma](https://deepmind.google/models/gemma/)
+- [@official@Gemma explained: What’s new in Gemma 2](https://developers.googleblog.com/gemma-explained-new-in-gemma-2/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Qwen  (id: qwen)  [group: Open Source Models]
+
+# Qwen
+
+Qwen is a series of large language models (LLMs) developed by Alibaba Group. These models are open-source, meaning their code and architecture are publicly available, allowing researchers and developers to use, study, and modify them for their own purposes. Qwen models are designed to perform various natural language processing tasks, such as text generation, translation, and question answering, and come in different sizes, allowing for flexibility based on computational resources and specific application requirements.
+
+Visit the following resources to learn more:
+
+- [@official@Qwen](https://chat.qwen.ai/)
+- [@article@What is Qwen AI?](https://zapier.com/blog/qwen/)
+
+----------------------------------------------------------------------

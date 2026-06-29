@@ -1,0 +1,681 @@
+{
+  "id": "ai-agents",
+  "title": "AI Agents",
+  "description": "Agents that reason, use tools, and act — from manual loops to agent SDKs.",
+  "topics": [
+    {
+      "id": "what-are-ai-agents",
+      "title": "What are AI Agents?",
+      "subsection": "Fundamentals",
+      "minutes": 5,
+      "intro": "An AI agent is an LLM running in a loop with tools: it perceives, reasons, acts, observes the result, and repeats until the goal is done.",
+      "summary": [
+        "Strip away the hype and an agent is a simple architecture: LLM + tools + loop. A plain chat model produces one response and stops. An agent instead receives a goal, decides whether it needs to act (search the web, read a file, call an API), executes that action, feeds the result back into its context, and decides again — iterating until it judges the task complete. The LLM is the reasoning engine; the loop and tools turn its text output into effects on the world. This distinguishes agents from workflows: in a workflow, your code decides the sequence of steps; in an agent, the model decides, which buys flexibility on open-ended tasks at the cost of predictability.",
+        "Classical AI describes a spectrum of agent types — simple reflex agents (condition-action rules), model-based agents (internal state), goal-based and utility-based agents (planning toward objectives), and learning agents. Modern LLM agents are best seen as goal-based agents whose 'policy' is a language model: they inherit the LLM's general reasoning and language skills, and gain perception and actuation through tool APIs. Core components you will see in every framework: the model, a system prompt defining role and constraints, a tool set, short-term memory (the conversation/context window), often long-term memory (a vector store or files), and the orchestration loop with stopping conditions.",
+        "Designing your first agent is mostly scoping discipline: pick a narrow, verifiable task; give the agent the fewest tools that suffice, with crisp names and descriptions (the model chooses tools by reading those descriptions); write a system prompt that states the goal, the constraints, and when to stop; and add guardrails — max iterations, spend limits, and human approval for irreversible actions. The standard guidance from both Anthropic and OpenAI is the same: use the simplest thing that works, prefer plain prompt chains and workflows when steps are known in advance, and reserve full agents for tasks where the path genuinely cannot be scripted."
+      ],
+      "keyPoints": [
+        "Agent = LLM + tools + loop; the model decides the next action, your runtime executes it and returns the observation.",
+        "Workflows hard-code the step sequence; agents let the model choose — more flexible, less predictable, costlier.",
+        "Tool descriptions are the agent's UI: the model picks tools purely from names, descriptions, and parameter schemas.",
+        "Always set stopping conditions: max turns, token/cost budgets, and timeouts, or a confused agent will loop forever.",
+        "Keep the tool set small and orthogonal; agents degrade noticeably when offered many overlapping tools.",
+        "Anthropic's and OpenAI's shared advice: start with the simplest pattern (single prompt, then workflow, then agent)."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Building an AI Agent Tutorial - LangChain",
+          "url": "https://python.langchain.com/docs/tutorials/agents/",
+          "type": "article"
+        },
+        {
+          "title": "AI Agents and Their Types",
+          "url": "https://play.ht/blog/ai-agents-use-cases/",
+          "type": "article"
+        },
+        {
+          "title": "How to Design My First AI Agent",
+          "url": "https://towardsdatascience.com/how-to-design-my-first-ai-agent/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration",
+          "type": "article"
+        },
+        {
+          "title": "The Complete Guide to Building AI Agents for Beginners",
+          "url": "https://youtu.be/MOyl58VF2ak?si=-QjRD_5y3iViprJX",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "agent-use-cases",
+      "title": "Agent Use Cases",
+      "subsection": "Fundamentals",
+      "minutes": 3,
+      "intro": "Agents shine where tasks are multi-step, tool-dependent, and too variable to script: support resolution, coding, research, and ops automation.",
+      "summary": [
+        "The strongest production agent use cases share a shape: a goal that takes several dependent steps, requires consulting external systems, and varies too much case-by-case for a fixed script. Customer support is the flagship — an agent that looks up the order, checks the refund policy, issues the refund via API, and drafts the reply resolves tickets end-to-end rather than just answering questions. Coding agents (Claude Code, Cursor, Copilot-style agents) are the other breakout category: they read codebases, edit files, run tests, and iterate on failures, which is the agent loop in its purest form.",
+        "Beyond those two, agents are deployed for research and analysis (gathering sources, cross-checking, synthesizing reports), workflow automation in finance and operations (invoice processing, reconciliation, compliance checks), cybersecurity (alert triage and enrichment across SIEM tools), and sales/marketing (lead enrichment, outreach drafting, CRM hygiene). At scale, the engineering shifts from the agent itself to the system around it: queues and parallelism to process millions of requests, caching, model-tier routing (cheap models for easy cases, frontier models for hard ones), idempotent tools so retries are safe, and aggressive monitoring of cost per task.",
+        "The honest filter for 'should this be an agent?': if you can write the steps down as a flowchart, build a workflow — it will be cheaper, faster, and more reliable. Use an agent when the path varies per case, errors need adaptive recovery, and you can verify the outcome. Roll out with human-in-the-loop review first, measure resolution rate against a baseline, and expand autonomy as trust accumulates."
+      ],
+      "keyPoints": [
+        "End-to-end ticket resolution (lookup, action, reply) is the canonical business agent; coding agents are the canonical developer one.",
+        "If the steps fit a flowchart, build a workflow instead — agents pay off only on variable, judgment-heavy paths.",
+        "At volume, route easy cases to cheap models and hard ones to frontier models; cost per task is the metric that matters.",
+        "Make tools idempotent and reversible where possible so agent retries and mistakes are recoverable.",
+        "Ship with human-in-the-loop approval first; expand autonomy only as measured success rates justify it.",
+        "Track resolution rate, escalation rate, and cost per task against the pre-agent baseline to prove value."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Top 15 Use Cases Of AI Agents In Business",
+          "url": "https://www.ampcome.com/post/15-use-cases-of-ai-agents-in-business",
+          "type": "article"
+        },
+        {
+          "title": "A Brief Guide on AI Agents: Benefits and Use Cases",
+          "url": "https://www.codica.com/blog/brief-guide-on-ai-agents/",
+          "type": "article"
+        },
+        {
+          "title": "How to Build Effective AI Agents to Process Millions of Requests",
+          "url": "https://towardsdatascience.com/how-to-build-effective-ai-agents-to-process-millions-of-requests/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration",
+          "type": "article"
+        },
+        {
+          "title": "The Complete Guide to Building AI Agents for Beginners",
+          "url": "https://youtu.be/MOyl58VF2ak?si=-QjRD_5y3iViprJX",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "react-prompting",
+      "title": "ReAct Prompting",
+      "subsection": "Fundamentals",
+      "minutes": 4,
+      "intro": "ReAct (Reason + Act) interleaves explicit thinking steps with tool actions and observations — the prompting pattern underlying most agent loops.",
+      "summary": [
+        "ReAct, introduced in a 2022 paper by Yao et al., structures the model's output as a repeating cycle: Thought (reason about what to do next), Action (invoke a tool with arguments), Observation (the tool's result, appended by the runtime), then another Thought, until the model emits a final answer. Reasoning without acting (plain chain-of-thought) hallucinates facts it cannot look up; acting without reasoning picks tools poorly and ignores evidence. Interleaving the two lets the model form a plan, gather real information, and revise the plan based on what it actually observes — including recovering from failed or surprising tool results.",
+        "Classically you implement ReAct with a few-shot prompt showing worked Thought/Action/Observation examples, a fixed action vocabulary like `search[query]` or `lookup[term]`, and a parser that extracts the action, executes it, appends `Observation: ...`, and re-prompts. The pattern improves both accuracy (grounded facts, fewer hallucinations) and trust, since the thought trace shows why the agent did what it did — invaluable when debugging why an agent went off the rails.",
+        "In 2026 you rarely hand-parse `Action:` lines: native function calling gives you structured, validated tool invocations, and reasoning models produce internal deliberation without being asked. But ReAct remains the conceptual blueprint — every modern agent loop (OpenAI Agents SDK, Claude's tool-use loop, LangGraph's prebuilt ReAct agent) is Thought-Action-Observation with better plumbing. The lasting practical lessons: make the model reason before tool calls (or use a reasoning model), always feed results back as observations rather than assuming success, and log the full trace."
+      ],
+      "keyPoints": [
+        "ReAct cycle: Thought -> Action -> Observation, repeated until a final answer; reasoning and acting reinforce each other.",
+        "Reasoning grounds tool choice; observations ground reasoning — together they beat chain-of-thought or action-only prompting on knowledge tasks.",
+        "Modern function calling replaces fragile `Action:` text parsing with structured, schema-validated tool calls.",
+        "The thought/action trace is your primary debugging artifact; persist it for every agent run.",
+        "Cap iterations and detect repeated identical actions — ReAct loops can cycle on a failing tool indefinitely.",
+        "Every mainstream agent framework is ReAct under the hood; learn the pattern once and the SDKs become transparent."
+      ],
+      "code": [
+        {
+          "title": "The ReAct trace format",
+          "language": "text",
+          "code": "Question: Who is older, the CEO of OpenAI or the CEO of Anthropic?\n\nThought: I need both CEOs and their birth years. I'll search for each.\nAction: search[\"OpenAI CEO\"]\nObservation: Sam Altman (born April 22, 1985) is CEO of OpenAI.\n\nThought: Now the CEO of Anthropic.\nAction: search[\"Anthropic CEO\"]\nObservation: Dario Amodei (born 1983) is CEO of Anthropic.\n\nThought: Dario Amodei (1983) is older than Sam Altman (1985). I can answer.\nFinal Answer: Dario Amodei, CEO of Anthropic, is older."
+        }
+      ],
+      "resources": [
+        {
+          "title": "ReAct Prompting",
+          "url": "https://www.promptingguide.ai/techniques/react",
+          "type": "article"
+        },
+        {
+          "title": "ReAct Prompting: How We Prompt for High-Quality Results from LLMs",
+          "url": "https://www.width.ai/post/react-prompting",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "tools-function-calling",
+      "title": "Tools & Function Calling",
+      "subsection": "Fundamentals",
+      "minutes": 6,
+      "intro": "Function calling lets the model request structured invocations of your code — the mechanism that gives agents hands.",
+      "summary": [
+        "Function calling (tool use) works the same way across providers: you send the model a list of tool definitions — each with a name, a natural-language description, and a JSON Schema for parameters — alongside the conversation. When the model decides a tool would help, it does not execute anything; it returns a structured request ('call `get_weather` with `{\"city\": \"Amsterdam\"}`'). Your code executes the function, appends the result to the conversation as a tool-result message, and calls the model again so it can use the output. The model is the decision-maker; your runtime is the executor — which is exactly where you enforce validation, permissions, and safety.",
+        "Tool quality is mostly interface design. The model selects and fills tools using only the metadata you provide, so descriptions carry the weight: say what the tool does, when to use it, and what it returns; give parameters tight types, enums, and required fields; and return errors as informative strings the model can react to ('order not found — verify the order ID') rather than opaque failures. Keep tools focused and few — selection accuracy drops as tool count and overlap grow — and design outputs to be concise, since every tool result consumes context tokens.",
+        "Categories of tools in practice: information retrieval (search, RAG queries, database reads), computation (calculators, code interpreters), action-taking (send email, create ticket, control devices), and delegation (calling other agents). The Model Context Protocol (MCP) has become the standard way to package tool servers so any agent can consume them, and provider platforms ship hosted tools (web search, code execution, computer use) you can enable without writing code. Security is non-negotiable: treat every tool argument as untrusted model output — validate it, scope credentials to least privilege, and require human confirmation for destructive or irreversible actions."
+      ],
+      "keyPoints": [
+        "The model never runs code; it emits a structured call, your runtime executes it and returns the result — that boundary is your safety layer.",
+        "Tool descriptions and JSON Schemas are what the model 'sees'; writing them well is the highest-leverage tuning you can do.",
+        "Return actionable error messages from tools so the agent can self-correct instead of retrying blindly.",
+        "Selection accuracy degrades as tools multiply; prefer under ~20 focused tools and split agents beyond that.",
+        "Validate every argument and scope credentials minimally — tool args are untrusted model output and a prompt-injection target.",
+        "MCP standardizes tool servers across agent platforms; hosted tools (web search, code execution) cover common needs out of the box."
+      ],
+      "code": [
+        {
+          "title": "Defining a tool (Anthropic Messages API)",
+          "language": "python",
+          "code": "import anthropic\n\nclient = anthropic.Anthropic()\ntools = [{\n    \"name\": \"get_stock_price\",\n    \"description\": \"Get the current stock price in USD for a ticker symbol, e.g. AAPL.\",\n    \"input_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n            \"ticker\": {\"type\": \"string\", \"description\": \"Stock ticker symbol\"}\n        },\n        \"required\": [\"ticker\"],\n    },\n}]\n\nresp = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    tools=tools,\n    messages=[{\"role\": \"user\", \"content\": \"What is AAPL trading at?\"}],\n)\nprint(resp.stop_reason)  # \"tool_use\" -> execute it, send back a tool_result\nfor block in resp.content:\n    if block.type == \"tool_use\":\n        print(block.name, block.input)  # get_stock_price {'ticker': 'AAPL'}"
+        }
+      ],
+      "resources": [
+        {
+          "title": "A Comprehensive Guide to Function Calling in LLMs",
+          "url": "https://thenewstack.io/a-comprehensive-guide-to-function-calling-in-llms/",
+          "type": "course"
+        },
+        {
+          "title": "What are Tools? - Hugging Face",
+          "url": "https://huggingface.co/learn/agents-course/en/unit1/tools",
+          "type": "official"
+        },
+        {
+          "title": "Compare 50+ AI Agent Tools in 2026",
+          "url": "https://aimultiple.com/ai-agent-tools",
+          "type": "article"
+        },
+        {
+          "title": "AI Agents Explained in Simple Terms for Beginners",
+          "url": "https://www.geeky-gadgets.com/ai-agents-explained-for-beginners/",
+          "type": "article"
+        }
+      ],
+      "handsOn": {
+        "goal": "Wire two real tools — a mock weather lookup and a calculator — to an LLM with JSON schemas, then run the full request -> tool call -> execute -> final answer round trip.",
+        "steps": [
+          {
+            "title": "Install SDKs and set API keys",
+            "explanation": "You will use the OpenAI SDK for the main lab and the Anthropic SDK in the last step to see that the pattern is identical across providers. Set `OPENAI_API_KEY` (and `ANTHROPIC_API_KEY` for step 5) in your shell.",
+            "python": "pip install openai anthropic\nexport OPENAI_API_KEY=sk-...\nexport ANTHROPIC_API_KEY=sk-ant-...",
+            "javascript": "npm init -y && npm install openai @anthropic-ai/sdk\nexport OPENAI_API_KEY=sk-...\nexport ANTHROPIC_API_KEY=sk-ant-...\n# in package.json add: \"type\": \"module\""
+          },
+          {
+            "title": "Define two tools with JSON schemas",
+            "explanation": "Each tool needs a name, a description, and a JSON Schema for its parameters — the descriptions are what the model reads to decide when and how to call each tool. The implementations are plain functions: `get_weather` returns a mocked value and `calculator` evaluates an arithmetic expression.",
+            "python": "# tools.py\ndef get_weather(city: str) -> str:\n    return f\"The temperature in {city} is 22 degrees celsius and sunny.\"\n\ndef calculator(expression: str) -> str:\n    # demo only -- never eval untrusted input in production\n    return str(eval(expression, {\"__builtins__\": {}}))\n\nTOOL_FNS = {\"get_weather\": get_weather, \"calculator\": calculator}\n\nTOOLS = [\n    {\"type\": \"function\", \"function\": {\n        \"name\": \"get_weather\",\n        \"description\": \"Get the current weather for a city.\",\n        \"parameters\": {\"type\": \"object\", \"properties\": {\n            \"city\": {\"type\": \"string\", \"description\": \"City name, e.g. Paris\"}},\n            \"required\": [\"city\"]}}},\n    {\"type\": \"function\", \"function\": {\n        \"name\": \"calculator\",\n        \"description\": \"Evaluate an arithmetic expression, e.g. '22 * 3 * 0.15'.\",\n        \"parameters\": {\"type\": \"object\", \"properties\": {\n            \"expression\": {\"type\": \"string\", \"description\": \"Expression to evaluate\"}},\n            \"required\": [\"expression\"]}}},\n]",
+            "javascript": "// tools.js\nexport function getWeather({ city }) {\n  return `The temperature in ${city} is 22 degrees celsius and sunny.`;\n}\n\nexport function calculator({ expression }) {\n  // demo only -- never eval untrusted input in production\n  return String(Function(`\"use strict\"; return (${expression})`)());\n}\n\nexport const TOOL_FNS = { get_weather: getWeather, calculator };\n\nexport const TOOLS = [\n  { type: \"function\", function: {\n      name: \"get_weather\",\n      description: \"Get the current weather for a city.\",\n      parameters: { type: \"object\", properties: {\n          city: { type: \"string\", description: \"City name, e.g. Paris\" } },\n        required: [\"city\"] } } },\n  { type: \"function\", function: {\n      name: \"calculator\",\n      description: \"Evaluate an arithmetic expression, e.g. '22 * 3 * 0.15'.\",\n      parameters: { type: \"object\", properties: {\n          expression: { type: \"string\", description: \"Expression to evaluate\" } },\n        required: [\"expression\"] } } },\n];"
+          },
+          {
+            "title": "Send a request and detect tool calls",
+            "explanation": "Pass the `tools` array with your request. When the model decides a tool is needed, the response contains `tool_calls` instead of a plain answer — your code must check for them. Print the name and raw JSON arguments to see exactly what the model asked for.",
+            "python": "# detect.py\nfrom openai import OpenAI\nfrom tools import TOOLS\n\nclient = OpenAI()\nmessages = [{\"role\": \"user\", \"content\": \"What is the weather in Paris?\"}]\n\nresp = client.chat.completions.create(\n    model=\"gpt-5-mini\", messages=messages, tools=TOOLS)\nmsg = resp.choices[0].message\n\nif msg.tool_calls:  # the model wants a tool, not a final answer\n    for tc in msg.tool_calls:\n        print(tc.function.name, tc.function.arguments)\n        # -> get_weather {\"city\": \"Paris\"}\nelse:\n    print(msg.content)",
+            "javascript": "// detect.js\nimport OpenAI from \"openai\";\nimport { TOOLS } from \"./tools.js\";\n\nconst client = new OpenAI();\nconst messages = [{ role: \"user\", content: \"What is the weather in Paris?\" }];\n\nconst resp = await client.chat.completions.create({\n  model: \"gpt-5-mini\", messages, tools: TOOLS });\nconst msg = resp.choices[0].message;\n\nif (msg.tool_calls) { // the model wants a tool, not a final answer\n  for (const tc of msg.tool_calls) {\n    console.log(tc.function.name, tc.function.arguments);\n    // -> get_weather {\"city\":\"Paris\"}\n  }\n} else {\n  console.log(msg.content);\n}"
+          },
+          {
+            "title": "Execute the tools and get the final answer",
+            "explanation": "Append the assistant turn (with its tool calls) to history, run each requested function, and send the results back as `role: \"tool\"` messages keyed by `tool_call_id`. Loop until the model responds with text instead of tool calls — that text is the final answer.",
+            "python": "# roundtrip.py\nimport json\nfrom openai import OpenAI\nfrom tools import TOOLS, TOOL_FNS\n\nclient = OpenAI()\nmessages = [{\"role\": \"user\", \"content\":\n             \"What is the weather in Paris? Then compute 22 * 3 * 0.15.\"}]\n\nwhile True:\n    resp = client.chat.completions.create(\n        model=\"gpt-5-mini\", messages=messages, tools=TOOLS)\n    msg = resp.choices[0].message\n    if not msg.tool_calls:\n        print(msg.content)  # final answer\n        break\n    messages.append(msg)  # keep the assistant turn with its tool calls\n    for tc in msg.tool_calls:\n        args = json.loads(tc.function.arguments)\n        result = TOOL_FNS[tc.function.name](**args)\n        messages.append({\"role\": \"tool\", \"tool_call_id\": tc.id,\n                         \"content\": result})",
+            "javascript": "// roundtrip.js\nimport OpenAI from \"openai\";\nimport { TOOLS, TOOL_FNS } from \"./tools.js\";\n\nconst client = new OpenAI();\nconst messages = [{ role: \"user\", content:\n  \"What is the weather in Paris? Then compute 22 * 3 * 0.15.\" }];\n\nwhile (true) {\n  const resp = await client.chat.completions.create({\n    model: \"gpt-5-mini\", messages, tools: TOOLS });\n  const msg = resp.choices[0].message;\n  if (!msg.tool_calls) {\n    console.log(msg.content); // final answer\n    break;\n  }\n  messages.push(msg); // keep the assistant turn with its tool calls\n  for (const tc of msg.tool_calls) {\n    const args = JSON.parse(tc.function.arguments);\n    const result = TOOL_FNS[tc.function.name](args);\n    messages.push({ role: \"tool\", tool_call_id: tc.id, content: result });\n  }\n}"
+          },
+          {
+            "title": "Same shape with the Anthropic API",
+            "explanation": "Anthropic's Messages API follows the identical pattern with renamed fields: tools declare `input_schema`, the response carries `tool_use` content blocks when `stop_reason` is `tool_use`, and you reply with `tool_result` blocks that echo the `tool_use_id`. Learn the pattern once and every provider's API will look familiar.",
+            "python": "# anthropic_shape.py\nimport anthropic\n\nclient = anthropic.Anthropic()\ntools = [{\"name\": \"get_weather\",\n          \"description\": \"Get the current weather for a city.\",\n          \"input_schema\": {\"type\": \"object\", \"properties\": {\n              \"city\": {\"type\": \"string\"}}, \"required\": [\"city\"]}}]\n\nmessages = [{\"role\": \"user\", \"content\": \"What is the weather in Paris?\"}]\nresp = client.messages.create(model=\"claude-sonnet-4-6\", max_tokens=1024,\n                              tools=tools, messages=messages)\n\nif resp.stop_reason == \"tool_use\":\n    tu = next(b for b in resp.content if b.type == \"tool_use\")\n    result = f\"22 degrees celsius and sunny in {tu.input['city']}\"\n    messages.append({\"role\": \"assistant\", \"content\": resp.content})\n    messages.append({\"role\": \"user\", \"content\": [{\n        \"type\": \"tool_result\", \"tool_use_id\": tu.id, \"content\": result}]})\n    final = client.messages.create(model=\"claude-sonnet-4-6\", max_tokens=1024,\n                                   tools=tools, messages=messages)\n    print(final.content[0].text)",
+            "javascript": "// anthropic_shape.js\nimport Anthropic from \"@anthropic-ai/sdk\";\n\nconst client = new Anthropic();\nconst tools = [{ name: \"get_weather\",\n  description: \"Get the current weather for a city.\",\n  input_schema: { type: \"object\", properties: {\n      city: { type: \"string\" } }, required: [\"city\"] } }];\n\nconst messages = [{ role: \"user\", content: \"What is the weather in Paris?\" }];\nconst resp = await client.messages.create({ model: \"claude-sonnet-4-6\",\n  max_tokens: 1024, tools, messages });\n\nif (resp.stop_reason === \"tool_use\") {\n  const tu = resp.content.find((b) => b.type === \"tool_use\");\n  const result = `22 degrees celsius and sunny in ${tu.input.city}`;\n  messages.push({ role: \"assistant\", content: resp.content });\n  messages.push({ role: \"user\", content: [{\n    type: \"tool_result\", tool_use_id: tu.id, content: result }] });\n  const final = await client.messages.create({ model: \"claude-sonnet-4-6\",\n    max_tokens: 1024, tools, messages });\n  console.log(final.content[0].text);\n}"
+          }
+        ],
+        "practice": [
+          "Ask a question that needs no tools ('What is the capital of France?') and confirm your code prints a direct answer without entering the tool branch.",
+          "Add a third tool `get_time(timezone)` that returns a hardcoded time, then ask 'What time is it in Tokyo?' and verify the model picks it over `get_weather`.",
+          "Ask 'What's the weather in Paris and London?' and handle parallel tool calls — the model returns two entries in `tool_calls` at once; match each result by ID.",
+          "Make `calculator` raise on invalid input, return the error text as the tool result, and watch the model recover by correcting the expression.",
+          "Port step 4's full executor loop to the Anthropic API: run the two-tool weather-plus-calculator task end to end using `tool_result` blocks."
+        ]
+      }
+    },
+    {
+      "id": "multi-agent-systems",
+      "title": "Multi-Agent Systems",
+      "subsection": "Fundamentals",
+      "minutes": 6,
+      "intro": "Multi-agent systems split work across specialized agents that coordinate — via an orchestrator, handoffs, or shared workflows.",
+      "summary": [
+        "A single agent degrades as you pile on tools, instructions, and context: selection gets sloppy and the context window fills with noise. Multi-agent systems answer with specialization — several agents, each with a narrow role, focused instructions, and a small tool set, coordinating on a larger goal. Agents may cooperate (a research team), compete or check each other (a generator critiqued by a reviewer), and the key design problem shifts from prompting to coordination: who does what, who decides, and what information passes between them.",
+        "Two coordination patterns dominate in practice. Orchestrator-workers (supervisor): a lead agent decomposes the task, dispatches subtasks to worker agents — often in parallel — and synthesizes their results; workers typically return only their findings, keeping each context window clean. This is how Anthropic's multi-agent research system works and what LangGraph supervisor graphs and Google ADK's agent trees express. Handoffs: control transfers entirely from one agent to the next — a triage agent classifies the request, then hands the conversation to the billing or tech-support specialist, which is the core primitive of the OpenAI Agents SDK. Other recurring patterns: sequential pipelines (each agent transforms and passes on), reviewer/critic loops, and debate. Frameworks like CrewAI, AutoGen, LangGraph, smolagents, and ADK package these patterns.",
+        "The trade-offs are real: multi-agent systems multiply token spend (Anthropic reported roughly 15x a single chat's usage for its research system), add latency, and create new failure modes — agents duplicating work, losing context at handoffs, or deadlocking. The engineering disciplines that matter: explicit context passing (each agent should receive exactly what it needs, no more), clear role and output contracts per agent, observability across the whole agent graph, and restraint — only go multi-agent when a single well-scoped agent demonstrably falls short, typically when the task is parallelizable or requires genuinely distinct skill sets."
+      ],
+      "keyPoints": [
+        "Go multi-agent to fix overload: too many tools or instructions for one agent, or parallelizable subtasks — not for fashion.",
+        "Orchestrator-workers: a lead agent plans, delegates to parallel specialists, and synthesizes; workers keep their own clean contexts.",
+        "Handoffs transfer the whole conversation to a specialist (triage -> billing) — the OpenAI Agents SDK's core primitive.",
+        "Expect cost multiplication: Anthropic measured ~15x token usage for multi-agent research vs a single chat.",
+        "Most multi-agent bugs are context bugs: define exactly what each agent receives and must return.",
+        "A reviewer/critic agent checking a worker's output is the cheapest multi-agent pattern with the most reliable quality gain."
+      ],
+      "code": [
+        {
+          "title": "Handoffs with the OpenAI Agents SDK",
+          "language": "python",
+          "code": "# pip install openai-agents\nfrom agents import Agent, Runner\n\nbilling = Agent(\n    name=\"Billing\",\n    instructions=\"Resolve billing and refund questions precisely.\",\n)\nsupport = Agent(\n    name=\"Tech Support\",\n    instructions=\"Debug product and technical issues step by step.\",\n)\ntriage = Agent(\n    name=\"Triage\",\n    instructions=\"Classify the request and hand off to the right specialist.\",\n    handoffs=[billing, support],  # the model may transfer control\n)\n\nresult = Runner.run_sync(triage, \"I was charged twice this month.\")\nprint(result.last_agent.name)   # Billing\nprint(result.final_output)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "What is a multi-agent system?",
+          "url": "https://www.ibm.com/think/topics/multiagent-system",
+          "type": "article"
+        },
+        {
+          "title": "Multi-Agent Systems",
+          "url": "https://huggingface.co/learn/agents-course/en/unit2/smolagents/multi_agent_systems",
+          "type": "article"
+        },
+        {
+          "title": "Guide to multi-agent systems (MAS)",
+          "url": "https://cloud.google.com/discover/what-is-a-multi-agent-system",
+          "type": "article"
+        },
+        {
+          "title": "Agentic AI 103: Building Multi-Agent Teams",
+          "url": "https://towardsdatascience.com/agentic-ai-103-building-multi-agent-teams/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "manual-implementation",
+      "title": "Manual Implementation",
+      "subsection": "Building AI Agents",
+      "minutes": 7,
+      "intro": "Building the agent loop by hand — a while loop around a chat API with function calling — demystifies every framework you'll ever use.",
+      "summary": [
+        "An agent loop is short enough to write from scratch: maintain a message list, call the chat API with your tool definitions, and branch on the response. If the model returned tool calls, execute each one, append the results as tool messages, and call the model again; if it returned plain text, that is the final answer and the loop ends. Add a max-iteration cap and you have a working agent in about 30 lines. Everything else frameworks provide — retries, streaming, tracing, sessions, guardrails — is packaging around this loop.",
+        "Writing it manually forces you through the decisions frameworks hide, which is exactly why OpenAI's agents guide and Anthropic's 'Building Effective Agents' both push starting simple: How is the conversation state accumulated, and what happens when it outgrows the context window (truncation, summarization)? How are tool errors surfaced so the model can adapt? Which actions need human approval before execution? When do you stop — model says done, budget exhausted, or confidence too low? Owning these answers in plain code gives you total control, trivial debugging (it is just your code and an API call), and zero dependency churn.",
+        "Production systems built this way add the same short list of hardening features: parallel tool execution when the model requests several calls, structured logging of every model request and tool result, idempotency keys on side-effecting tools, and an approval gate for destructive actions. Anthropic's sub-agent pattern (as used in Claude Code) is a natural manual extension — the main loop exposes a 'spawn sub-agent' tool that runs a fresh, focused loop and returns only its summary, keeping the parent's context clean. Even if you adopt an SDK later, having built the loop once means you can read any framework's source and debug it when its abstractions leak."
+      ],
+      "keyPoints": [
+        "The whole agent loop: call model with tools -> execute returned tool calls -> append results -> repeat until text-only response.",
+        "Always cap iterations and spend; the most common manual-agent bug is an unbounded loop on a failing tool.",
+        "Append the model's assistant message (including its tool calls) before the tool results, or the API rejects the transcript.",
+        "Surface tool failures as descriptive strings in tool results so the model can change strategy instead of retrying blindly.",
+        "Gate destructive tools behind human approval; log every request/response pair for replay and debugging.",
+        "Sub-agents are just the loop called recursively via a tool, returning a summary to keep the parent context small."
+      ],
+      "code": [
+        {
+          "title": "Minimal agent tool-loop (OpenAI SDK)",
+          "language": "python",
+          "code": "import json\nfrom openai import OpenAI\n\nclient = OpenAI()\ntools = [{\"type\": \"function\", \"function\": {\n    \"name\": \"get_weather\",\n    \"description\": \"Get current weather for a city.\",\n    \"parameters\": {\"type\": \"object\",\n                   \"properties\": {\"city\": {\"type\": \"string\"}},\n                   \"required\": [\"city\"]}}}]\n\ndef get_weather(city: str) -> str:\n    return json.dumps({\"city\": city, \"temp_c\": 14, \"sky\": \"rain\"})\n\nmessages = [{\"role\": \"user\", \"content\": \"Should I bike to work in Amsterdam?\"}]\n\nfor _ in range(10):  # hard cap on iterations\n    resp = client.chat.completions.create(\n        model=\"gpt-5\", messages=messages, tools=tools)\n    msg = resp.choices[0].message\n    messages.append(msg)               # keep the assistant turn (with tool calls)\n    if not msg.tool_calls:\n        print(msg.content)             # final answer -> done\n        break\n    for call in msg.tool_calls:        # execute every requested tool\n        args = json.loads(call.function.arguments)\n        messages.append({\"role\": \"tool\", \"tool_call_id\": call.id,\n                         \"content\": get_weather(**args)})"
+        }
+      ],
+      "resources": [
+        {
+          "title": "A practical guide to building agents - OpenAI",
+          "url": "https://cdn.openai.com/business-guides-and-resources/a-practical-guide-to-building-agents.pdf",
+          "type": "official"
+        },
+        {
+          "title": "Create custom subagents - Claude",
+          "url": "https://code.claude.com/docs/en/sub-agents",
+          "type": "official"
+        }
+      ],
+      "handsOn": {
+        "goal": "Build a complete agent loop from scratch — a tool registry, a while loop with a max-iterations guard, and conversation-history management — then watch it chain two tools to solve a multi-step task.",
+        "steps": [
+          {
+            "title": "Install the SDK and set your API key",
+            "explanation": "The only dependency is the raw OpenAI SDK — the whole point of this lab is that the agent loop itself is your code, not a framework's. Everything you build here transfers conceptually to any provider.",
+            "python": "pip install openai\nexport OPENAI_API_KEY=sk-...",
+            "javascript": "npm init -y && npm install openai\nexport OPENAI_API_KEY=sk-...\n# in package.json add: \"type\": \"module\""
+          },
+          {
+            "title": "Build the tool registry",
+            "explanation": "A registry maps each tool name to its schema (sent to the model) and its function (run by you). Adding a capability to the agent becomes a one-entry change, and the API tool list is generated from the registry — this is the heart of every agent framework.",
+            "python": "# registry.py\ndef get_weather(city: str) -> str:\n    return f\"The temperature in {city} is 22 degrees celsius.\"\n\ndef calculator(expression: str) -> str:\n    # demo only -- never eval untrusted input in production\n    return str(eval(expression, {\"__builtins__\": {}}))\n\nREGISTRY = {\n    \"get_weather\": {\n        \"fn\": get_weather,\n        \"description\": \"Get the current weather for a city.\",\n        \"schema\": {\"type\": \"object\", \"properties\": {\n            \"city\": {\"type\": \"string\"}}, \"required\": [\"city\"]},\n    },\n    \"calculator\": {\n        \"fn\": calculator,\n        \"description\": \"Evaluate an arithmetic expression like '22 * 3 * 0.15'.\",\n        \"schema\": {\"type\": \"object\", \"properties\": {\n            \"expression\": {\"type\": \"string\"}}, \"required\": [\"expression\"]},\n    },\n}\n\nTOOLS = [{\"type\": \"function\", \"function\": {\n    \"name\": name, \"description\": spec[\"description\"],\n    \"parameters\": spec[\"schema\"]}} for name, spec in REGISTRY.items()]",
+            "javascript": "// registry.js\nexport const REGISTRY = new Map([\n  [\"get_weather\", {\n    fn: ({ city }) => `The temperature in ${city} is 22 degrees celsius.`,\n    description: \"Get the current weather for a city.\",\n    schema: { type: \"object\", properties: {\n        city: { type: \"string\" } }, required: [\"city\"] },\n  }],\n  [\"calculator\", {\n    // demo only -- never eval untrusted input in production\n    fn: ({ expression }) =>\n      String(Function(`\"use strict\"; return (${expression})`)()),\n    description: \"Evaluate an arithmetic expression like '22 * 3 * 0.15'.\",\n    schema: { type: \"object\", properties: {\n        expression: { type: \"string\" } }, required: [\"expression\"] },\n  }],\n]);\n\nexport const TOOLS = [...REGISTRY].map(([name, spec]) => ({\n  type: \"function\",\n  function: { name, description: spec.description, parameters: spec.schema },\n}));"
+          },
+          {
+            "title": "Write the agent loop",
+            "explanation": "The loop is: call the model, return its text if there are no tool calls, otherwise execute every requested tool and append both the assistant turn and the tool results to history. The `max_iterations` guard is non-negotiable — without it a confused model can loop forever, and tool errors are fed back as results so the model can self-correct.",
+            "python": "# agent.py\nimport json\nfrom openai import OpenAI\nfrom registry import REGISTRY, TOOLS\n\nclient = OpenAI()\n\ndef run_agent(task: str, max_iterations: int = 8) -> str:\n    messages = [\n        {\"role\": \"system\",\n         \"content\": \"Use the tools to answer. Work one step at a time.\"},\n        {\"role\": \"user\", \"content\": task},\n    ]\n    for i in range(max_iterations):\n        resp = client.chat.completions.create(\n            model=\"gpt-5-mini\", messages=messages, tools=TOOLS)\n        msg = resp.choices[0].message\n        if not msg.tool_calls:\n            return msg.content  # the model is done\n        messages.append(msg)  # history: assistant turn with tool calls\n        for tc in msg.tool_calls:\n            args = json.loads(tc.function.arguments)\n            print(f\"[iter {i}] {tc.function.name}({args})\")\n            try:\n                result = REGISTRY[tc.function.name][\"fn\"](**args)\n            except Exception as e:\n                result = f\"Error: {e}\"  # let the model see it and recover\n            messages.append({\"role\": \"tool\", \"tool_call_id\": tc.id,\n                             \"content\": result})\n    return \"Stopped: hit max_iterations guard.\"",
+            "javascript": "// agent.js\nimport OpenAI from \"openai\";\nimport { REGISTRY, TOOLS } from \"./registry.js\";\n\nconst client = new OpenAI();\n\nexport async function runAgent(task, maxIterations = 8) {\n  const messages = [\n    { role: \"system\",\n      content: \"Use the tools to answer. Work one step at a time.\" },\n    { role: \"user\", content: task },\n  ];\n  for (let i = 0; i < maxIterations; i++) {\n    const resp = await client.chat.completions.create({\n      model: \"gpt-5-mini\", messages, tools: TOOLS });\n    const msg = resp.choices[0].message;\n    if (!msg.tool_calls) return msg.content; // the model is done\n    messages.push(msg); // history: assistant turn with tool calls\n    for (const tc of msg.tool_calls) {\n      const args = JSON.parse(tc.function.arguments);\n      console.log(`[iter ${i}] ${tc.function.name}(${tc.function.arguments})`);\n      let result;\n      try {\n        result = REGISTRY.get(tc.function.name).fn(args);\n      } catch (e) {\n        result = `Error: ${e.message}`; // let the model see it and recover\n      }\n      messages.push({ role: \"tool\", tool_call_id: tc.id, content: result });\n    }\n  }\n  return \"Stopped: hit maxIterations guard.\";\n}"
+          },
+          {
+            "title": "Run it on a multi-step task",
+            "explanation": "This task cannot be answered in one shot: the agent must first fetch the temperature, then feed that number into the calculator. Watch the printed trace — iteration 0 calls `get_weather`, iteration 1 calls `calculator` with the fetched value, then the model writes the final answer.",
+            "python": "# main.py\nfrom agent import run_agent\n\nanswer = run_agent(\"What's 15% of the temperature in Paris times 3?\")\nprint(answer)\n\n# Expected trace:\n# [iter 0] get_weather({'city': 'Paris'})\n# [iter 1] calculator({'expression': '22 * 3 * 0.15'})\n# ...final answer: about 9.9",
+            "javascript": "// main.js\nimport { runAgent } from \"./agent.js\";\n\nconst answer = await runAgent(\n  \"What's 15% of the temperature in Paris times 3?\");\nconsole.log(answer);\n\n// Expected trace:\n// [iter 0] get_weather({\"city\":\"Paris\"})\n// [iter 1] calculator({\"expression\":\"22 * 3 * 0.15\"})\n// ...final answer: about 9.9"
+          }
+        ],
+        "practice": [
+          "Print the full `messages` list after a run and trace how the history alternates between assistant tool-call turns and tool-result messages.",
+          "Set `max_iterations=1` and rerun the multi-step task — confirm the guard fires and returns the stopped message instead of looping.",
+          "Add a `search_docs` tool that returns a canned string and craft a question that forces all three tools to run in sequence.",
+          "Track cost: accumulate `resp.usage.total_tokens` across iterations and print the total alongside the answer.",
+          "Swap the OpenAI client for Anthropic's Messages API — keep the registry identical and change only the request/response handling in the loop (tool_use blocks in, tool_result blocks out)."
+        ]
+      }
+    },
+    {
+      "id": "openai-agentkit-agents-sdk",
+      "title": "OpenAI AgentKit & Agents SDK",
+      "subsection": "Building AI Agents",
+      "minutes": 6,
+      "intro": "OpenAI's agent stack: the open-source Agents SDK for code-first agents, and AgentKit's platform tools (Agent Builder, ChatKit, evals) around it.",
+      "summary": [
+        "The Agents SDK (Python and TypeScript, open source) is OpenAI's lightweight code-first framework, the production successor to the experimental Swarm project. It has deliberately few primitives: an `Agent` (instructions + model + tools), `Runner` to execute the loop, function tools created from plain Python functions via the `@function_tool` decorator (the SDK derives the JSON schema from type hints and the docstring), handoffs for transferring control between agents, guardrails that validate input/output in parallel and can halt a run, and sessions for conversation memory. Built-in tracing visualizes every run in the OpenAI dashboard. The design bet is the same as its philosophy doc states: Python's own control flow plus a tiny set of primitives beats heavyweight graph abstractions.",
+        "AgentKit, announced at DevDay 2025, wraps that foundation in platform tooling: Agent Builder, a visual drag-and-drop canvas for composing and versioning multi-agent workflows; ChatKit, embeddable chat UI components for shipping the front end; a Connector Registry for managing data/tool connections (including MCP servers); and integrated evals with trace grading and prompt optimization. The hosted tools matter too — web search, file search (hosted RAG), code interpreter, and computer use can be attached to an agent with a line of configuration. Together the pitch is covering the whole lifecycle: build visually or in code, embed, evaluate, and observe on one platform.",
+        "How to choose within the stack: use the Agents SDK when you want code-first control with minimal abstraction (and note it can run against any chat-completions-compatible model, not just OpenAI's); use Agent Builder when product teams want to iterate on agent logic visually with versioning; and use ChatKit plus the hosted tools to avoid rebuilding chat UX and common capabilities. Compared with LangGraph the SDK is far simpler but less expressive for arbitrary stateful graphs; compared with Claude's stack it is more UI/platform-flavored, while Claude's Agent SDK leans into autonomous, filesystem-centric agents."
+      ],
+      "keyPoints": [
+        "Core primitives only: `Agent`, `Runner`, function tools, handoffs, guardrails, sessions — orchestration is plain Python.",
+        "`@function_tool` builds the tool schema from type hints and docstrings; no hand-written JSON Schema.",
+        "Handoffs are the SDK's multi-agent mechanism: a specialist takes over the conversation (triage patterns).",
+        "Guardrails run validation in parallel with the agent and trip a tripwire to halt unsafe runs early.",
+        "AgentKit adds Agent Builder (visual canvas), ChatKit (embeddable UI), Connector Registry, and integrated evals/tracing.",
+        "Hosted tools — web search, file search, code interpreter, computer use — attach without custom code; MCP servers are supported.",
+        "The SDK works with any chat-completions-compatible API, so you are not locked to OpenAI models."
+      ],
+      "code": [
+        {
+          "title": "OpenAI Agents SDK quickstart",
+          "language": "python",
+          "code": "# pip install openai-agents\nfrom agents import Agent, Runner, function_tool\n\n@function_tool\ndef get_weather(city: str) -> str:\n    \"\"\"Get the current weather for a city.\"\"\"\n    return f\"{city}: 14C, light rain\"\n\nassistant = Agent(\n    name=\"Commute Assistant\",\n    instructions=\"Answer briefly. Use tools for live data.\",\n    model=\"gpt-5\",\n    tools=[get_weather],\n)\n\nresult = Runner.run_sync(assistant, \"Should I bike to work in Amsterdam?\")\nprint(result.final_output)\n# The Runner handles the full loop: tool calls, results, and re-prompting,\n# with a trace of the run viewable in the OpenAI dashboard."
+        }
+      ],
+      "resources": [
+        {
+          "title": "Introducing AgentKit",
+          "url": "https://openai.com/index/introducing-agentkit/",
+          "type": "official"
+        },
+        {
+          "title": "Build every step of agents on one platform",
+          "url": "https://openai.com/agent-platform/",
+          "type": "official"
+        },
+        {
+          "title": "OpenAI Agents SDK Tutorial (FULL SERIES)",
+          "url": "https://www.youtube.com/watch?v=gFcAfU3V1Zo",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Build an agent with the OpenAI Agents SDK — instructions plus a function tool — run it with the Runner, then add a second agent and route between them with a handoff.",
+        "steps": [
+          {
+            "title": "Install the Agents SDK",
+            "explanation": "The Python package is `openai-agents` (imported as `agents`); the JavaScript package is `@openai/agents` and uses zod v3 for tool parameter schemas. Both read `OPENAI_API_KEY` from the environment.",
+            "python": "pip install openai-agents\nexport OPENAI_API_KEY=sk-...",
+            "javascript": "npm init -y && npm install @openai/agents zod@3\nexport OPENAI_API_KEY=sk-...\n# in package.json add: \"type\": \"module\""
+          },
+          {
+            "title": "Define an agent with instructions and a function tool",
+            "explanation": "In Python, `@function_tool` turns a typed, docstringed function into a tool — the SDK generates the JSON schema from the signature. In JavaScript you pass a zod schema and an `execute` function to `tool()`. The `Agent` bundles a name, instructions (its system prompt), a model, and its tools.",
+            "python": "# weather_agent.py\nfrom agents import Agent, function_tool\n\n@function_tool\ndef get_weather(city: str) -> str:\n    \"\"\"Get the current weather for a city.\"\"\"\n    return f\"The temperature in {city} is 22 degrees celsius and sunny.\"\n\nweather_agent = Agent(\n    name=\"Weather Assistant\",\n    instructions=\"You answer weather questions. Always use get_weather.\",\n    model=\"gpt-5-mini\",\n    tools=[get_weather],\n)",
+            "javascript": "// weatherAgent.js\nimport { Agent, tool } from \"@openai/agents\";\nimport { z } from \"zod\";\n\nexport const getWeather = tool({\n  name: \"get_weather\",\n  description: \"Get the current weather for a city.\",\n  parameters: z.object({ city: z.string() }),\n  execute: async ({ city }) =>\n    `The temperature in ${city} is 22 degrees celsius and sunny.`,\n});\n\nexport const weatherAgent = new Agent({\n  name: \"Weather Assistant\",\n  instructions: \"You answer weather questions. Always use get_weather.\",\n  model: \"gpt-5-mini\",\n  tools: [getWeather],\n});"
+          },
+          {
+            "title": "Run it with the Runner",
+            "explanation": "`Runner.run` (or `run()` in JS) executes the whole agent loop for you: it calls the model, executes tool calls, feeds results back, and stops when the agent produces a final output. Compare this to the manual loop you built earlier — same mechanics, zero boilerplate.",
+            "python": "# main.py\nimport asyncio\nfrom agents import Runner\nfrom weather_agent import weather_agent\n\nasync def main():\n    result = await Runner.run(\n        weather_agent, \"What's the weather in Paris?\")\n    print(result.final_output)\n    # The temperature in Paris is 22 degrees celsius and sunny...\n\nasyncio.run(main())",
+            "javascript": "// main.js\nimport { run } from \"@openai/agents\";\nimport { weatherAgent } from \"./weatherAgent.js\";\n\nconst result = await run(weatherAgent, \"What's the weather in Paris?\");\nconsole.log(result.finalOutput);\n// The temperature in Paris is 22 degrees celsius and sunny..."
+          },
+          {
+            "title": "Add a second agent and a handoff",
+            "explanation": "Handoffs let one agent transfer the conversation to a specialist: list target agents in `handoffs` and the SDK exposes a transfer tool the triage agent can call. Run a math question through the triage agent and check `last_agent` to confirm the handoff actually happened.",
+            "python": "# triage.py\nimport asyncio\nfrom agents import Agent, Runner\nfrom weather_agent import weather_agent\n\nmath_agent = Agent(\n    name=\"Math Tutor\",\n    instructions=\"You solve math problems and show your work briefly.\",\n    model=\"gpt-5-mini\",\n)\n\ntriage_agent = Agent(\n    name=\"Triage\",\n    instructions=\"Route weather questions to Weather Assistant and \"\n                 \"math questions to Math Tutor.\",\n    model=\"gpt-5-mini\",\n    handoffs=[weather_agent, math_agent],\n)\n\nasync def main():\n    result = await Runner.run(triage_agent, \"What is 15% of 66?\")\n    print(result.last_agent.name)  # Math Tutor\n    print(result.final_output)     # 9.9\n\nasyncio.run(main())",
+            "javascript": "// triage.js\nimport { Agent, run } from \"@openai/agents\";\nimport { weatherAgent } from \"./weatherAgent.js\";\n\nconst mathAgent = new Agent({\n  name: \"Math Tutor\",\n  instructions: \"You solve math problems and show your work briefly.\",\n  model: \"gpt-5-mini\",\n});\n\nconst triageAgent = new Agent({\n  name: \"Triage\",\n  instructions: \"Route weather questions to Weather Assistant and \" +\n    \"math questions to Math Tutor.\",\n  model: \"gpt-5-mini\",\n  handoffs: [weatherAgent, mathAgent],\n});\n\nconst result = await run(triageAgent, \"What is 15% of 66?\");\nconsole.log(result.lastAgent?.name); // Math Tutor\nconsole.log(result.finalOutput);     // 9.9"
+          }
+        ],
+        "practice": [
+          "Send the triage agent a weather question and confirm `last_agent` (`lastAgent`) is the Weather Assistant this time.",
+          "Give the Math Tutor a `calculator` function tool and verify it is called by inspecting `result.new_items` (`result.newItems`), which lists every tool call and handoff in the run.",
+          "Pass `max_turns=2` to `Runner.run` (`{ maxTurns: 2 }` in JS) and trigger the guard with a question that needs a handoff plus a tool call.",
+          "Ask a combined question ('weather in Paris and 15% of 66') and observe which agent answers — then rewrite the triage instructions to handle mixed questions explicitly.",
+          "Stream the run with `Runner.run_streamed` (Python) or `run(agent, input, { stream: true })` (JS) and print events as the agent works."
+        ]
+      }
+    },
+    {
+      "id": "langgraph",
+      "title": "LangGraph",
+      "subsection": "Building AI Agents",
+      "minutes": 7,
+      "intro": "LangGraph is the LangChain team's low-level orchestration framework for building stateful agents as graphs — explicit nodes, edges, and shared state, with cycles, checkpointing, and human-in-the-loop control built in.",
+      "summary": [
+        "LangGraph is a low-level orchestration framework from the LangChain team for building stateful, long-running agents. Where high-level SDKs hand you a finished harness, LangGraph hands you the control flow itself: you model your agent as a graph and the framework runs it. That explicitness is the selling point — nothing about the loop is hidden, so you can encode exactly the workflow you want, from a single tool-calling agent to multi-agent systems with branching, retries, and supervisor patterns. It is open source (MIT), works with any chat model via the LangChain integrations (it does not require the rest of LangChain), and ships in both Python (`langgraph`) and JavaScript/TypeScript (`@langchain/langgraph`).",
+        "The mental model has three parts. State is a typed schema (a `TypedDict` in Python, an `Annotation` in JS) shared by the whole graph; reducers like `add_messages` define how each update merges in — append to history rather than overwrite it. Nodes are plain functions that receive the current state and return a partial update — one node might call the LLM, another might execute tools. Edges wire nodes together: normal edges always fire, while conditional edges run a function against the state to decide where to go next. Because edges can point backwards, cycles are first-class — the classic agent loop is literally `agent -> tools -> agent` until a conditional edge routes to END. That is the structural difference from DAG pipeline tools: a DAG can fan out and join but can never loop, and an agent that reacts to tool results *is* a loop.",
+        "The second differentiator is persistence. Compile the graph with a checkpointer (`MemorySaver` in development, Postgres/SQLite in production) and LangGraph snapshots the state after every step, keyed by a `thread_id`. That one feature buys multi-turn memory, crash recovery, time-travel debugging, and human-in-the-loop: you can interrupt the graph before a sensitive node, let a human approve or edit the state, and resume exactly where it stopped. As a rule of thumb: stick with a hand-rolled loop when one model and a couple of tools will do; reach for a higher-level SDK (OpenAI Agents SDK, Claude Agent SDK) when its opinionated harness matches your task; choose LangGraph when you need custom control flow, durable state, or several agents coordinating — and you want to own the graph rather than trust a black box."
+      ],
+      "keyPoints": [
+        "A LangGraph agent = a state schema + nodes (functions returning state updates) + edges (routing); the framework executes the graph, you own its shape.",
+        "Reducers control how updates merge into state — `add_messages` appends to conversation history instead of overwriting it.",
+        "Conditional edges decide routing at runtime, and cycles are first-class: the agent -> tools -> agent loop is a cycle no DAG pipeline can express.",
+        "Checkpointers (`MemorySaver`, Postgres, SQLite) persist state after every step per `thread_id`, enabling multi-turn memory, crash recovery, time travel, and human-in-the-loop interrupts.",
+        "`create_react_agent` from `langgraph.prebuilt` gives you a production-shaped tool-calling agent in one line when you don't need a custom graph.",
+        "Rule of thumb: hand-rolled loop for simple cases, higher-level SDKs for an opinionated harness, LangGraph for explicit control flow, durable state, and multi-agent coordination."
+      ],
+      "code": [
+        {
+          "title": "LangGraph quickstart with create_react_agent",
+          "language": "python",
+          "code": "# pip install langgraph langchain-openai\nfrom langgraph.prebuilt import create_react_agent\n\ndef get_weather(city: str) -> str:\n    \"\"\"Get the current weather for a city.\"\"\"\n    return f\"The temperature in {city} is 22 degrees celsius and sunny.\"\n\nagent = create_react_agent(\n    model=\"openai:gpt-5-mini\",\n    tools=[get_weather],\n    prompt=\"You are a concise weather assistant.\",\n)\n\nresult = agent.invoke(\n    {\"messages\": [{\"role\": \"user\", \"content\": \"What's the weather in Paris?\"}]}\n)\nprint(result[\"messages\"][-1].content)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "LangGraph Documentation",
+          "url": "https://langchain-ai.github.io/langgraph/",
+          "type": "official"
+        },
+        {
+          "title": "langchain-ai/langgraph on GitHub",
+          "url": "https://github.com/langchain-ai/langgraph",
+          "type": "official"
+        },
+        {
+          "title": "Introduction to LangGraph — LangChain Academy",
+          "url": "https://academy.langchain.com/courses/intro-to-langgraph",
+          "type": "course"
+        }
+      ],
+      "handsOn": {
+        "goal": "Build a two-node LangGraph agent (LLM node + tool node) wired with conditional edges and a cycle, then add `MemorySaver` checkpointing so it remembers earlier turns by `thread_id`.",
+        "steps": [
+          {
+            "title": "Install LangGraph and a model provider",
+            "explanation": "LangGraph is provider-agnostic; you pair it with a chat-model integration — here `langchain-openai` / `@langchain/openai`. The JS package also needs `@langchain/core` and zod for tool schemas.",
+            "python": "pip install langgraph langchain-openai\nexport OPENAI_API_KEY=sk-...",
+            "javascript": "npm init -y && npm install @langchain/langgraph @langchain/openai @langchain/core zod\nexport OPENAI_API_KEY=sk-...\n# in package.json add: \"type\": \"module\""
+          },
+          {
+            "title": "Define the graph state",
+            "explanation": "State is the shared data structure every node reads and writes — here just a message list. The reducer (`add_messages` / `messagesStateReducer`) tells LangGraph how to merge a node's return value into state: append to the list instead of replacing it.",
+            "python": "# state.py\nfrom typing import Annotated, TypedDict\nfrom langgraph.graph.message import add_messages\n\nclass State(TypedDict):\n    # add_messages appends new messages instead of overwriting the list\n    messages: Annotated[list, add_messages]",
+            "javascript": "// state.js\nimport { Annotation, messagesStateReducer } from \"@langchain/langgraph\";\n\nexport const State = Annotation.Root({\n  // messagesStateReducer appends new messages instead of overwriting\n  messages: Annotation({\n    reducer: messagesStateReducer,\n    default: () => [],\n  }),\n});"
+          },
+          {
+            "title": "Build the two-node graph with conditional edges",
+            "explanation": "The `agent` node calls the LLM with tools bound; the `tools` node executes whatever the LLM requested. `tools_condition` is the conditional edge: it routes to `tools` when the last message contains tool calls, otherwise to END. The `tools -> agent` edge closes the cycle — something a DAG pipeline cannot express.",
+            "python": "# graph.py\nfrom langchain_core.tools import tool\nfrom langchain_openai import ChatOpenAI\nfrom langgraph.graph import StateGraph, START\nfrom langgraph.prebuilt import ToolNode, tools_condition\nfrom state import State\n\n@tool\ndef get_weather(city: str) -> str:\n    \"\"\"Get the current weather for a city.\"\"\"\n    return f\"The temperature in {city} is 22 degrees celsius and sunny.\"\n\nllm = ChatOpenAI(model=\"gpt-5-mini\").bind_tools([get_weather])\n\ndef agent(state: State):\n    return {\"messages\": [llm.invoke(state[\"messages\"])]}\n\nbuilder = StateGraph(State)\nbuilder.add_node(\"agent\", agent)\nbuilder.add_node(\"tools\", ToolNode([get_weather]))\nbuilder.add_edge(START, \"agent\")\nbuilder.add_conditional_edges(\"agent\", tools_condition)  # -> tools or END\nbuilder.add_edge(\"tools\", \"agent\")  # the cycle: results return to the LLM",
+            "javascript": "// graph.js\nimport { tool } from \"@langchain/core/tools\";\nimport { z } from \"zod\";\nimport { ChatOpenAI } from \"@langchain/openai\";\nimport { StateGraph, START } from \"@langchain/langgraph\";\nimport { ToolNode, toolsCondition } from \"@langchain/langgraph/prebuilt\";\nimport { State } from \"./state.js\";\n\nconst getWeather = tool(\n  async ({ city }) =>\n    `The temperature in ${city} is 22 degrees celsius and sunny.`,\n  { name: \"get_weather\",\n    description: \"Get the current weather for a city.\",\n    schema: z.object({ city: z.string() }) },\n);\n\nconst llm = new ChatOpenAI({ model: \"gpt-5-mini\" }).bindTools([getWeather]);\n\nexport const builder = new StateGraph(State)\n  .addNode(\"agent\", async (s) => ({ messages: [await llm.invoke(s.messages)] }))\n  .addNode(\"tools\", new ToolNode([getWeather]))\n  .addEdge(START, \"agent\")\n  .addConditionalEdges(\"agent\", toolsCondition) // -> tools or END\n  .addEdge(\"tools\", \"agent\"); // the cycle: results return to the LLM"
+          },
+          {
+            "title": "Compile and run the graph",
+            "explanation": "`compile()` turns the builder into a runnable graph with `.invoke()` and `.stream()` methods. Print every message in the final state to see the full trace: human question, AI tool call, tool result, AI answer — your conditional edge and cycle in action.",
+            "python": "# run.py\nfrom graph import builder\n\ngraph = builder.compile()\nresult = graph.invoke({\"messages\": [\n    {\"role\": \"user\", \"content\": \"What's the weather in Paris?\"}]})\n\nfor m in result[\"messages\"]:\n    print(type(m).__name__, \"->\", m.content)\n# HumanMessage -> the question\n# AIMessage    -> (empty content, tool call for get_weather)\n# ToolMessage  -> 22 degrees celsius and sunny...\n# AIMessage    -> final answer",
+            "javascript": "// run.js\nimport { builder } from \"./graph.js\";\n\nconst graph = builder.compile();\nconst result = await graph.invoke({\n  messages: [{ role: \"user\", content: \"What's the weather in Paris?\" }],\n});\n\nfor (const m of result.messages) {\n  console.log(m.constructor.name, \"->\", m.content);\n}\n// HumanMessage -> the question\n// AIMessage    -> (empty content, tool call for get_weather)\n// ToolMessage  -> 22 degrees celsius and sunny...\n// AIMessage    -> final answer"
+          },
+          {
+            "title": "Add MemorySaver checkpointing for multi-turn memory",
+            "explanation": "A checkpointer saves the graph state after every step, keyed by `thread_id`. Re-invoking with the same thread restores the conversation, so the second question can reference the first — swap `MemorySaver` for a Postgres/SQLite checkpointer in production and the same code survives restarts.",
+            "python": "# memory.py\nfrom langgraph.checkpoint.memory import MemorySaver\nfrom graph import builder\n\ngraph = builder.compile(checkpointer=MemorySaver())\nconfig = {\"configurable\": {\"thread_id\": \"user-42\"}}\n\ngraph.invoke({\"messages\": [{\"role\": \"user\",\n    \"content\": \"Hi, I'm Sam. What's the weather in Paris?\"}]}, config)\n\nout = graph.invoke({\"messages\": [{\"role\": \"user\",\n    \"content\": \"What's my name, and which city did I ask about?\"}]}, config)\nprint(out[\"messages\"][-1].content)  # remembers Sam and Paris",
+            "javascript": "// memory.js\nimport { MemorySaver } from \"@langchain/langgraph\";\nimport { builder } from \"./graph.js\";\n\nconst graph = builder.compile({ checkpointer: new MemorySaver() });\nconst config = { configurable: { thread_id: \"user-42\" } };\n\nawait graph.invoke({ messages: [{ role: \"user\",\n  content: \"Hi, I'm Sam. What's the weather in Paris?\" }] }, config);\n\nconst out = await graph.invoke({ messages: [{ role: \"user\",\n  content: \"What's my name, and which city did I ask about?\" }] }, config);\nconsole.log(out.messages.at(-1).content); // remembers Sam and Paris"
+          }
+        ],
+        "practice": [
+          "Run the memory script with two different `thread_id` values and confirm the second thread has no idea what your name is.",
+          "Add a `calculator` tool to the ToolNode and ask 'What's 15% of the temperature in Paris times 3?' — verify the graph cycles agent -> tools -> agent twice.",
+          "Replace `.invoke()` with `.stream()` and print each node's name as it executes to watch the agent -> tools -> agent order live.",
+          "Inspect the checkpoint with `graph.get_state(config)` (`graph.getState(config)`) after a run and count the stored messages.",
+          "Rebuild the same agent with `create_react_agent` from `langgraph.prebuilt` in a quarter of the code, then add `checkpointer=MemorySaver()` to it and confirm multi-turn memory still works."
+        ]
+      }
+    },
+    {
+      "id": "claude-agent-sdk",
+      "title": "Claude Agent SDK",
+      "subsection": "Building AI Agents",
+      "minutes": 6,
+      "intro": "The Claude Agent SDK exposes the agent harness behind Claude Code as a library — a production agent loop with file tools, permissions, and sub-agents built in.",
+      "summary": [
+        "The Claude Agent SDK (Python and TypeScript, renamed from the Claude Code SDK in 2025) takes a different angle from most frameworks: instead of giving you primitives to assemble a loop, it gives you the battle-tested harness that powers Claude Code — the full agent loop, context management with automatic compaction, and a suite of built-in tools (`Read`, `Write`, `Edit`, `Bash`, `Grep`, `Glob`, `WebSearch`, `WebFetch`) — and lets you point it at any task. The core design idea is that effective agents work like developers do: they operate on a real filesystem and shell, gather context by searching and reading files, act by editing and running commands, and verify their own work, following the gather context -> take action -> verify loop Anthropic describes in its engineering posts.",
+        "The Python API has two entry points: a one-shot async `query()` function that streams messages from a run, and a `ClaudeSDKClient` for stateful multi-turn sessions. `ClaudeAgentOptions` configures the system prompt, which tools are allowed, the working directory, max turns, and crucially `permission_mode` plus permission callbacks — fine-grained control over what the agent may do without asking, the SDK's standout safety feature. You extend it with custom tools (in-process MCP servers via the `@tool` decorator), external MCP servers, hooks that run at lifecycle points, and subagents — isolated child agents with their own prompts and tool restrictions that keep the parent's context clean, the same mechanism Claude Code uses.",
+        "Because the harness handles loop mechanics, context, and safety, the SDK suits long-running autonomous work: coding agents, SRE/diagnosis bots, data-pipeline fixers, research agents that accumulate findings in files. Anthropic's guidance is to treat the filesystem as agent memory — have agents persist notes and intermediate state to files rather than holding everything in context. It requires an Anthropic API key (or Bedrock/Vertex routing) and ships with the Claude Code CLI runtime underneath. Compared with the OpenAI Agents SDK, which gives you minimal primitives to compose, the Claude Agent SDK gives you a complete opinionated agent computer — less assembly, more capability out of the box."
+      ],
+      "keyPoints": [
+        "It packages Claude Code's production harness: agent loop, automatic context compaction, and file/shell tools out of the box.",
+        "Python entry points: async `query()` for one-shot runs, `ClaudeSDKClient` for stateful multi-turn sessions.",
+        "`permission_mode` and permission callbacks give per-tool, per-action control — approve, deny, or auto-accept classes of actions.",
+        "Extend with custom in-process tools (`@tool` + MCP), external MCP servers, lifecycle hooks, and isolated subagents.",
+        "Design pattern: gather context -> take action -> verify; use the filesystem as durable agent memory.",
+        "Renamed from 'Claude Code SDK' — it is for general-purpose agents, not just coding; runs on the Claude Code CLI runtime."
+      ],
+      "code": [
+        {
+          "title": "Claude Agent SDK quickstart (Python)",
+          "language": "python",
+          "code": "# pip install claude-agent-sdk   (requires the Claude Code CLI + API key)\nimport anyio\nfrom claude_agent_sdk import query, ClaudeAgentOptions\n\nasync def main():\n    options = ClaudeAgentOptions(\n        system_prompt=\"You are a meticulous code-review assistant.\",\n        allowed_tools=[\"Read\", \"Grep\", \"Glob\"],  # read-only file tools\n        permission_mode=\"default\",               # ask before anything else\n        max_turns=10,\n        cwd=\"/path/to/repo\",\n    )\n    async for message in query(\n        prompt=\"Find all TODO comments in src/ and summarize them by file.\",\n        options=options,\n    ):\n        print(message)  # streamed thinking, tool calls, and the final result\n\nanyio.run(main)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Agent SDK overview",
+          "url": "https://platform.claude.com/docs/en/agent-sdk/overview",
+          "type": "official"
+        },
+        {
+          "title": "Getting Started with the Claude Agent SDK",
+          "url": "https://www.kdnuggets.com/getting-started-with-the-claude-agent-sdk",
+          "type": "article"
+        },
+        {
+          "title": "Building Custom AI Agents Just Got EASIER - Claude Agent SDK",
+          "url": "https://www.youtube.com/watch?v=NsROagHaKxA",
+          "type": "video"
+        },
+        {
+          "title": "Claude Agents SDK BEATS all Agent Framework! (Beginners Guide)",
+          "url": "https://www.youtube.com/watch?v=i6N8oQQ0tUE",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Run a one-shot agent with `query()`, then build a stateful multi-turn agent with a custom in-process tool and a locked-down `allowed_tools` list.",
+        "steps": [
+          {
+            "title": "Install the SDK and runtime",
+            "explanation": "The SDK drives the Claude Code runtime underneath: the Python package needs Node.js plus the Claude Code CLI installed globally, while the TypeScript package bundles the runtime. Set `ANTHROPIC_API_KEY` in your shell.",
+            "python": "pip install claude-agent-sdk\nnpm install -g @anthropic-ai/claude-code   # CLI runtime used by the SDK\nexport ANTHROPIC_API_KEY=sk-ant-...",
+            "javascript": "npm init -y && npm install @anthropic-ai/claude-agent-sdk zod\nexport ANTHROPIC_API_KEY=sk-ant-...\n# in package.json add: \"type\": \"module\""
+          },
+          {
+            "title": "One-shot run with query()",
+            "explanation": "`query()` spins up the full agent harness for a single task and streams messages back as the agent works. Restricting `allowed_tools` to read-only file tools means the agent can explore your project but cannot modify anything — run this from a directory with some source files in it.",
+            "python": "# oneshot.py\nimport anyio\nfrom claude_agent_sdk import query, ClaudeAgentOptions, ResultMessage\n\nasync def main():\n    options = ClaudeAgentOptions(\n        model=\"claude-sonnet-4-6\",\n        allowed_tools=[\"Read\", \"Glob\", \"Grep\"],  # read-only file tools\n        max_turns=5,\n    )\n    async for message in query(\n            prompt=\"What does this project do? Inspect the files here.\",\n            options=options):\n        if isinstance(message, ResultMessage):\n            print(message.result)\n\nanyio.run(main)",
+            "javascript": "// oneshot.js\nimport { query } from \"@anthropic-ai/claude-agent-sdk\";\n\nfor await (const message of query({\n  prompt: \"What does this project do? Inspect the files here.\",\n  options: {\n    model: \"claude-sonnet-4-6\",\n    allowedTools: [\"Read\", \"Glob\", \"Grep\"], // read-only file tools\n    maxTurns: 5,\n  },\n})) {\n  if (message.type === \"result\" && message.subtype === \"success\") {\n    console.log(message.result);\n  }\n}"
+          },
+          {
+            "title": "Add a custom tool via an in-process MCP server",
+            "explanation": "Custom tools are declared with the `tool` helper and served through `create_sdk_mcp_server` — no separate process, just a function in your script. The tool's full name becomes `mcp__<server>__<tool>`, and it must be listed in `allowed_tools` or the agent cannot call it.",
+            "python": "# custom_tool.py\nimport anyio\nfrom claude_agent_sdk import (ClaudeAgentOptions, ResultMessage,\n                              create_sdk_mcp_server, query, tool)\n\n@tool(\"get_weather\", \"Get the current weather for a city\", {\"city\": str})\nasync def get_weather(args):\n    return {\"content\": [{\n        \"type\": \"text\",\n        \"text\": f\"22 degrees celsius and sunny in {args['city']}\"}]}\n\nserver = create_sdk_mcp_server(name=\"labtools\", version=\"1.0.0\",\n                               tools=[get_weather])\n\nasync def main():\n    options = ClaudeAgentOptions(\n        model=\"claude-sonnet-4-6\",\n        mcp_servers={\"labtools\": server},\n        allowed_tools=[\"mcp__labtools__get_weather\"],\n    )\n    async for message in query(prompt=\"What's the weather in Paris?\",\n                               options=options):\n        if isinstance(message, ResultMessage):\n            print(message.result)\n\nanyio.run(main)",
+            "javascript": "// customTool.js\nimport { query, tool, createSdkMcpServer } from \"@anthropic-ai/claude-agent-sdk\";\nimport { z } from \"zod\";\n\nconst getWeather = tool(\n  \"get_weather\",\n  \"Get the current weather for a city\",\n  { city: z.string() },\n  async ({ city }) => ({\n    content: [{ type: \"text\",\n                text: `22 degrees celsius and sunny in ${city}` }],\n  }),\n);\n\nconst server = createSdkMcpServer({\n  name: \"labtools\", version: \"1.0.0\", tools: [getWeather],\n});\n\nfor await (const message of query({\n  prompt: \"What's the weather in Paris?\",\n  options: {\n    model: \"claude-sonnet-4-6\",\n    mcpServers: { labtools: server },\n    allowedTools: [\"mcp__labtools__get_weather\"],\n  },\n})) {\n  if (message.type === \"result\" && message.subtype === \"success\") {\n    console.log(message.result);\n  }\n}"
+          },
+          {
+            "title": "Multi-turn sessions",
+            "explanation": "Python's `ClaudeSDKClient` keeps one session alive, so follow-up queries share the agent's context — turn 2 can reference what turn 1 discovered. The TypeScript SDK does the same with streaming input: pass `query()` an async generator that yields user turns into a single persistent session.",
+            "python": "# session.py\nimport anyio\nfrom claude_agent_sdk import (ClaudeAgentOptions, ClaudeSDKClient,\n                              ResultMessage)\n\nasync def main():\n    options = ClaudeAgentOptions(model=\"claude-sonnet-4-6\",\n                                 allowed_tools=[\"Read\", \"Glob\"])\n    async with ClaudeSDKClient(options=options) as client:\n        await client.query(\"Count the Python files in this directory.\")\n        async for message in client.receive_response():\n            if isinstance(message, ResultMessage):\n                print(\"Turn 1:\", message.result)\n\n        # same session -- the agent remembers turn 1\n        await client.query(\"Which of those files is the largest?\")\n        async for message in client.receive_response():\n            if isinstance(message, ResultMessage):\n                print(\"Turn 2:\", message.result)\n\nanyio.run(main)",
+            "javascript": "// session.js\nimport { query } from \"@anthropic-ai/claude-agent-sdk\";\n\nasync function* turns() {\n  yield { type: \"user\", message: { role: \"user\",\n    content: \"Count the JavaScript files in this directory.\" } };\n  // same session -- the agent remembers the first turn\n  yield { type: \"user\", message: { role: \"user\",\n    content: \"Which of those files is the largest?\" } };\n}\n\nfor await (const message of query({\n  prompt: turns(),\n  options: { model: \"claude-sonnet-4-6\", allowedTools: [\"Read\", \"Glob\"] },\n})) {\n  if (message.type === \"result\" && message.subtype === \"success\") {\n    console.log(message.result);\n  }\n}"
+          }
+        ],
+        "practice": [
+          "In step 2, shrink `allowed_tools` to just `[\"Read\"]` and watch how the agent copes without Glob/Grep — compare the result quality.",
+          "Add a second custom tool `convert_temp(celsius)` to the MCP server and ask for the weather in Paris in Fahrenheit — verify both tools run in sequence.",
+          "Set `permission_mode=\"acceptEdits\"` with `allowed_tools=[\"Read\", \"Write\"]` and ask the agent to write its findings to `NOTES.md`, then check the file exists.",
+          "Extend the multi-turn session with a third query ('Summarize what you learned in the previous two turns') to prove context persists.",
+          "Print `message.total_cost_usd` from the `ResultMessage` after each turn and compare the cost of turn 1 vs turn 2 in the same session."
+        ]
+      }
+    },
+    {
+      "id": "vertex-ai-agent-builder",
+      "title": "Vertex AI Agent Builder",
+      "subsection": "Building AI Agents",
+      "minutes": 4,
+      "intro": "Vertex AI is Google Cloud's managed ML/GenAI platform; Agent Builder is its stack for building, deploying, and governing agents on it.",
+      "summary": [
+        "Vertex AI is Google Cloud's unified platform for the whole ML lifecycle: data preparation, training (AutoML and custom), deployment, and monitoring on managed infrastructure. For AI engineers its center of gravity is generative AI — access to Google's Gemini family (Gemini 2.5/3 era) plus a Model Garden of partner and open models (Claude, Llama, Mistral), prompt tooling in Vertex AI Studio, grounding services that tie outputs to Google Search or your data, and enterprise controls (IAM, VPC Service Controls, CMEK, audit logging) that matter once agents touch corporate data.",
+        "Agent Builder is the agent-specific layer on top. Its pieces: the Agent Development Kit (ADK) as the code-first framework, Agent Engine as the managed runtime that handles sessions, memory, scaling, and observability for deployed agents, out-of-the-box connectors and RAG (Vertex AI Search over your documents and data stores), and support for the Agent2Agent (A2A) protocol and MCP for interoperability between agents and tools. The platform path is: build the agent in ADK (or another framework — Agent Engine also hosts LangGraph and CrewAI agents), test locally, deploy to Agent Engine, and wire in enterprise data through connectors and Vertex AI Search.",
+        "Choose this stack when your organization already runs on Google Cloud and needs managed scaling, governance, and data residency more than maximal flexibility; the trade-off is platform coupling and a bigger conceptual surface than a standalone SDK. For learning purposes the takeaway is the shape of a cloud agent platform — model access, agent framework, managed runtime, data grounding, and observability as one governed product, the same shape AWS (Bedrock Agents/AgentCore) and Azure (AI Foundry Agent Service) offer on their clouds."
+      ],
+      "keyPoints": [
+        "Vertex AI spans the full ML lifecycle; Agent Builder is its dedicated agent stack (ADK + Agent Engine + connectors).",
+        "Agent Engine is the managed runtime: sessions, memory, scaling, tracing — and it hosts LangGraph/CrewAI agents too, not just ADK.",
+        "Grounding via Vertex AI Search and Google Search gives managed RAG without building your own pipeline.",
+        "Supports A2A and MCP, signaling the interoperable, cross-vendor direction of enterprise agents.",
+        "Enterprise controls (IAM, VPC-SC, CMEK, audit logs) are the platform's real differentiator over DIY agent hosting.",
+        "Pick cloud agent platforms for governance and scale on an existing cloud commitment; pick standalone SDKs for portability."
+      ],
+      "code": [],
+      "resources": [
+        {
+          "title": "Vertex AI",
+          "url": "https://cloud.google.com/generative-ai-studio?hl=en",
+          "type": "official"
+        },
+        {
+          "title": "Vertex AI Tutorial: A Comprehensive Guide For Beginners",
+          "url": "https://www.datacamp.com/tutorial/vertex-ai-tutorial",
+          "type": "article"
+        },
+        {
+          "title": "Introduction to Vertex AI Studio",
+          "url": "https://www.youtube.com/watch?v=KWarqNq195M",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "google-adk",
+      "title": "Google ADK",
+      "subsection": "Building AI Agents",
+      "minutes": 5,
+      "intro": "Google's Agent Development Kit is an open-source, code-first framework for building and orchestrating multi-agent systems, optimized for Gemini but model-agnostic.",
+      "summary": [
+        "The Agent Development Kit (ADK) is Google's open-source agent framework (Python and Java) — the same framework powering agents inside Google products like Agentspace. Its philosophy is that agent development should feel like software development: agents are code, composed and tested like any other module. The core unit is an `Agent` with a name, model, instruction, and tools (plain Python functions whose docstrings and type hints become the tool schema). Its signature strength is hierarchical multi-agent composition: agents take `sub_agents`, and workflow agents — `SequentialAgent`, `ParallelAgent`, `LoopAgent` — express deterministic pipelines, fan-out, and iteration in code, while LLM-driven delegation handles dynamic routing between specialists.",
+        "The developer experience is unusually complete for an open-source framework: `adk web` launches a local dev UI where you chat with the agent and inspect every event, state change, and tool call; `adk run` and `adk api_server` cover CLI and HTTP serving; and a built-in evaluation framework scores agents against test cases on both final response quality and the trajectory of steps taken. ADK ships rich tool options (function tools, built-in Google Search and code execution, OpenAPI specs, MCP servers, and even other frameworks' tools — LangChain, CrewAI), plus session state and memory abstractions, callbacks for guardrails, and streaming including bidirectional audio/video.",
+        "ADK is model-agnostic via LiteLLM integration (OpenAI, Anthropic, local models), though it is tuned for Gemini, and deployment-agnostic: containerize it anywhere, or deploy to Vertex AI Agent Engine for a managed runtime. It also supports the A2A protocol for agents calling agents across vendors. Compared with the OpenAI Agents SDK, ADK is more structured and batteries-included (workflow agents, dev UI, evals); compared with LangGraph, it trades arbitrary graph wiring for an opinionated hierarchy that is faster to stand up. A natural default for teams on Google Cloud or building Gemini-first."
+      ],
+      "keyPoints": [
+        "Open-source, code-first, Python/Java; the framework behind Google's own agent products.",
+        "Multi-agent by construction: `sub_agents` hierarchies plus `SequentialAgent`, `ParallelAgent`, and `LoopAgent` workflow types.",
+        "Tools are plain functions — docstrings and type hints become the schema; MCP, OpenAPI, and LangChain/CrewAI tools also plug in.",
+        "`adk web` gives a local dev UI with full event/trace inspection — the fastest debugging loop of the major frameworks.",
+        "Built-in evaluation scores both the final answer and the step-by-step trajectory against test cases.",
+        "Model-agnostic via LiteLLM and deployable anywhere, with Vertex AI Agent Engine as the managed path; supports A2A."
+      ],
+      "code": [
+        {
+          "title": "Google ADK agent",
+          "language": "python",
+          "code": "# pip install google-adk\nfrom google.adk.agents import Agent\n\ndef get_weather(city: str) -> dict:\n    \"\"\"Get the current weather report for a city.\"\"\"\n    return {\"status\": \"success\", \"city\": city, \"temp_c\": 14, \"sky\": \"rain\"}\n\nroot_agent = Agent(\n    name=\"weather_agent\",\n    model=\"gemini-2.5-flash\",\n    description=\"Answers questions about current weather.\",\n    instruction=\"Use the get_weather tool; answer concisely.\",\n    tools=[get_weather],  # schema derived from signature + docstring\n)\n\n# Run locally with a chat UI and full trace inspection:\n#   adk web\n# Or serve it over HTTP:\n#   adk api_server"
+        }
+      ],
+      "resources": [
+        {
+          "title": "ADK Crash Course - From Beginner To Expert",
+          "url": "https://codelabs.developers.google.com/onramp/instructions#0",
+          "type": "course"
+        },
+        {
+          "title": "Agent Development Kit",
+          "url": "https://google.github.io/adk-docs/",
+          "type": "official"
+        },
+        {
+          "title": "Overview of Agent Development Kit",
+          "url": "https://docs.cloud.google.com/agent-builder/agent-development-kit/overview",
+          "type": "official"
+        }
+      ]
+    }
+  ]
+}

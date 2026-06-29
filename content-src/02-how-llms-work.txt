@@ -1,0 +1,246 @@
+SECTION 2: How LLMs Work & Core Terminology
+DESCRIPTION: The foundational vocabulary and mechanics behind large language models.
+======================================================================
+
+
+### TOPIC: Large Language Model (LLM)  (id: large-language-model-llm)  [group: Common Terminology]
+
+# LLMs
+
+LLMs, or Large Language Models, are advanced AI models trained on vast datasets to understand and generate human-like text. They can perform a wide range of natural language processing tasks, such as text generation, translation, summarization, and question answering. Examples include GPT-5, BERT, and DeepSeek. LLMs are capable of understanding context, handling complex queries, and generating coherent responses, making them useful for applications like chatbots, content creation, and automated support. However, they require significant computational resources and may carry biases from their training data.
+
+Visit the following resources to learn more:
+
+- [@article@What is a large language model (LLM)?](https://www.cloudflare.com/en-gb/learning/ai/what-is-large-language-model/)
+- [@article@New to LLMs? Start Here](https://towardsdatascience.com/new-to-llms-start-here/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+- [@video@How Large Language Models Work](https://www.youtube.com/watch?v=5sLYAQS9sWQ)
+
+----------------------------------------------------------------------
+
+### TOPIC: AI vs AGI  (id: ai-vs-agi)  [group: Common Terminology]
+
+# AI vs AGI
+
+AI (Artificial Intelligence) refers to systems designed to perform specific tasks by mimicking aspects of human intelligence, such as pattern recognition, decision-making, and language processing. These systems, known as "narrow AI," are highly specialized, excelling in specific areas such as image classification or recommender algorithms but lacking broader cognitive abilities. In contrast, AGI (Artificial General Intelligence) is a theoretical form of intelligence that can understand, learn, and apply knowledge across a wide range of tasks at a human-like level. AGI would have the capacity for abstract thinking, reasoning, and adaptability similar to human cognitive abilities, making it far more versatile than today’s AI systems. While current AI technology is powerful, AGI remains a distant goal and presents complex challenges in safety, ethics, and technical feasibility.
+
+Visit the following resources to learn more:
+
+- [@article@What is AGI?](https://aws.amazon.com/what-is/artificial-general-intelligence/)
+- [@article@The crucial difference between AI and AGI](https://www.forbes.com/sites/bernardmarr/2024/05/20/the-crucial-difference-between-ai-and-agi/)
+- [@article@Stop Worrying about AGI: The Immediate Danger is Reduced General Intelligence (RGI)](https://towardsdatascience.com/stop-worrying-about-agi-the-immediate-danger-is-reduced-general-intelligence-rgi/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+
+----------------------------------------------------------------------
+
+### TOPIC: Training  (id: training)  [group: Common Terminology]
+
+# Training
+
+Training refers to the process of teaching a machine learning model to recognize patterns and make predictions by exposing it to a dataset. During training, the model learns from the data by adjusting its internal parameters to minimize errors between its predictions and the actual outcomes. This process involves iteratively feeding the model with input data, comparing its outputs to the correct answers, and refining its predictions through techniques like gradient descent. The goal is to enable the model to generalize well so that it can make accurate predictions on new, unseen data.
+
+Visit the following resources to learn more:
+
+- [@article@What is Model Training?](https://oden.io/glossary/model-training/)
+- [@article@Machine learning model training: What it is and why it’s important](https://domino.ai/blog/what-is-machine-learning-model-training)
+- [@article@Training ML Models - Amazon](https://docs.aws.amazon.com/machine-learning/latest/dg/training-ml-models.html)
+
+----------------------------------------------------------------------
+
+### TOPIC: Inference  (id: inference)  [group: Common Terminology]
+
+# Inference
+
+In artificial intelligence (AI), inference refers to the process by which a trained machine learning model makes predictions or draws conclusions from new, unseen data. Unlike training, inference involves the model applying what it has learned to make decisions without needing examples of the exact result. In essence, inference is the AI model actively functioning. For example, a self-driving car recognizing a stop sign on a road it has never encountered before demonstrates inference. The model identifies the stop sign in a new setting, using its learned knowledge to make a decision in real-time.
+
+Visit the following resources to learn more:
+
+- [@article@Inference vs Training](https://www.cloudflare.com/learning/ai/inference-vs-training/)
+- [@article@What is Machine Learning Inference?](https://hazelcast.com/glossary/machine-learning-inference/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Embeddings  (id: embeddings)  [group: Common Terminology]
+
+# Embeddings
+
+Embeddings are dense, continuous vector representations of data, such as words, sentences, or images, in a lower-dimensional space. They capture the semantic relationships and patterns in the data, where similar items are placed closer together in the vector space. In machine learning, embeddings are used to convert complex data into a numerical form that models can process more easily. For example, word embeddings represent words based on their meanings and contexts, allowing models to understand relationships like synonyms or analogies. Embeddings are widely used in tasks like natural language processing, recommendation systems, and image recognition to improve model performance and efficiency.
+
+Visit the following resources to learn more:
+
+- [@article@What are Embeddings in Machine Learning?](https://www.cloudflare.com/en-gb/learning/ai/what-are-embeddings/)
+- [@article@What is Embedding?](https://www.ibm.com/topics/embedding)
+- [@video@What are Word Embeddings](https://www.youtube.com/watch?v=wgfSDrqYMJ4)
+
+----------------------------------------------------------------------
+
+### TOPIC: Vector Databases  (id: vector-databases)  [group: Common Terminology]
+
+# Vector Databases
+
+Vector databases are specialized systems designed to store, index, and retrieve high-dimensional vectors, often used as embeddings that represent data like text, images, or audio. Unlike traditional databases that handle structured data, vector databases excel at managing unstructured data by enabling fast similarity searches, where vectors are compared to find those that are most similar to a query. This makes them essential for tasks like semantic search, recommendation systems, and content discovery, where understanding relationships between items is crucial. Vector databases use indexing techniques such as approximate nearest neighbor (ANN) search to efficiently handle large datasets, ensuring quick and accurate retrieval even at scale.
+
+Visit the following resources to learn more:
+
+- [@article@Vector Databases](https://developers.cloudflare.com/vectorize/reference/what-is-a-vector-database/)
+- [@article@What are Vector Databases?](https://www.mongodb.com/resources/basics/databases/vector-databases)
+
+----------------------------------------------------------------------
+
+### TOPIC: RAG  (id: rag)  [group: Common Terminology]
+
+# RAG
+
+Retrieval-Augmented Generation (RAG) is an AI approach that combines information retrieval with language generation to create more accurate, contextually relevant outputs. It works by first retrieving relevant data from a knowledge base or external source, then using a language model to generate a response based on that information. This method enhances the accuracy of generative models by grounding their outputs in real-world data, making RAG ideal for tasks like question answering, summarization, and chatbots that require reliable, up-to-date information.
+
+Visit the following resources to learn more:
+
+- [@article@What is Retrieval-Augmented Generation? - Google](https://cloud.google.com/use-cases/retrieval-augmented-generation)
+- [@article@RAG Explained: Understanding Embeddings, Similarity, and Retrieval](https://towardsdatascience.com/rag-explained-understanding-embeddings-similarity-and-retrieval/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+- [@video@What is Retrieval-Augmented Generation? - IBM](https://www.youtube.com/watch?v=T-D1OfcDW1M)
+
+----------------------------------------------------------------------
+
+### TOPIC: AI Agents  (id: ai-agents)  [group: Common Terminology]
+
+# AI Agents
+
+In AI engineering, "agents" refer to autonomous systems or components that can perceive their environment, make decisions, and take actions to achieve specific goals. Agents often interact with external systems, users, or other agents to carry out complex tasks. They can vary in complexity, from simple rule-based bots to sophisticated AI-powered agents that leverage machine learning models, natural language processing, and reinforcement learning.
+
+Visit the following resources to learn more:
+
+- [@article@Building an AI Agent Tutorial - LangChain](https://python.langchain.com/docs/tutorials/agents/)
+- [@article@AI Agents and Their Types](https://www.digitalocean.com/resources/articles/types-of-ai-agents)
+- [@video@The Complete Guide to Building AI Agents for Beginners](https://youtu.be/MOyl58VF2ak?si=-QjRD_5y3iViprJX)
+
+----------------------------------------------------------------------
+
+### TOPIC: Fine-tuning  (id: fine-tuning)  [group: Common Terminology]
+
+# Fine-tuning
+
+Fine-tuning involves taking a pre-trained large language model (LLM) and further training it on a smaller, task-specific dataset. This adapts the LLM to perform better on a particular task or domain. However, fine-tuning can be resource-intensive and may not always be the most efficient approach. Prompt engineering, retrieval-augmented generation (RAG), or using smaller, specialized models can sometimes achieve comparable or even better results with less computational overhead and data requirements.
+
+Visit the following resources to learn more:
+
+- [@article@What is fine-tuning?](https://www.ibm.com/think/topics/fine-tuning)
+- [@article@How I Fine-Tuned Granite-Vision 2B to Beat a 90B Model — Insights and Lessons Learned](https://towardsdatascience.com/how-i-fine-tuned-granite-vision-2b-to-beat-a-90b-model-insights-and-lessons-learned/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+- [@video@RAG vs Fine-Tuning vs Prompt Engineering: Optimizing AI Models](https://www.youtube.com/watch?v=zYGDpG-pTho)
+
+----------------------------------------------------------------------
+
+### TOPIC: Prompt Engineering  (id: prompt-engineering)  [group: Common Terminology]
+
+# Prompt Engineering
+
+Prompt engineering is the art and science of crafting effective prompts, which are the instructions or inputs given to a large language model (LLM). The goal is to design prompts that elicit the desired response from the LLM, guiding it to generate accurate, relevant, and creative outputs. This involves understanding the LLM's capabilities and limitations, and experimenting with different prompt structures, keywords, and contextual cues to achieve optimal results.
+
+Visit the following resources to learn more:
+
+- [@roadmap@Visit Dedicated Prompt Engineering Roadmap](https://roadmap.sh/prompt-engineering)
+- [@article@What is Prompt Engineering? - AI Prompt Engineering Explained - AWS](https://aws.amazon.com/what-is/prompt-engineering/)
+- [@article@Advanced Prompt Engineering for Data Science Projects](https://towardsdatascience.com/advanced-prompt-engineering-for-data-science-projects/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+- [@video@What is Prompt Engineering?](https://www.youtube.com/watch?v=nf1e-55KKbg)
+
+----------------------------------------------------------------------
+
+### TOPIC: Context Engineering  (id: context-engineering)  [group: Common Terminology]
+
+# Context Engineering
+
+Context engineering is the practice of carefully designing and organizing the information you give to an AI model so it can do its job better. Think of it like preparing everything an AI needs before it starts working (including providing the right instructions, examples, background knowledge, and conversation history), all put together smartly so the model gives you the best possible answer. Instead of just asking a question and hoping for the best, you are building the perfect "environment" of information around the AI to guide it toward success.
+
+Visit the following resources to learn more:
+
+- [@article@Context Engineering Guide](https://www.promptingguide.ai/guides/context-engineering-guide)
+- [@article@Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
+- [@article@How to Perform Effective Agentic Context Engineering](https://towardsdatascience.com/how-to-perform-effective-agentic-context-engineering/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+- [@video@Context Engineering vs. Prompt Engineering: Smarter AI with RAG & Agents](https://www.youtube.com/watch?v=vD0E3EUb8-8)
+
+----------------------------------------------------------------------
+
+### TOPIC: Tokens  (id: tokens)  [group: Core LLM Elements]
+
+# Tokens in Large Language Models
+
+Tokens are fundamental units of text that LLMs process, created by breaking text into smaller components such as words, subwords, or characters. Understanding tokens is crucial because models predict the next token in sequences, API costs are based on token count, and models have maximum token limits for input and output.
+
+Visit the following resources to learn more:
+
+- [@article@Explaining Tokens — the Language and Currency of AI](https://blogs.nvidia.com/blog/ai-tokens-explained/)
+- [@article@Understanding Tokens and Parameters in Model Training: A Deep Dive](https://www.functionize.com/blog/understanding-tokens-and-parameters-in-model-training)
+
+----------------------------------------------------------------------
+
+### TOPIC: Context  (id: context)  [group: Core LLM Elements]
+
+# Context
+
+Context, in the realm of Large Language Models (LLMs), refers to the information provided to the model alongside the prompt, which it uses to generate a relevant and coherent response. It encompasses the user's query, any supporting text, previous turns in a conversation, or any other data that helps the LLM understand the desired output. Essentially, it's the background knowledge and instructions that guide the LLM's reasoning and generation process.
+
+Visit the following resources to learn more:
+
+- [@article@What is a Context Window in AI?](https://www.ibm.com/think/topics/context-window)
+- [@article@What Is an AI Context Window?](https://www.coursera.org/articles/context-window)
+- [@article@Cutting Through the Noise: Smarter Context Management for LLM-Powered Agents](https://blog.jetbrains.com/research/2025/12/efficient-context-management/)
+- [@video@What is a Context Window? Unlocking LLM Secrets](https://www.youtube.com/watch?v=-QVoIxEpFkM)
+
+----------------------------------------------------------------------
+
+### TOPIC: Sampling Parameters  (id: sampling-parameters)  [group: Core LLM Elements]
+
+# Sampling Parameters
+
+Sampling parameters are settings that control the randomness and creativity of the text generated by the LLM. They influence how the model chooses the next word in a sequence, impacting the overall coherence, diversity, and relevance of the output. Adjusting these parameters allows users to fine-tune the LLM's responses for specific applications, balancing between predictable, safe outputs and more imaginative, exploratory ones.
+
+----------------------------------------------------------------------
+
+### TOPIC: Temperature  (id: temperature)  [group: Core LLM Elements]
+
+# Temperature
+
+Temperature is a parameter used in language models that controls the randomness of the generated text. A higher temperature value (e.g., 1.0) leads to more diverse and unpredictable outputs, as the model is more likely to sample less probable words. Conversely, a lower temperature value (e.g., 0.2) yields more deterministic, conservative outputs, favoring the most likely words according to the model's training data. Essentially, it influences the probability distribution from which the next word is selected.
+
+Visit the following resources to learn more:
+
+- [@article@What Temperature Means in Natural Language Processing and AI](https://thenewstack.io/what-temperature-means-in-natural-language-processing-and-ai/)
+- [@article@What is LLM Temperature? - IBM](https://www.ibm.com/think/topics/llm-temperature)
+- [@article@How Temperature Settings Transform Your AI Agent's Responses](https://docsbot.ai/article/how-temperature-settings-transform-your-ai-agents-responses)
+
+----------------------------------------------------------------------
+
+### TOPIC: Top-K  (id: top-k)  [group: Core LLM Elements]
+
+# Top-K Sampling
+
+Top-K sampling is a method used by Large Language Models (LLMs) during text generation to select the next word. Instead of considering the entire vocabulary, it narrows down the choices to the K most probable words predicted by the model. Low values (1-10) produce conservative, factual outputs. Medium values (20-50) balance creativity and quality. High values (50+) enable diverse, creative outputs. Use low K for technical tasks, high K for creative writing.
+
+Visit the following resources to learn more:
+
+- [@article@Top-K Sampling: The Complete Token Selection Guide](https://www.dataannotation.tech/blog/top-k-sampling)
+- [@video@What are the LLM’s Top-P + Top-K ?](https://www.youtube.com/watch?v=aDmp2Uim0zQ)
+
+----------------------------------------------------------------------
+
+### TOPIC: Top-P  (id: top-p)  [group: Core LLM Elements]
+
+# Top-P Sampling
+
+Top-P sampling, also known as nucleus sampling, is a technique used in language models to generate text. Instead of considering all possible next words, it focuses on the smallest set of words whose cumulative probability exceeds a threshold 'P'. Unlike Top-K's fixed number, Top-P dynamically adjusts based on the probability distribution. Low values (0.1-0.5) produce focused outputs, medium (0.6-0.9) balance creativity and coherence, and high (0.9-0.99) enable creative diversity.
+
+Visit the following resources to learn more:
+
+- [@video@What are the LLM’s Top-P + Top-K ?](https://www.youtube.com/watch?v=aDmp2Uim0zQ)
+
+----------------------------------------------------------------------
+
+### TOPIC: Repetition Penalties  (id: repetition-penalties)  [group: Core LLM Elements]
+
+# Repetition Penalties
+
+Repetition penalties discourage LLMs from repeating words or phrases by reducing the probability of selecting previously used tokens. This includes frequency penalty (scales with usage count) and presence penalty (applies equally to any used token). These parameters improve output quality by promoting vocabulary diversity and preventing redundant phrasing.
+
+Visit the following resources to learn more:
+
+- [@article@Stop the LLM From Rambling: Using Penalties to Control Repetition](https://dev.to/superorange0707/stop-the-llm-from-rambling-using-penalties-to-control-repetition-5h8)
+- [@video@What are LLM Presence and Frequency Penalties?](https://www.youtube.com/watch?v=J66CRz6s734)
+
+----------------------------------------------------------------------

@@ -1,0 +1,687 @@
+{
+  "id": "prompt-engineering",
+  "title": "Prompt Engineering",
+  "description": "Techniques for writing effective prompts: shot strategies, reasoning patterns, structure, and API features.",
+  "topics": [
+    {
+      "id": "system-prompting",
+      "title": "System Prompting",
+      "subsection": "Prompt Fundamentals",
+      "minutes": 5,
+      "intro": "A system prompt is a privileged instruction layer that sets the model's role, rules, and output expectations before any user message arrives.",
+      "summary": [
+        "Every chat-style LLM API distinguishes between message roles: the system prompt (called `system` in the Anthropic and OpenAI APIs, `system_instruction` in Gemini) carries instructions from the developer, while user messages carry the end user's input. Models are post-trained to give system-level instructions higher authority, so the system prompt is where you define who the model is, what it should and shouldn't do, what format it must answer in, and what guardrails apply. It persists across every turn of the conversation, making it the right place for anything that must hold for the whole session.",
+        "A good production system prompt typically covers five things: role and identity (\"You are a support agent for Acme's billing product\"), task scope (what's in and out of bounds), behavioral rules (tone, refusal policy, escalation rules), output format (length, structure, JSON schema, language), and grounding rules (e.g. \"only answer from the provided documents; say 'I don't know' otherwise\"). Separating these durable instructions from per-request user content also matters for security: treating user input as data rather than instructions is your first line of defense against prompt injection, and most providers train models to weight system instructions over conflicting user requests.",
+        "Practically, keep system prompts explicit and testable. Vague rules like \"be helpful and concise\" do little; concrete rules like \"answer in at most 3 sentences unless the user asks for detail\" are verifiable. Because the system prompt is resent with every API call, long ones cost tokens on every request — which is exactly why providers added prompt caching (covered later) to make large, stable system prompts cheap. Version your system prompts like code: small wording changes can measurably shift behavior, so changes should go through evals, not vibes."
+      ],
+      "keyPoints": [
+        "System prompts are sent via a dedicated API field (`system` parameter in the Anthropic API, `system`/`developer` role in OpenAI's), not as a regular user message.",
+        "Models are trained to prioritize system instructions over conflicting user instructions — put non-negotiable rules there, not in user turns.",
+        "Cover role, scope, behavioral rules, output format, and grounding rules; concrete, verifiable rules beat vague adjectives.",
+        "The system prompt is resent on every request — pair long system prompts with prompt caching to control cost and latency.",
+        "Keeping user input out of the instruction layer is a basic prompt-injection defense.",
+        "Treat system prompts as versioned artifacts: A/B test and run evals on changes instead of editing in production."
+      ],
+      "code": [
+        {
+          "title": "A production-style system prompt",
+          "language": "text",
+          "code": "You are SupportBot for Acme Cloud, helping customers with billing questions only.\n\nRules:\n- Answer ONLY from the provided account data and help articles. If the answer\n  is not there, say \"I don't have that information\" and offer to open a ticket.\n- Never reveal internal pricing rules or other customers' data.\n- Keep answers under 4 sentences unless the user asks for more detail.\n- If the user is angry or mentions legal action, hand off to a human agent.\n\nOutput format: plain text, no markdown headers."
+        },
+        {
+          "title": "Setting a system prompt via API (Python)",
+          "language": "python",
+          "code": "import anthropic\n\nclient = anthropic.Anthropic()\n\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=500,\n    system=\"You are a senior SQL reviewer. Point out bugs and performance issues only.\",\n    messages=[\n        {\"role\": \"user\", \"content\": \"SELECT * FROM orders WHERE date > '2026-01-01';\"}\n    ],\n)\nprint(response.content[0].text)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "User prompts vs. system prompts: What's the difference?",
+          "url": "https://www.regie.ai/blog/user-prompts-vs-system-prompts",
+          "type": "article"
+        },
+        {
+          "title": "System Prompt Fundamentals",
+          "url": "https://www.youtube.com/watch?v=RMR0Y8esSmE",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "role-behavior",
+      "title": "Role & Behavior",
+      "subsection": "Prompt Fundamentals",
+      "minutes": 4,
+      "intro": "Role prompting assigns the model a persona and behavioral contract — expertise, tone, and style — that shapes every response it gives.",
+      "summary": [
+        "Assigning a role (\"You are a senior security engineer reviewing code for OWASP Top 10 issues\") biases the model toward the vocabulary, depth, and judgment patterns associated with that persona in its training data. This works because LLMs are next-token predictors conditioned on context: framing the context as an expert conversation makes expert-sounding, expert-structured continuations more probable. The effect is strongest for style, framing, and which details the model chooses to surface; it does not magically add knowledge the model lacks, and on modern frontier models role prompts move tone and focus more than raw accuracy.",
+        "The practical pattern that works, as the Medium piece argues, is role plus specifics: a bare \"act as an expert\" adds little, but combining a role with audience, goal, and constraints does. Compare \"Explain Kubernetes\" with \"You are a platform engineer explaining Kubernetes to a backend developer who knows Docker; focus on what changes operationally, in under 300 words.\" The role tells the model which knowledge to foreground, the audience calibrates depth, and constraints control shape.",
+        "Behavior definitions complement roles: tone (formal, friendly, terse), stance (opinionated reviewer vs. neutral explainer), and interaction rules (ask clarifying questions before answering, never apologize, always show trade-offs). Put durable persona and behavior in the system prompt and keep them consistent — switching personas mid-conversation degrades coherence because earlier turns were generated under different conditioning. For user-facing products, the persona is effectively your brand voice, so test it across happy paths and hostile inputs alike."
+      ],
+      "keyPoints": [
+        "Role prompting conditions the model's output distribution toward a persona's style and judgment; it shapes tone and focus more than factual ability.",
+        "\"Role + audience + goal + constraints\" beats a bare \"act as an expert\" — specificity is what does the work.",
+        "Define behavior explicitly: tone, verbosity, whether to ask clarifying questions, how to handle uncertainty.",
+        "Keep persona in the system prompt and stable across the session; mid-conversation persona switches degrade coherence.",
+        "Negative behavioral rules (\"never recommend X\", \"don't use jargon\") are honored more reliably when paired with what to do instead.",
+        "Test personas against adversarial input — users will try to break character, and the persona must survive it."
+      ],
+      "code": [
+        {
+          "title": "Weak vs. strong role prompt",
+          "language": "text",
+          "code": "WEAK:\nAct as an expert and review my code.\n\nSTRONG:\nYou are a staff engineer doing a pre-merge review for a Python service\nhandling payments. Audience: a mid-level developer.\n\nBehavior:\n- Flag correctness bugs first, then security, then style.\n- For each issue, show the problematic line and a corrected version.\n- Be direct; no praise padding. If the code is fine, say so in one line.\n- Ask a clarifying question if the intent of a function is ambiguous."
+        }
+      ],
+      "resources": [
+        {
+          "title": "Beyond Basics: Contextual & Role Prompting That Actually Works",
+          "url": "https://medium.com/@the_manoj_desai/beyond-basics-contextual-role-prompting-that-actually-works-bd75a0c5086b",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "context",
+      "title": "Context",
+      "subsection": "Prompt Fundamentals",
+      "minutes": 4,
+      "intro": "Contextual prompting supplies task-specific background — facts, documents, situation details — so the model tailors its answer to your actual situation instead of a generic one.",
+      "summary": [
+        "Where system prompts define durable identity and role prompts define persona, contextual prompts carry the dynamic, situational information for this particular request: who the audience is, what happened before, what data is relevant, what the deliverable is for. The roadmap example — \"Context: You are writing for a blog about retro 80's arcade games. Suggest 3 article topics\" — shows the mechanism: the same instruction (\"suggest 3 topics\") yields completely different, and far more useful, output once the situation is specified. Without context, the model fills the gaps with the statistically average assumption, which is rarely your situation.",
+        "Context is also how you ground models in facts they cannot know: private data, recent events, your codebase, the user's account state. Pasting (or programmatically injecting) relevant documents and telling the model to answer from them is the core move behind RAG and most production LLM systems. Two practical rules: delimit context clearly (XML-style tags like `<context>...</context>` or fenced blocks) so the model can distinguish background data from instructions, and place instructions either before or after long context — frontier model docs generally recommend putting long documents first and the question/instructions at the end for best recall.",
+        "More context is not automatically better. Irrelevant detail dilutes attention and can drag answers off-target, and very long contexts suffer from position effects where mid-context information is recalled worse (\"lost in the middle\"). Curating what goes into the window — relevant, recent, well-structured — is the seed of the discipline the next section covers in depth: context engineering."
+      ],
+      "keyPoints": [
+        "Contextual prompts are dynamic and per-request, unlike system prompts which persist for the session.",
+        "Unstated assumptions get filled with the training-data average — state audience, purpose, and situation explicitly.",
+        "Delimit injected context with tags or fences (`<context>`, triple backticks) so data isn't confused with instructions.",
+        "For long documents, put the document first and the question/instructions last — this measurably improves recall.",
+        "Irrelevant context hurts: models exhibit \"lost in the middle\" degradation, so curate rather than dump.",
+        "Grounding instructions (\"answer only from the context above\") cut hallucination on context-based Q&A."
+      ],
+      "code": [
+        {
+          "title": "Context-grounded prompt template",
+          "language": "text",
+          "code": "<context>\nCompany: Acme Cloud (B2B SaaS, ~200 employees)\nSituation: Q2 churn rose from 2.1% to 3.4%, mostly SMB tier.\nExit-survey themes: pricing confusion (41%), missing SSO (22%).\n</context>\n\nUsing only the context above, draft 3 retention experiments we\ncould run this quarter. For each: hypothesis, effort (S/M/L),\nand the metric it should move. If the context is insufficient\nfor a claim, say so instead of guessing."
+        }
+      ],
+      "resources": []
+    },
+    {
+      "id": "constraints",
+      "title": "Constraints",
+      "subsection": "Prompt Fundamentals",
+      "minutes": 4,
+      "intro": "Constraint prompting explicitly defines boundaries — scope, format, length, and forbidden behaviors — so the model's output lands inside the envelope your application expects.",
+      "summary": [
+        "LLMs are happy to do almost anything, which is precisely the problem in production: an unconstrained model answers off-topic questions, rambles past your UI's character limit, or invents content you can't legally show. Constraining prompts set rules and restrictions on behavior and output: scope constraints (\"only discuss topics related to our product; politely decline anything else\"), format constraints (\"respond in valid JSON matching this schema\", \"max 200 words\", \"bullet points only\"), content constraints (\"never give medical or legal advice\", \"cite a source for every claim\"), and process constraints (\"ask one clarifying question before answering if the request is ambiguous\").",
+        "The CodeSignal lesson's core insight is that constraints and requirements are how you convert a fuzzy wish into a verifiable specification. \"Write a product description\" is unfalsifiable; \"write a product description of 50-75 words, in second person, mentioning battery life and price, with no superlatives\" can be checked automatically. That checkability matters because constraints are what your evals assert against — well-constrained prompts make output quality measurable.",
+        "Two practical realities: first, models follow positive constraints (\"do X\") more reliably than negative ones (\"don't do Y\"), so phrase rules as the desired behavior plus the fallback (\"if asked about competitors, respond: 'I can only help with Acme products'\") rather than bare prohibitions. Second, prompt-level constraints are soft — a determined user can sometimes jailbreak past them — so anything safety- or compliance-critical needs a second enforcement layer: API-level structured outputs, output validators, or moderation filters. Constraints in the prompt are the steering wheel, not the seatbelt."
+      ],
+      "keyPoints": [
+        "Constrain four dimensions: scope (what topics), format (structure/length), content (what may be said), and process (how to interact).",
+        "Constraints turn prompts into testable specs — your evals can only assert what your prompt actually requires.",
+        "Positive phrasing with an explicit fallback beats bare prohibitions: tell the model what to do instead.",
+        "Prompt constraints are soft; enforce critical rules with structured outputs, validators, or moderation layers too.",
+        "Too many constraints degrade compliance — models start dropping rules past roughly a dozen simultaneous instructions, so prioritize.",
+        "Give the model an out (\"if you cannot comply, say X\") to prevent it from satisfying constraints by hallucinating."
+      ],
+      "code": [
+        {
+          "title": "Layered constraints in a prompt",
+          "language": "text",
+          "code": "Summarize the customer call transcript below.\n\nConstraints:\n- Length: exactly 3 bullet points, each under 20 words.\n- Include: customer sentiment, main request, agreed next step.\n- Do not include names or account numbers (privacy).\n- If the transcript lacks a clear next step, write \"Next step: none agreed\"\n  rather than inventing one.\n\nTranscript:\n\"\"\"\n{transcript}\n\"\"\""
+        }
+      ],
+      "resources": [
+        {
+          "title": "Introduction: The Power of Clear Instructions",
+          "url": "https://codesignal.com/learn/courses/prompting-foundations/lessons/defining-constraints-and-requirements-for-effective-prompts",
+          "type": "course"
+        }
+      ]
+    },
+    {
+      "id": "input-format",
+      "title": "Input Format",
+      "subsection": "Prompt Fundamentals",
+      "minutes": 5,
+      "intro": "Input format is how you physically structure a prompt — ordering, delimiters, and layout — and it measurably affects output quality.",
+      "summary": [
+        "The Prompting Guide breaks a prompt into four standard elements: instruction (the task), context (background information), input data (the thing to operate on), and output indicator (the desired format of the answer). Not every prompt needs all four, but consciously separating them — rather than mixing instructions into the middle of data — makes prompts easier for the model to parse and for you to maintain. Common structural tools are delimiters (triple backticks, `###` separators, XML-style tags like `<document>` and `<question>`), labeled sections, and consistent placement of the instruction at the start or end.",
+        "Formatting is not cosmetic. The 2024 arXiv study \"Does Prompt Formatting Have Any Impact on LLM Performance?\" tested identical content rendered as plain text, Markdown, JSON, and YAML across GPT-3.5 and GPT-4 model families and found performance swings of up to 40% between formats on some tasks — with no single format universally best. GPT-3.5-turbo variants tended to prefer JSON; GPT-4 variants were more robust but still showed several-point differences, and format rankings didn't transfer reliably across models. The takeaway: format is a hyperparameter worth testing per model, and you should never assume a prompt that works on one model ports format-and-all to another.",
+        "Practical defaults that hold up well: use clear delimiters around any user-supplied or retrieved data (which also helps against prompt injection); for Claude models, Anthropic explicitly recommends XML-style tags; for long-context prompts, put documents first and the question last; keep one consistent format throughout a prompt rather than mixing styles; and when migrating models, re-run your eval suite because formatting sensitivity differs by model family."
+      ],
+      "keyPoints": [
+        "Four prompt elements: instruction, context, input data, output indicator — separate them visibly.",
+        "Format choice (plain text vs. Markdown vs. JSON vs. YAML) can swing task performance by up to 40% on some models (arXiv 2411.10541).",
+        "No format is universally best; rankings change across model families, so re-test formats when you switch models.",
+        "Anthropic recommends XML-style tags (`<document>`, `<instructions>`) for structuring Claude prompts.",
+        "Delimiting untrusted input data doubles as a prompt-injection mitigation.",
+        "For long contexts, place the bulk data first and the instruction/question at the end."
+      ],
+      "code": [
+        {
+          "title": "Well-structured prompt with delimited sections",
+          "language": "text",
+          "code": "<instructions>\nClassify the support ticket below into exactly one category:\nbilling | bug | feature_request | account_access\nRespond with the category only.\n</instructions>\n\n<examples>\nTicket: \"I was charged twice this month\" -> billing\nTicket: \"The export button does nothing\" -> bug\n</examples>\n\n<ticket>\nI can't log in after enabling 2FA, the code never arrives.\n</ticket>"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Elements of a Prompt",
+          "url": "https://www.promptingguide.ai/introduction/elements",
+          "type": "article"
+        },
+        {
+          "title": "Does Prompt Formatting Have Any Impact on LLM Performance?",
+          "url": "https://arxiv.org/html/2411.10541v1",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "zero-shot-prompting",
+      "title": "Zero-Shot Prompting",
+      "subsection": "Prompting Techniques",
+      "minutes": 4,
+      "intro": "Zero-shot prompting asks the model to perform a task with instructions only — no examples — relying entirely on what it learned during training.",
+      "summary": [
+        "In zero-shot prompting you describe the task (\"Classify this review as positive, neutral, or negative\") and provide the input, with no demonstration pairs. The model generalizes from pretraining and, crucially, from instruction tuning: as IBM's overview explains, models fine-tuned to follow instructions (and further aligned with RLHF) are dramatically better at zero-shot tasks than raw base models, which is why modern chat models handle most everyday tasks zero-shot out of the box. The FLAN paper showed instruction tuning alone substantially lifts zero-shot performance across held-out task types.",
+        "Zero-shot is the right default: it's the cheapest in tokens, the fastest to write, and avoids a real failure mode of examples — biasing the model toward superficial patterns in your demonstrations. Frontier models (GPT-5-class, Claude 4.x, Gemini 2.5/3) are strong enough that for common tasks like classification, extraction, summarization, and translation, well-written zero-shot instructions often match few-shot performance. The quality lever in zero-shot is instruction precision: name the task, define the label set or output format exactly, and state edge-case handling.",
+        "When zero-shot falls short — output format drifts, the task is niche, or the label boundaries are subtle (e.g. \"sarcastic vs. negative\") — that's the signal to escalate to few-shot prompting, chain-of-thought, or fine-tuning. A standard workflow: start zero-shot, build a small eval set, and only add examples or complexity when the eval shows you need them."
+      ],
+      "keyPoints": [
+        "Zero-shot = instructions + input, no examples; the model relies on pretraining and instruction tuning.",
+        "Instruction-tuned/RLHF models are far better zero-shot performers than base models — this is what made zero-shot the default mode.",
+        "Always specify the exact output space (\"answer with one of: positive | neutral | negative\") or the model will improvise formats.",
+        "Zero-shot is cheapest and avoids example-induced bias; start here and escalate only when evals show failures.",
+        "Subtle boundary tasks and rigid output formats are the classic cases where zero-shot breaks and few-shot wins.",
+        "Even in zero-shot, you can boost reasoning tasks with a trigger phrase like \"Let's think step by step\" (zero-shot CoT)."
+      ],
+      "code": [
+        {
+          "title": "Zero-shot classification prompt",
+          "language": "text",
+          "code": "Classify the sentiment of the review as exactly one of:\npositive | neutral | negative\n\nIf the review mixes sentiments, choose the dominant one.\nRespond with the label only, no explanation.\n\nReview: \"The food was great, but the service was a bit slow.\"\n\nSentiment:"
+        }
+      ],
+      "resources": [
+        {
+          "title": "What is zero-shot prompting?",
+          "url": "https://www.ibm.com/think/topics/zero-shot-prompting",
+          "type": "article"
+        },
+        {
+          "title": "Zero-Shot Prompting",
+          "url": "https://www.promptingguide.ai/techniques/zeroshot",
+          "type": "article"
+        },
+        {
+          "title": "Zero-shot, One-shot and Few-shot Prompting Explained | Prompt Engineering 101",
+          "url": "https://www.youtube.com/watch?v=sW5xoicq5TY",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "few-shot-prompting",
+      "title": "Few-Shot Prompting",
+      "subsection": "Prompting Techniques",
+      "minutes": 5,
+      "intro": "Few-shot prompting includes a handful of input-output examples in the prompt so the model infers the task pattern via in-context learning — no fine-tuning required.",
+      "summary": [
+        "Few-shot prompting exploits in-context learning, the emergent ability (highlighted in the GPT-3 paper \"Language Models are Few-Shot Learners\") of large models to pick up a task from demonstrations inside the prompt at inference time, with no weight updates. You show 2-5+ example pairs in a consistent format, then present the real input; the model continues the pattern. It shines where instructions alone are ambiguous: nuanced label boundaries, house style and tone matching, niche domain conventions, and exact output formats.",
+        "Research on what makes demonstrations work is counterintuitive: Min et al. (2022) showed that the label correctness of examples matters less than expected — what drives most of the benefit is the demonstrations specifying the label space, the input distribution, and the overall format. Practical implications, echoed in both the Prompting Guide and IBM's article: keep example formatting perfectly consistent (the model will clone your format, including mistakes), cover the diversity of inputs you expect including edge cases, balance label distribution (a 4:1 positive:negative example mix biases predictions), and be aware of recency bias — models overweight the last example.",
+        "Trade-offs: every example costs tokens on every request (mitigate with prompt caching), and more shots is not monotonically better — gains usually plateau around 4-8 examples on modern models, and poorly chosen examples can underperform zero-shot. For tasks requiring actual reasoning rather than pattern matching, few-shot alone often fails; combine it with chain-of-thought (show worked reasoning in the examples) or use a reasoning model. A common production pattern is dynamic few-shot: retrieve the k most similar solved examples from a database per query and inject those, rather than hardcoding a static set."
+      ],
+      "keyPoints": [
+        "Few-shot works via in-context learning — the model infers the pattern from demonstrations without any weight updates.",
+        "Demonstrations mainly teach format, label space, and input distribution; even imperfect labels help (Min et al. 2022).",
+        "2-5 well-chosen examples is the sweet spot; returns typically plateau by 4-8 shots on frontier models.",
+        "Keep formatting identical across examples — the model will replicate your format exactly, including inconsistencies.",
+        "Watch for majority-label bias and recency bias (the last example pulls hardest); shuffle and balance examples.",
+        "Examples cost tokens every call — use prompt caching for static sets, or retrieve similar examples dynamically per query.",
+        "For reasoning-heavy tasks, plain few-shot underperforms — embed worked reasoning steps (few-shot CoT) instead."
+      ],
+      "code": [
+        {
+          "title": "Few-shot prompt for a niche labeling task",
+          "language": "text",
+          "code": "Label each customer message with urgency: P0 (outage/blocked),\nP1 (degraded), or P2 (question/request).\n\nMessage: \"Our entire team can't log in since the update.\"\nUrgency: P0\n\nMessage: \"Exports are taking 10x longer than usual.\"\nUrgency: P1\n\nMessage: \"Is there a way to bulk-edit tags?\"\nUrgency: P2\n\nMessage: \"Checkout intermittently fails for ~5% of carts.\"\nUrgency:"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Few-Shot Prompting",
+          "url": "https://www.promptingguide.ai/techniques/fewshot",
+          "type": "article"
+        },
+        {
+          "title": "What is few shot prompting?",
+          "url": "https://www.ibm.com/think/topics/few-shot-prompting",
+          "type": "article"
+        },
+        {
+          "title": "Discover Few-Shot Prompting | Google AI Essentials",
+          "url": "https://www.youtube.com/watch?v=9qdgEBVkWR4",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "chain-of-thought-cot",
+      "title": "Chain of Thought (CoT)",
+      "subsection": "Prompting Techniques",
+      "minutes": 6,
+      "intro": "Chain-of-thought prompting makes the model write out intermediate reasoning steps before its final answer, dramatically improving accuracy on multi-step problems.",
+      "summary": [
+        "Chain of Thought has the model \"think out loud\": before answering, it writes the facts, sub-steps, and small calculations that lead to the conclusion. The landmark Wei et al. 2022 paper showed that adding worked reasoning to few-shot examples unlocked large gains on arithmetic, commonsense, and symbolic reasoning — famously lifting PaLM 540B from ~18% to ~57% on the GSM8K math benchmark — and that the ability is emergent, appearing only in sufficiently large models (~100B+ parameters at the time). Kojima et al. then showed zero-shot CoT: simply appending \"Let's think step by step\" elicits much of the benefit without any examples.",
+        "Why it works: transformers do a fixed amount of computation per generated token, so forcing the model to externalize intermediate steps effectively gives it more serial compute and a scratchpad — each step conditions the next, decomposing one hard prediction into many easy ones. The visible trace adds two practical wins: humans can audit the logic and spot where it went wrong, and the steps can be fed back to the model for self-correction and planning, which is why CoT is a core building block of agent designs (and the conceptual basis of ReAct, covered next). Extensions like self-consistency sample multiple chains and majority-vote the final answer for further accuracy at higher cost.",
+        "The 2025-2026 twist is that CoT has been baked into the models themselves: reasoning models (OpenAI o-series/GPT-5 thinking modes, Claude's extended thinking, Gemini thinking models) are trained with RL to generate long internal chains of thought before answering, so manually prompting \"think step by step\" adds little — and OpenAI explicitly advises against it for o-series models, as it can degrade performance. Know your model: for non-reasoning (fast/cheap) models, explicit CoT prompting remains a high-leverage technique; for reasoning models, control depth via the API's reasoning-effort or thinking-budget parameters instead. Caveats either way: CoT traces are plausible narratives, not guaranteed faithful accounts of the model's computation, and verbose reasoning multiplies token cost and latency — reserve it for tasks that need it."
+      ],
+      "keyPoints": [
+        "CoT lifted PaLM 540B from ~18% to ~57% on GSM8K (Wei et al. 2022); gains are emergent with model scale.",
+        "Zero-shot CoT — appending \"Let's think step by step\" — captures much of the benefit with no examples (Kojima et al.).",
+        "Mechanism: each generated token buys fixed compute, so writing steps out gives the model more serial computation and a scratchpad.",
+        "Self-consistency (sample several chains, majority-vote the answer) trades tokens for additional accuracy.",
+        "Reasoning models (o-series, Claude extended thinking, Gemini thinking) do CoT natively — don't prompt \"step by step\" there; tune reasoning effort/thinking budget instead.",
+        "CoT traces are auditable but not guaranteed faithful to the model's true computation — verify answers, don't just trust tidy reasoning.",
+        "Cost gotcha: CoT can multiply output tokens 3-10x; use it selectively, and instruct \"reason briefly\" when full traces are unnecessary."
+      ],
+      "code": [
+        {
+          "title": "Zero-shot CoT with structured answer extraction",
+          "language": "text",
+          "code": "A warehouse has 1,240 units. Monday it ships 30% of stock, Tuesday it\nreceives 220 units, Wednesday it ships half of what remains.\nHow many units are left?\n\nThink step by step inside <thinking> tags, then give only the final\nnumber inside <answer> tags."
+        },
+        {
+          "title": "Native reasoning instead of manual CoT (Anthropic API)",
+          "language": "python",
+          "code": "import anthropic\n\nclient = anthropic.Anthropic()\n\n# With reasoning models, enable adaptive thinking instead of\n# prompting \"think step by step\".\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=2000,\n    thinking={\"type\": \"adaptive\"},\n    messages=[{\"role\": \"user\", \"content\": \"1,240 units; ship 30% Mon, receive 220 Tue, ship half Wed. Units left?\"}],\n)\nfor block in response.content:\n    if block.type == \"text\":\n        print(block.text)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "What is chain of thought (CoT) prompting?",
+          "url": "https://www.ibm.com/think/topics/chain-of-thoughts",
+          "type": "article"
+        },
+        {
+          "title": "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models",
+          "url": "https://arxiv.org/abs/2201.11903",
+          "type": "article"
+        },
+        {
+          "title": "Evoking Chain of Thought Reasoning in LLMs - Prompting Guide",
+          "url": "https://www.promptingguide.ai/techniques/cot",
+          "type": "article"
+        },
+        {
+          "title": "ChatGPT Prompt Engineering Principles: Chain of Thought Prompting",
+          "url": "https://www.youtube.com/watch?v=Kar2qfLDQ2c",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "react",
+      "title": "ReAct",
+      "subsection": "Prompting Techniques",
+      "minutes": 5,
+      "intro": "ReAct (Reason + Act) interleaves chain-of-thought reasoning with tool calls in a thought-action-observation loop, letting the model gather external information while it thinks.",
+      "summary": [
+        "ReAct, introduced by Yao et al. (2022), combines two previously separate ideas: chain-of-thought reasoning (think, but no access to the world) and action generation (act, but no explicit planning). The model loops through three steps: Thought (reason about what's known and what's needed next), Action (emit a tool invocation like `Search[Apple Remote]` or an API call), and Observation (read the tool's result back into context), repeating until it can emit a final answer. This grounds reasoning in real data — the paper showed ReAct substantially reduces hallucination versus pure CoT on knowledge tasks like HotpotQA and Fever, because instead of confabulating facts the model can look them up; and it beats action-only baselines because the reasoning traces guide what to look up next and let it recover from dead ends.",
+        "The pattern matters because it's the conceptual ancestor of essentially every modern tool-using agent. What the original paper did with prompted text patterns, today's stacks do with native function calling: the \"Thought\" is the model's (possibly hidden) reasoning, the \"Action\" is a structured tool call, the \"Observation\" is the tool result message, and your application code runs the loop. Frameworks like LangChain/LangGraph popularized `create_react_agent` as the default agent constructor, and the same loop powers coding agents and research agents.",
+        "Practical considerations: ReAct is the right tool when the task needs current or external data, multiple dependent lookups, or verifiable side effects — it's wasteful for tasks the model can answer directly (each loop iteration is a full LLM call, so latency and cost scale with steps). Production loops need guardrails: a maximum iteration count to prevent infinite thought-action cycles, validation of tool arguments, and handling for the model misreading observations. The reasoning trace is also your best debugging artifact — when an agent does something dumb, the Thought steps usually show exactly where it went wrong."
+      ],
+      "keyPoints": [
+        "ReAct loop = Thought → Action → Observation, repeated until a final answer; reasoning steers actions, observations ground reasoning.",
+        "It cuts hallucination versus pure CoT by replacing confabulated facts with actual lookups (Yao et al. 2022).",
+        "Modern function-calling agents are ReAct with structured tool calls instead of parsed text — same loop, better plumbing.",
+        "Cost scales linearly with loop iterations (each is a full LLM call); don't use ReAct where a direct answer suffices.",
+        "Always cap iterations and validate tool arguments — unguarded loops can spin forever or thrash on a failing tool.",
+        "The Thought trace is your debugging log: read it to find where an agent's plan derailed."
+      ],
+      "code": [
+        {
+          "title": "Classic ReAct trace format",
+          "language": "text",
+          "code": "Question: What is the elevation range for the area that the eastern\nsector of the Colorado orogeny extends into?\n\nThought 1: I need to find the Colorado orogeny and what its eastern\nsector extends into.\nAction 1: Search[Colorado orogeny]\nObservation 1: The Colorado orogeny was an episode of mountain\nbuilding in Colorado and surrounding areas...\n\nThought 2: It doesn't mention the eastern sector. I should search\nfor \"eastern sector Colorado orogeny\".\nAction 2: Search[eastern sector Colorado orogeny]\nObservation 2: The eastern sector extends into the High Plains...\n\nThought 3: I need the elevation range of the High Plains.\nAction 3: Search[High Plains elevation]\nObservation 3: The High Plains rise from around 1,800 to 7,000 ft...\n\nThought 4: The answer is 1,800 to 7,000 ft.\nAction 4: Finish[1,800 to 7,000 ft]"
+        }
+      ],
+      "resources": [
+        {
+          "title": "ReAct Prompting",
+          "url": "https://www.promptingguide.ai/techniques/react",
+          "type": "article"
+        },
+        {
+          "title": "4 Methods of Prompt Engineering",
+          "url": "https://youtu.be/vD0E3EUb8-8?si=Y6MCLPzjmhMB4jSu&t=203",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "function-calling",
+      "title": "Function Calling",
+      "subsection": "API Features",
+      "minutes": 6,
+      "intro": "Function calling lets you describe tools to an LLM in JSON Schema; the model decides when to call one and emits structured arguments, which your code executes and feeds back.",
+      "summary": [
+        "Function calling (tool use) is the API-level mechanism behind agents. You pass the model a list of tool definitions — each with a name, a natural-language description, and a JSON Schema for parameters — alongside the conversation. When the model judges that answering requires a tool, instead of plain text it returns a structured tool-call object: the function name plus arguments populated from the user's request (\"What's the weather in Paris?\" → `get_weather({\"city\": \"Paris\"})`). Critically, the model never executes anything; your application runs the function, appends the result to the conversation as a tool-result message, and calls the model again so it can incorporate the data into a final answer — or chain further calls.",
+        "Models are specifically post-trained for this: they learn to choose among multiple tools, fill arguments matching the schema, ask for clarification when arguments are missing, and make parallel tool calls when several lookups are independent. All major APIs support the same shape — OpenAI's `tools` parameter, Anthropic's `tools` with `tool_use`/`tool_result` content blocks, Gemini's function declarations — and most let you force behavior via a tool-choice parameter (auto, required, a specific function, or none). The quality of your descriptions is the main lever: the model picks tools based on the description text, so vague descriptions cause wrong-tool calls and missed calls. Anthropic's guidance is to write tool descriptions with the same care as prompts — say what the tool does, when to use it, and what each parameter means.",
+        "This unlocks everything beyond the model's frozen training data: live data fetches, database queries, calculations, sending emails, controlling devices — and it's the foundation ReAct-style agent loops and MCP (Model Context Protocol) servers build on. Production gotchas: validate arguments before executing (schema conformance is high but not guaranteed — wrap execution in validation and error handling, and return error messages as tool results so the model can retry); guard side-effecting tools with confirmation steps; and keep the tool count manageable — beyond roughly a few dozen tools, selection accuracy drops, which is when you reach for retrieval over tool definitions or hierarchical routing."
+      ],
+      "keyPoints": [
+        "The model only emits a structured call (name + JSON arguments); your code executes it and returns results — the LLM never runs anything itself.",
+        "The full loop is: send tools → model returns tool call → you execute → append result → model answers (or calls again).",
+        "Tool descriptions are prompts: precise descriptions of purpose, usage conditions, and parameters are the biggest accuracy lever.",
+        "Use `tool_choice` to force a specific tool, require some tool, or disable tools per request.",
+        "Modern models support parallel tool calls for independent lookups — handle multiple calls in one response.",
+        "Always validate arguments and return execution errors as tool results so the model can self-correct.",
+        "Selection accuracy degrades with very large tool sets — keep it tens, not hundreds, or add a routing layer (this is the problem MCP and tool-retrieval address)."
+      ],
+      "code": [
+        {
+          "title": "Function calling round trip (Anthropic API, Python)",
+          "language": "python",
+          "code": "import anthropic, json\n\nclient = anthropic.Anthropic()\n\ntools = [{\n    \"name\": \"get_weather\",\n    \"description\": \"Get current weather for a city. Use for any question about present weather conditions.\",\n    \"input_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\"city\": {\"type\": \"string\", \"description\": \"City name, e.g. 'Paris'\"}},\n        \"required\": [\"city\"],\n    },\n}]\n\nmessages = [{\"role\": \"user\", \"content\": \"Do I need an umbrella in Paris today?\"}]\nresp = client.messages.create(model=\"claude-sonnet-4-6\", max_tokens=500,\n                              tools=tools, messages=messages)\n\nif resp.stop_reason == \"tool_use\":\n    call = next(b for b in resp.content if b.type == \"tool_use\")\n    result = {\"temp_c\": 14, \"condition\": \"light rain\"}  # your real API call here\n    messages += [\n        {\"role\": \"assistant\", \"content\": resp.content},\n        {\"role\": \"user\", \"content\": [{\"type\": \"tool_result\",\n            \"tool_use_id\": call.id, \"content\": json.dumps(result)}]},\n    ]\n    final = client.messages.create(model=\"claude-sonnet-4-6\", max_tokens=500,\n                                   tools=tools, messages=messages)\n    print(final.content[0].text)  # \"Yes — light rain in Paris...\""
+        }
+      ],
+      "resources": [
+        {
+          "title": "A Comprehensive Guide to Function Calling in LLMs",
+          "url": "https://thenewstack.io/a-comprehensive-guide-to-function-calling-in-llms/",
+          "type": "article"
+        },
+        {
+          "title": "Function Calling with LLMs | Prompt Engineering Guide",
+          "url": "https://www.promptingguide.ai/applications/function_calling",
+          "type": "article"
+        },
+        {
+          "title": "LLM Function Calling - AI Tools Deep Dive",
+          "url": "https://www.youtube.com/watch?v=gMeTK6zzaO4",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Implement the full function-calling round trip (request → tool_calls → tool results → final answer) with a weather and a calculator tool, then force a specific tool with `tool_choice`.",
+        "steps": [
+          {
+            "title": "Install the OpenAI SDK",
+            "explanation": "Function calling is a conversation protocol, not magic: you describe functions as JSON Schema, the model replies with which one to call and what arguments to pass, and you execute it and report back. Set your API key as an environment variable — never hardcode it.",
+            "python": "pip install openai\nexport OPENAI_API_KEY=sk-...",
+            "javascript": "npm init -y && npm pkg set type=module\nnpm install openai\nexport OPENAI_API_KEY=sk-..."
+          },
+          {
+            "title": "Define a weather and a calculator tool",
+            "explanation": "Each tool is a name, a description, and a JSON Schema for its parameters. The description is the most important part — it's how the model decides when to call the tool. The implementations are plain local functions; the model never runs your code, it only asks you to.",
+            "python": "# tools.py\nTOOLS = [\n    {\"type\": \"function\", \"function\": {\n        \"name\": \"get_weather\",\n        \"description\": \"Get the current weather for a city\",\n        \"parameters\": {\"type\": \"object\", \"properties\": {\n            \"city\": {\"type\": \"string\", \"description\": \"City name, e.g. Paris\"}},\n            \"required\": [\"city\"]}}},\n    {\"type\": \"function\", \"function\": {\n        \"name\": \"calculator\",\n        \"description\": \"Evaluate a basic arithmetic expression\",\n        \"parameters\": {\"type\": \"object\", \"properties\": {\n            \"expression\": {\"type\": \"string\", \"description\": \"e.g. 23 * 7 + 1\"}},\n            \"required\": [\"expression\"]}}},\n]\n\ndef get_weather(city: str) -> str:\n    return f\"18 C and cloudy in {city}\"  # fake data; swap in a real API later\n\ndef calculator(expression: str) -> str:\n    return str(eval(expression, {\"__builtins__\": {}}))  # demo only -- never eval user input in prod",
+            "javascript": "// tools.js\nexport const TOOLS = [\n  { type: \"function\", function: {\n      name: \"get_weather\",\n      description: \"Get the current weather for a city\",\n      parameters: { type: \"object\", properties: {\n          city: { type: \"string\", description: \"City name, e.g. Paris\" } },\n        required: [\"city\"] } } },\n  { type: \"function\", function: {\n      name: \"calculator\",\n      description: \"Evaluate a basic arithmetic expression\",\n      parameters: { type: \"object\", properties: {\n          expression: { type: \"string\", description: \"e.g. 23 * 7 + 1\" } },\n        required: [\"expression\"] } } },\n];\n\nexport const FUNCS = {\n  get_weather: ({ city }) => `18 C and cloudy in ${city}`, // fake data\n  calculator: ({ expression }) => String(Function(`\"use strict\"; return (${expression})`)()), // demo only\n};"
+          },
+          {
+            "title": "Run the full round trip",
+            "explanation": "The loop: send messages + tools, check if the reply contains `tool_calls`, execute each one, append a `role: \"tool\"` message per call (matched by `tool_call_id`), and call the API again. A single question can trigger parallel tool calls — here the model needs both tools, then writes the final answer.",
+            "python": "# round_trip.py\nimport json\nfrom openai import OpenAI\nfrom tools import TOOLS, get_weather, calculator\n\nclient = OpenAI()\nFUNCS = {\"get_weather\": get_weather, \"calculator\": calculator}\nmessages = [{\"role\": \"user\",\n             \"content\": \"What's the weather in Paris, and what is 23 * 7?\"}]\n\nresp = client.chat.completions.create(\n    model=\"gpt-5-mini\", messages=messages, tools=TOOLS)\nmsg = resp.choices[0].message\n\nwhile msg.tool_calls:\n    messages.append(msg)  # keep the assistant turn with its tool_calls\n    for call in msg.tool_calls:\n        args = json.loads(call.function.arguments)\n        result = FUNCS[call.function.name](**args)\n        print(f\"-> {call.function.name}({args}) = {result}\")\n        messages.append({\"role\": \"tool\", \"tool_call_id\": call.id,\n                         \"content\": result})\n    resp = client.chat.completions.create(\n        model=\"gpt-5-mini\", messages=messages, tools=TOOLS)\n    msg = resp.choices[0].message\n\nprint(\"\\nFinal answer:\", msg.content)",
+            "javascript": "// round_trip.js\nimport OpenAI from \"openai\";\nimport { TOOLS, FUNCS } from \"./tools.js\";\n\nconst client = new OpenAI();\nconst messages = [{ role: \"user\",\n  content: \"What's the weather in Paris, and what is 23 * 7?\" }];\n\nlet resp = await client.chat.completions.create({\n  model: \"gpt-5-mini\", messages, tools: TOOLS });\nlet msg = resp.choices[0].message;\n\nwhile (msg.tool_calls?.length) {\n  messages.push(msg); // keep the assistant turn with its tool_calls\n  for (const call of msg.tool_calls) {\n    const args = JSON.parse(call.function.arguments);\n    const result = FUNCS[call.function.name](args);\n    console.log(`-> ${call.function.name}(${call.function.arguments}) = ${result}`);\n    messages.push({ role: \"tool\", tool_call_id: call.id, content: result });\n  }\n  resp = await client.chat.completions.create({\n    model: \"gpt-5-mini\", messages, tools: TOOLS });\n  msg = resp.choices[0].message;\n}\n\nconsole.log(\"\\nFinal answer:\", msg.content);"
+          },
+          {
+            "title": "Force a specific tool with tool_choice",
+            "explanation": "`tool_choice` overrides the model's judgment: `\"auto\"` (default) lets it decide, `\"required\"` forces at least one tool call, `\"none\"` forbids them, and naming a function forces exactly that tool. Forcing `get_weather` on an unrelated prompt shows the model inventing plausible arguments — useful for routers and extractors, dangerous if you assume the call made sense.",
+            "python": "# force_tool.py\nfrom openai import OpenAI\nfrom tools import TOOLS\n\nclient = OpenAI()\nresp = client.chat.completions.create(\n    model=\"gpt-5-mini\",\n    messages=[{\"role\": \"user\", \"content\": \"Hi there! Tell me a joke.\"}],\n    tools=TOOLS,\n    tool_choice={\"type\": \"function\", \"function\": {\"name\": \"get_weather\"}},\n)\ncall = resp.choices[0].message.tool_calls[0]\nprint(call.function.name, call.function.arguments)\n# forced get_weather even though nobody asked about weather",
+            "javascript": "// force_tool.js\nimport OpenAI from \"openai\";\nimport { TOOLS } from \"./tools.js\";\n\nconst client = new OpenAI();\nconst resp = await client.chat.completions.create({\n  model: \"gpt-5-mini\",\n  messages: [{ role: \"user\", content: \"Hi there! Tell me a joke.\" }],\n  tools: TOOLS,\n  tool_choice: { type: \"function\", function: { name: \"get_weather\" } },\n});\nconst call = resp.choices[0].message.tool_calls[0];\nconsole.log(call.function.name, call.function.arguments);\n// forced get_weather even though nobody asked about weather"
+          }
+        ],
+        "practice": [
+          "Add a third tool `get_time(timezone)` and ask one question that needs all three tools.",
+          "Replace the fake weather function with the free Open-Meteo API (no key needed) and verify real temperatures come back.",
+          "Run the same prompt with `tool_choice: \"required\"` and then `\"none\"` and compare the responses.",
+          "Make `calculator` return an error string for invalid expressions (e.g. `2 +* 3`) and watch the model recover in the next turn.",
+          "Log the number of API round trips for five different prompts — which phrasings trigger parallel tool calls in a single turn?"
+        ]
+      }
+    },
+    {
+      "id": "structured-output",
+      "title": "Structured Output",
+      "subsection": "API Features",
+      "minutes": 6,
+      "intro": "Structured output techniques make an LLM return data in a guaranteed machine-parseable shape — typically JSON matching a schema — so responses can flow straight into code.",
+      "summary": [
+        "Free-text LLM output is useless to a program until it's parsed, and parsing prose is fragile. Structured output closes that gap with an escalating ladder of reliability. Level one is prompting: describe the JSON shape, show an example, say \"return only valid JSON, no markdown fences\" — works most of the time, fails enough to hurt at scale (truncated JSON, trailing commas, chatty preambles). Level two is JSON mode, where the API constrains the model to emit syntactically valid JSON but doesn't guarantee your schema. Level three is schema-enforced structured outputs: you pass a JSON Schema (or Pydantic model) and the runtime uses constrained decoding — masking invalid tokens at each generation step so the output cannot violate the schema. OpenAI's Structured Outputs, Cohere's strict JSON schema mode (which the Cohere docs describe as guaranteed schema conformance), and open-source libraries like Outlines, Instructor, and Pydantic-based wrappers implement this.",
+        "As Abdullin's field-notes piece and the Towards Data Science guide both emphasize, schema design is where the real engineering happens. Field names and descriptions act as micro-prompts — `\"delivery_date\": \"ISO 8601 date the package arrived\"` steers extraction quality. Field order matters because generation is sequential: putting a `reasoning` field before the answer fields buys you chain-of-thought inside the structure. Pydantic-style validation gives a second safety net: validate, and on failure re-prompt with the error message (the Instructor library pattern). And constraint trade-offs exist — heavy-handed schemas can slightly degrade content quality on hard tasks, since the model spends capacity satisfying the format, so keep schemas as simple as the use case allows.",
+        "In practice: use native structured outputs when your provider supports your schema features (note providers restrict JSON Schema subsets — e.g. requiring all fields present, limited unions); use tool/function definitions as a portable alternative (define one \"tool\" whose parameters are your schema — the original cross-provider trick); and always handle the refusal/edge cases — a model can still return a valid-but-wrong structure, so schema conformance is not correctness. Structured output is what turns LLMs from chatbots into reliable pipeline components: extraction, classification, routing, and agent state all run on it."
+      ],
+      "keyPoints": [
+        "Reliability ladder: prompt-only → JSON mode (valid JSON, any shape) → schema-enforced structured outputs (constrained decoding, guaranteed shape).",
+        "Constrained decoding works by masking tokens that would violate the schema at each step — conformance is structural, not statistical.",
+        "Field names, descriptions, and order are micro-prompts; put a `reasoning` field before answer fields to get CoT inside JSON.",
+        "Schema conformance is not correctness — validate semantics and consider an Instructor-style retry-on-validation-error loop.",
+        "Providers support restricted JSON Schema subsets (e.g. all-required fields, no arbitrary unions); check before designing schemas.",
+        "A single function/tool definition doubles as portable structured output across providers.",
+        "Over-constraining can shave content quality on hard tasks — keep schemas minimal."
+      ],
+      "code": [
+        {
+          "title": "Schema-enforced extraction with Pydantic (OpenAI SDK)",
+          "language": "python",
+          "code": "from openai import OpenAI\nfrom pydantic import BaseModel, Field\n\nclass Invoice(BaseModel):\n    reasoning: str = Field(description=\"Brief notes on how fields were identified\")\n    vendor: str\n    total_usd: float\n    due_date: str = Field(description=\"ISO 8601 date\")\n    line_item_count: int\n\nclient = OpenAI()\nresp = client.chat.completions.parse(\n    model=\"gpt-5\",\n    messages=[\n        {\"role\": \"system\", \"content\": \"Extract invoice data from the user's text.\"},\n        {\"role\": \"user\", \"content\": \"Invoice from Acme Corp: 3 items, $1,284.50 total, due 2026-07-01.\"},\n    ],\n    response_format=Invoice,\n)\ninvoice = resp.choices[0].message.parsed\nprint(invoice.vendor, invoice.total_usd)  # Acme Corp 1284.5"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Structured Output",
+          "url": "https://abdullin.com/structured-output/",
+          "type": "article"
+        },
+        {
+          "title": "Generating Structured Outputs from LLMs",
+          "url": "https://towardsdatascience.com/generating-structured-outputs-from-llms/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration",
+          "type": "article"
+        },
+        {
+          "title": "How do Structured Outputs Work?",
+          "url": "https://docs.cohere.com/docs/structured-outputs",
+          "type": "official"
+        }
+      ],
+      "handsOn": {
+        "goal": "Extract typed, validated invoice data from messy free-form text using Pydantic (`.parse()`) in Python and Zod (`zodResponseFormat`) in JavaScript, including failure handling.",
+        "steps": [
+          {
+            "title": "Install SDK + schema library",
+            "explanation": "Structured outputs constrain the model's decoder so the response is guaranteed to match your JSON Schema. You don't write the schema by hand: Pydantic models (Python) and Zod schemas (JavaScript) generate it, and the SDK parses the response back into typed objects.",
+            "python": "pip install openai pydantic\nexport OPENAI_API_KEY=sk-...",
+            "javascript": "npm install openai zod\nexport OPENAI_API_KEY=sk-..."
+          },
+          {
+            "title": "Define a schema and parse messy text",
+            "explanation": "Use `client.chat.completions.parse` with `response_format` set to your model/schema. The reply lands in `.parsed` as a real typed object — no `JSON.parse`, no regex, no \"please respond in JSON\" prompt engineering. Field names and descriptions guide the extraction, so name them well.",
+            "python": "# extract.py\nfrom openai import OpenAI\nfrom pydantic import BaseModel, Field\n\nclass Invoice(BaseModel):\n    vendor: str\n    total_usd: float = Field(description=\"Total amount in USD\")\n    due_date: str = Field(description=\"ISO date YYYY-MM-DD\")\n    line_items: list[str]\n\nclient = OpenAI()\nmessy = (\"hey -- invoice frm ACME Corp came in. they want $1,234.50 \"\n         \"by Jan 15 2026. covers 3x widgets plus the install fee thing\")\n\ncompletion = client.chat.completions.parse(\n    model=\"gpt-5-mini\",\n    messages=[\n        {\"role\": \"system\", \"content\": \"Extract invoice data from the user's text.\"},\n        {\"role\": \"user\", \"content\": messy},\n    ],\n    response_format=Invoice,\n)\ninvoice = completion.choices[0].message.parsed\nprint(type(invoice))            # <class '__main__.Invoice'>\nprint(invoice.vendor, invoice.total_usd, invoice.due_date)\nprint(invoice.line_items)",
+            "javascript": "// extract.js\nimport OpenAI from \"openai\";\nimport { z } from \"zod\";\nimport { zodResponseFormat } from \"openai/helpers/zod\";\n\nconst Invoice = z.object({\n  vendor: z.string(),\n  total_usd: z.number().describe(\"Total amount in USD\"),\n  due_date: z.string().describe(\"ISO date YYYY-MM-DD\"),\n  line_items: z.array(z.string()),\n});\n\nconst client = new OpenAI();\nconst messy =\n  \"hey -- invoice frm ACME Corp came in. they want $1,234.50 \" +\n  \"by Jan 15 2026. covers 3x widgets plus the install fee thing\";\n\nconst completion = await client.chat.completions.parse({\n  model: \"gpt-5-mini\",\n  messages: [\n    { role: \"system\", content: \"Extract invoice data from the user's text.\" },\n    { role: \"user\", content: messy },\n  ],\n  response_format: zodResponseFormat(Invoice, \"invoice\"),\n});\nconst invoice = completion.choices[0].message.parsed;\nconsole.log(invoice.vendor, invoice.total_usd, invoice.due_date);\nconsole.log(invoice.line_items);"
+          },
+          {
+            "title": "Add enums and optional fields",
+            "explanation": "Enums force classification into a fixed set; optional/nullable fields let the model say \"not present\" instead of hallucinating a value. Re-run the extraction on text missing the due date and check you get `None`/`null` rather than an invented date.",
+            "python": "# richer schema -- swap into extract.py\nfrom enum import Enum\nfrom pydantic import BaseModel, Field\n\nclass Currency(str, Enum):\n    USD = \"USD\"\n    EUR = \"EUR\"\n    GBP = \"GBP\"\n\nclass Invoice(BaseModel):\n    vendor: str\n    total: float\n    currency: Currency\n    due_date: str | None = Field(\n        default=None, description=\"ISO date, null if not mentioned\")\n    line_items: list[str]\n\nmessy = \"ACME again. 980 euro for consulting + travel. no due date given\"",
+            "javascript": "// richer schema -- swap into extract.js\nconst Invoice = z.object({\n  vendor: z.string(),\n  total: z.number(),\n  currency: z.enum([\"USD\", \"EUR\", \"GBP\"]),\n  due_date: z.string().nullable()\n    .describe(\"ISO date, null if not mentioned\"),\n  line_items: z.array(z.string()),\n});\n\nconst messy =\n  \"ACME again. 980 euro for consulting + travel. no due date given\";"
+          },
+          {
+            "title": "Handle refusals and validation failures",
+            "explanation": "Three things can still go wrong: the model refuses (safety) — check `message.refusal`; the output got truncated by the token limit — the SDK raises `LengthFinishReasonError`; or the API/network fails. Handle each distinctly so you know whether to raise limits, change the prompt, or retry.",
+            "python": "# safe_extract.py\nfrom openai import OpenAI, LengthFinishReasonError\n\nclient = OpenAI()\n\ndef extract(text: str) -> Invoice | None:\n    try:\n        completion = client.chat.completions.parse(\n            model=\"gpt-5-mini\",\n            messages=[\n                {\"role\": \"system\", \"content\": \"Extract invoice data.\"},\n                {\"role\": \"user\", \"content\": text},\n            ],\n            response_format=Invoice,\n            max_completion_tokens=5000,\n        )\n        msg = completion.choices[0].message\n        if msg.refusal:\n            print(\"Model refused:\", msg.refusal)\n            return None\n        return msg.parsed\n    except LengthFinishReasonError:\n        print(\"Truncated before valid JSON -- raise max_completion_tokens\")\n        return None\n\nprint(extract(\"ACME, $50 USD for stickers, due 2026-07-01\"))",
+            "javascript": "// safe_extract.js\nimport OpenAI, { LengthFinishReasonError } from \"openai\";\n\nconst client = new OpenAI();\n\nasync function extract(text) {\n  try {\n    const completion = await client.chat.completions.parse({\n      model: \"gpt-5-mini\",\n      messages: [\n        { role: \"system\", content: \"Extract invoice data.\" },\n        { role: \"user\", content: text },\n      ],\n      response_format: zodResponseFormat(Invoice, \"invoice\"),\n      max_completion_tokens: 5000,\n    });\n    const msg = completion.choices[0].message;\n    if (msg.refusal) {\n      console.log(\"Model refused:\", msg.refusal);\n      return null;\n    }\n    return msg.parsed;\n  } catch (err) {\n    if (err instanceof LengthFinishReasonError) {\n      console.log(\"Truncated before valid JSON -- raise max_completion_tokens\");\n      return null;\n    }\n    throw err;\n  }\n}\n\nconsole.log(await extract(\"ACME, $50 USD for stickers, due 2026-07-01\"));"
+          }
+        ],
+        "practice": [
+          "Add a `confidence: \"high\" | \"medium\" | \"low\"` enum field and see how the model self-assesses on vaguer inputs.",
+          "Run the extractor over five differently-messy invoice emails in a loop and collect the typed results into a list.",
+          "Feed it text with no due date and verify you get `null`/`None` instead of a hallucinated date.",
+          "Force the truncation path: set `max_completion_tokens: 20` and confirm your `LengthFinishReasonError` handler fires.",
+          "Compare against plain JSON mode (`response_format: {\"type\": \"json_object\"}` + prompt instructions) on 10 runs — count how many violate your schema."
+        ]
+      }
+    },
+    {
+      "id": "prompt-caching",
+      "title": "Prompt Caching",
+      "subsection": "API Features",
+      "minutes": 5,
+      "intro": "Prompt caching stores the computed internal state (KV cache) of a prompt's stable prefix so repeated requests skip reprocessing it, cutting cost and latency dramatically.",
+      "summary": [
+        "Every API call reprocesses your entire prompt from token one — system prompt, tool definitions, documents, conversation history — even if 95% of it is identical to the last call. Prompt caching fixes this: the provider stores the transformer's key-value (KV) cache for a prompt prefix, and subsequent requests that share that exact prefix resume computation from the cache instead of recomputing it. As IBM's overview explains, this is prefix caching of internal attention state, not caching of responses — the model still generates fresh output; it just skips re-reading what it has already processed.",
+        "The economics are significant. Anthropic charges cache writes at 1.25x base input price and cache reads at 0.1x — a 90% discount on cached tokens — with a 5-minute default TTL (extendable to 1 hour) and explicit `cache_control` breakpoints you place in the prompt. OpenAI applies automatic caching for prompts over 1024 tokens at a 50-90% discount depending on model, no code changes needed. Gemini offers both implicit and explicit caching. Latency improves too — up to ~80% faster time-to-first-token on long cached prompts, since prefill is the slow part for big contexts.",
+        "Because matching is exact-prefix, prompt structure determines whether you benefit: put stable content first (system prompt, tool definitions, few-shot examples, reference documents) and variable content last (user query, latest messages). One changed character invalidates the cache from that point onward — so a timestamp in your system prompt, randomized tool order, or non-deterministic serialization silently destroys your hit rate. The killer use cases are multi-turn agents (the growing conversation re-reads the same prefix every turn — agentic workloads commonly see >80% of input tokens served from cache), chat-with-document apps, and any high-traffic endpoint with a fat shared system prompt. Distinguish this from response caching (returning a stored answer for semantically duplicate queries) — a separate, complementary technique you implement yourself."
+      ],
+      "keyPoints": [
+        "Caches the KV/prefill state of a prompt prefix, not the response — output is still generated fresh each call.",
+        "Anthropic: 1.25x to write, 0.1x to read (90% off), 5-min TTL (1-hour option), explicit `cache_control` breakpoints; OpenAI: automatic above 1024 tokens at 50-90% off.",
+        "Matching is exact-prefix: order content stable-first (system, tools, docs, examples) and variable-last (user query).",
+        "One changed byte — a timestamp, reordered tools, non-deterministic JSON — invalidates everything after it; keep prefixes deterministic.",
+        "Cuts time-to-first-token by up to ~80% on long prompts because prefill dominates latency at scale.",
+        "Biggest wins: multi-turn agent loops, long shared system prompts, chat-over-documents; tiny dynamic prompts gain nothing.",
+        "Don't confuse with response caching (storing final answers for repeated queries) — that's an app-level layer you build separately."
+      ],
+      "code": [
+        {
+          "title": "Explicit caching with cache_control (Anthropic API)",
+          "language": "python",
+          "code": "import anthropic\n\nclient = anthropic.Anthropic()\n\nresponse = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=800,\n    system=[\n        {\n            \"type\": \"text\",\n            \"text\": LONG_POLICY_DOCUMENT,  # ~20k tokens, identical every call\n            \"cache_control\": {\"type\": \"ephemeral\"},  # cache up to here\n        }\n    ],\n    messages=[{\"role\": \"user\", \"content\": \"Does the policy cover water damage?\"}],\n)\n# usage shows what hit the cache:\nu = response.usage\nprint(u.cache_creation_input_tokens, u.cache_read_input_tokens, u.input_tokens)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "What is Prompt Caching?",
+          "url": "https://www.ibm.com/think/topics/prompt-caching",
+          "type": "article"
+        },
+        {
+          "title": "What is Prompt Caching? Optimize LLM Latency with AI Transformers",
+          "url": "https://www.youtube.com/watch?v=u57EnkQaUTY",
+          "type": "video"
+        },
+        {
+          "title": "Prompt caching - Anthropic API docs",
+          "url": "https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching",
+          "type": "official"
+        }
+      ],
+      "handsOn": {
+        "goal": "Turn on Anthropic prompt caching with `cache_control`, make two identical calls, and watch `cache_creation_input_tokens` flip to `cache_read_input_tokens` on the second call.",
+        "steps": [
+          {
+            "title": "Install the Anthropic SDK",
+            "explanation": "Prompt caching is an Anthropic API feature: you mark a breakpoint in your prompt with `cache_control` and the API caches everything up to it. Cached reads cost ~10% of normal input price; the first (write) call costs ~25% extra. The `usage` object on every response tells you exactly what happened.",
+            "python": "pip install anthropic\nexport ANTHROPIC_API_KEY=sk-ant-...",
+            "javascript": "npm init -y && npm pkg set type=module\nnpm install @anthropic-ai/sdk\nexport ANTHROPIC_API_KEY=sk-ant-..."
+          },
+          {
+            "title": "Cache a long system prompt and call twice",
+            "explanation": "Put the big stable content (here a fake document) in the system prompt with `cache_control: {type: \"ephemeral\"}` on its block, and the per-request question in `messages` after it. Caching is a prefix match with a minimum size (~2048 tokens on `claude-sonnet-4-6`), so the document is repeated to be comfortably large — shorter prefixes silently don't cache.",
+            "python": "# cache_demo.py\nimport anthropic\n\nclient = anthropic.Anthropic()\n# repeat to clear the ~2048-token minimum cacheable prefix on sonnet-4-6\nlong_doc = (\"MCP is an open protocol that standardizes how AI applications \"\n            \"connect to external tools and data sources. \") * 300\n\ndef ask(question: str) -> None:\n    resp = client.messages.create(\n        model=\"claude-sonnet-4-6\",\n        max_tokens=256,\n        system=[{\n            \"type\": \"text\",\n            \"text\": \"Answer questions about this document:\\n\" + long_doc,\n            \"cache_control\": {\"type\": \"ephemeral\"},\n        }],\n        messages=[{\"role\": \"user\", \"content\": question}],\n    )\n    u = resp.usage\n    print(f\"cache_creation={u.cache_creation_input_tokens}  \"\n          f\"cache_read={u.cache_read_input_tokens}  input={u.input_tokens}\")\n\nask(\"What is MCP?\")  # call 1: expect cache_creation > 0, cache_read = 0\nask(\"What is MCP?\")  # call 2: expect cache_creation = 0, cache_read > 0",
+            "javascript": "// cache_demo.js\nimport Anthropic from \"@anthropic-ai/sdk\";\n\nconst client = new Anthropic();\n// repeat to clear the ~2048-token minimum cacheable prefix on sonnet-4-6\nconst longDoc = (\"MCP is an open protocol that standardizes how AI applications \" +\n  \"connect to external tools and data sources. \").repeat(300);\n\nasync function ask(question) {\n  const resp = await client.messages.create({\n    model: \"claude-sonnet-4-6\",\n    max_tokens: 256,\n    system: [{\n      type: \"text\",\n      text: \"Answer questions about this document:\\n\" + longDoc,\n      cache_control: { type: \"ephemeral\" },\n    }],\n    messages: [{ role: \"user\", content: question }],\n  });\n  const u = resp.usage;\n  console.log(`cache_creation=${u.cache_creation_input_tokens}  ` +\n    `cache_read=${u.cache_read_input_tokens}  input=${u.input_tokens}`);\n}\n\nawait ask(\"What is MCP?\"); // call 1: cache_creation > 0, cache_read = 0\nawait ask(\"What is MCP?\"); // call 2: cache_creation = 0, cache_read > 0"
+          },
+          {
+            "title": "Break the cache on purpose",
+            "explanation": "Caching matches the exact byte prefix — any change before the breakpoint invalidates everything after it. Prepend a timestamp to the system prompt and `cache_read` stays 0 forever: this is the #1 real-world caching bug. The fix is always the same: keep volatile content (timestamps, user IDs, the question) after the cached prefix.",
+            "python": "# cache_buster.py -- same as cache_demo.py, but with one bad line\nimport time\n\ndef ask(question: str) -> None:\n    resp = client.messages.create(\n        model=\"claude-sonnet-4-6\",\n        max_tokens=256,\n        system=[{\n            \"type\": \"text\",\n            # BUG: changes every call, so the prefix never matches\n            \"text\": f\"Current time: {time.time()}\\n\" + long_doc,\n            \"cache_control\": {\"type\": \"ephemeral\"},\n        }],\n        messages=[{\"role\": \"user\", \"content\": question}],\n    )\n    u = resp.usage\n    print(f\"cache_creation={u.cache_creation_input_tokens}  \"\n          f\"cache_read={u.cache_read_input_tokens}\")\n\nask(\"What is MCP?\")  # cache write\nask(\"What is MCP?\")  # ANOTHER cache write -- read stays 0. Money on fire.",
+            "javascript": "// cache_buster.js -- same as cache_demo.js, but with one bad line\nasync function ask(question) {\n  const resp = await client.messages.create({\n    model: \"claude-sonnet-4-6\",\n    max_tokens: 256,\n    system: [{\n      type: \"text\",\n      // BUG: changes every call, so the prefix never matches\n      text: `Current time: ${Date.now()}\\n` + longDoc,\n      cache_control: { type: \"ephemeral\" },\n    }],\n    messages: [{ role: \"user\", content: question }],\n  });\n  const u = resp.usage;\n  console.log(`cache_creation=${u.cache_creation_input_tokens}  ` +\n    `cache_read=${u.cache_read_input_tokens}`);\n}\n\nawait ask(\"What is MCP?\"); // cache write\nawait ask(\"What is MCP?\"); // ANOTHER cache write -- read stays 0. Money on fire."
+          }
+        ],
+        "practice": [
+          "Run `cache_demo` and confirm call 2 shows `cache_read > 0`; also time both calls and compare latency.",
+          "Ask a different question on the second call — does the cached system prompt still hit? Why?",
+          "Wait 6+ minutes between calls and observe the cache expire (ephemeral TTL is 5 minutes), then re-warm it.",
+          "Shrink `long_doc` to ~50 repetitions and watch caching silently stop (`cache_creation = 0`) — you're below the minimum prefix size.",
+          "Do the math: with writes at 1.25x and reads at 0.1x base input price, after how many calls does caching pay for itself?"
+        ]
+      }
+    },
+    {
+      "id": "streaming-responses",
+      "title": "Streaming Responses",
+      "subsection": "API Features",
+      "minutes": 5,
+      "intro": "Streaming sends the model's output token-by-token as it's generated, slashing perceived latency from total generation time down to time-to-first-token.",
+      "summary": [
+        "LLMs generate text autoregressively — one token at a time — so a 1,000-token answer might take 15-30 seconds to complete. Without streaming, the user stares at a spinner for that entire time; with streaming, tokens render as they're produced, and the metric that matters shifts from total latency to time-to-first-token (TTFT), often a few hundred milliseconds. That's the entire reason ChatGPT-style typewriter UIs exist: nothing finishes faster, but perceived responsiveness improves enormously, and users can start reading — or cancel a wrong answer — immediately, saving the cost of tokens never generated.",
+        "Under the hood, all major LLM APIs stream via server-sent events (SSE) over a single HTTP response: you set `stream=True` (or use a streaming helper), and instead of one JSON body you receive a sequence of small event chunks, each carrying a text delta, which you accumulate and render. As Austin Gil's web-dev series shows, wiring this end-to-end means streaming twice: provider → your server, then your server → browser, using SSE or a `ReadableStream`, rendering chunks as they arrive. The non-streamed alternative remains simpler everywhere else — one request, one complete body — making it easier to cache, log, validate, and retry, which is why it stays the right choice for batch jobs and machine-to-machine pipelines.",
+        "The trade-offs concentrate in handling structure and errors. Streaming partial JSON is awkward — you can't parse an incomplete object, so either stream free text and fetch structure separately, use SDK helpers that incrementally parse partial JSON, or accumulate-then-parse (losing the UX benefit). Content moderation and validation must run on text the user has already seen, errors can occur mid-stream after a 200 OK (so handle abrupt termination), and you must accumulate the full response server-side for logging and token accounting. Rules of thumb: stream anything user-facing and conversational; don't bother for short structured outputs consumed by code. Streaming is also mandatory plumbing for agent UIs — tool calls, thinking deltas, and text all arrive as typed stream events you route to the right UI surface."
+      ],
+      "keyPoints": [
+        "Streaming optimizes time-to-first-token (often <1s) instead of total generation time (10-30s for long outputs) — same speed, vastly better perceived latency.",
+        "Implemented as server-sent events: set `stream=True` and consume incremental delta chunks over one HTTP connection.",
+        "Users canceling mid-stream stops generation and saves output-token cost.",
+        "Partial JSON can't be parsed — for structured output, accumulate first or use SDKs with incremental partial-JSON parsing.",
+        "Errors can arrive mid-stream after the 200 OK; always handle truncated streams and accumulate the full text server-side for logs/usage.",
+        "Full-stack streaming means relaying chunks twice: provider → backend → browser (SSE or ReadableStream).",
+        "Skip streaming for batch pipelines and short machine-consumed outputs — non-streamed is simpler to cache, validate, and retry."
+      ],
+      "code": [
+        {
+          "title": "Streaming with the Anthropic Python SDK",
+          "language": "python",
+          "code": "import anthropic\n\nclient = anthropic.Anthropic()\n\nwith client.messages.stream(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1000,\n    messages=[{\"role\": \"user\", \"content\": \"Explain HTTP/3 in 5 short paragraphs.\"}],\n) as stream:\n    for text in stream.text_stream:\n        print(text, end=\"\", flush=True)  # render tokens as they arrive\n\nfinal = stream.get_final_message()      # full message for logging/usage\nprint(\"\\n\\ntokens:\", final.usage.output_tokens)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Streaming Responses in AI: How AI Outputs Are Generated in Real Time",
+          "url": "https://dev.to/pranshu_kabra_fe98a73547a/streaming-responses-in-ai-how-ai-outputs-are-generated-in-real-time-18kb",
+          "type": "article"
+        },
+        {
+          "title": "Streaming vs Non-Streaming LLM Responses",
+          "url": "https://medium.com/@vasanthancomrads/streaming-vs-non-streaming-llm-responses-db297ba5467e",
+          "type": "article"
+        },
+        {
+          "title": "AI for Web Devs: Faster Responses with HTTP Streaming",
+          "url": "https://austingil.com/ai-for-web-devs-streaming/",
+          "type": "article"
+        }
+      ],
+      "handsOn": {
+        "goal": "Stream tokens to your terminal with both the OpenAI and Anthropic SDKs, and measure time-to-first-token (TTFT) versus total generation time.",
+        "steps": [
+          {
+            "title": "Install both SDKs",
+            "explanation": "You'll stream the same prompt through both providers to see that the pattern is universal: instead of waiting for the whole response, you consume an iterator of small deltas and print them as they arrive. Set both API keys.",
+            "python": "pip install openai anthropic\nexport OPENAI_API_KEY=sk-...\nexport ANTHROPIC_API_KEY=sk-ant-...",
+            "javascript": "npm init -y && npm pkg set type=module\nnpm install openai @anthropic-ai/sdk\nexport OPENAI_API_KEY=sk-...\nexport ANTHROPIC_API_KEY=sk-ant-..."
+          },
+          {
+            "title": "Stream with OpenAI and measure TTFT",
+            "explanation": "Pass `stream: true` and the SDK returns an iterator of chunks; the text lives in `chunk.choices[0].delta.content`. Record the clock when the first delta arrives — TTFT is what users perceive as responsiveness, and it's typically a small fraction of the total time.",
+            "python": "# stream_openai.py\nimport time\nfrom openai import OpenAI\n\nclient = OpenAI()\nstart = time.perf_counter()\nfirst = None\n\nstream = client.chat.completions.create(\n    model=\"gpt-5-mini\",\n    messages=[{\"role\": \"user\",\n               \"content\": \"Write a 200-word story about a robot barista.\"}],\n    stream=True,\n)\nfor chunk in stream:\n    delta = chunk.choices[0].delta.content if chunk.choices else None\n    if delta:\n        if first is None:\n            first = time.perf_counter() - start\n        print(delta, end=\"\", flush=True)\n\ntotal = time.perf_counter() - start\nprint(f\"\\n\\nTTFT: {first:.2f}s | total: {total:.2f}s\")",
+            "javascript": "// stream_openai.js\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI();\nconst start = performance.now();\nlet first = null;\n\nconst stream = await client.chat.completions.create({\n  model: \"gpt-5-mini\",\n  messages: [{ role: \"user\",\n    content: \"Write a 200-word story about a robot barista.\" }],\n  stream: true,\n});\nfor await (const chunk of stream) {\n  const delta = chunk.choices[0]?.delta?.content;\n  if (delta) {\n    if (first === null) first = (performance.now() - start) / 1000;\n    process.stdout.write(delta);\n  }\n}\n\nconst total = (performance.now() - start) / 1000;\nconsole.log(`\\n\\nTTFT: ${first.toFixed(2)}s | total: ${total.toFixed(2)}s`);"
+          },
+          {
+            "title": "Stream with Anthropic",
+            "explanation": "Anthropic's SDK has a dedicated streaming helper: Python's `client.messages.stream()` context manager exposes `text_stream` (just the text deltas), and the JS version emits `\"text\"` events plus a `finalMessage()` promise that resolves to the complete message with usage stats — no manual event plumbing needed.",
+            "python": "# stream_anthropic.py\nimport time\nimport anthropic\n\nclient = anthropic.Anthropic()\nstart = time.perf_counter()\nfirst = None\n\nwith client.messages.stream(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    messages=[{\"role\": \"user\",\n               \"content\": \"Write a 200-word story about a robot barista.\"}],\n) as stream:\n    for text in stream.text_stream:\n        if first is None:\n            first = time.perf_counter() - start\n        print(text, end=\"\", flush=True)\n    final = stream.get_final_message()\n\ntotal = time.perf_counter() - start\nprint(f\"\\n\\nTTFT: {first:.2f}s | total: {total:.2f}s \"\n      f\"| output tokens: {final.usage.output_tokens}\")",
+            "javascript": "// stream_anthropic.js\nimport Anthropic from \"@anthropic-ai/sdk\";\n\nconst client = new Anthropic();\nconst start = performance.now();\nlet first = null;\n\nconst stream = client.messages.stream({\n  model: \"claude-sonnet-4-6\",\n  max_tokens: 1024,\n  messages: [{ role: \"user\",\n    content: \"Write a 200-word story about a robot barista.\" }],\n});\nstream.on(\"text\", (text) => {\n  if (first === null) first = (performance.now() - start) / 1000;\n  process.stdout.write(text);\n});\nconst final = await stream.finalMessage();\n\nconst total = (performance.now() - start) / 1000;\nconsole.log(`\\n\\nTTFT: ${first.toFixed(2)}s | total: ${total.toFixed(2)}s ` +\n  `| output tokens: ${final.usage.output_tokens}`);"
+          },
+          {
+            "title": "Compare with a blocking call",
+            "explanation": "Run the same prompt without streaming and time it. Total time is roughly identical — streaming doesn't make generation faster, it makes the wait visible. The blocking version makes the user stare at nothing for the full duration; the streaming version shows progress after TTFT (often under a second).",
+            "python": "# blocking.py -- feel the difference\nimport time\nfrom openai import OpenAI\n\nclient = OpenAI()\nstart = time.perf_counter()\n\nresp = client.chat.completions.create(\n    model=\"gpt-5-mini\",\n    messages=[{\"role\": \"user\",\n               \"content\": \"Write a 200-word story about a robot barista.\"}],\n)\nprint(resp.choices[0].message.content)\nelapsed = time.perf_counter() - start\nprint(f\"\\nUser stared at a blank screen for {elapsed:.2f}s\")",
+            "javascript": "// blocking.js -- feel the difference\nimport OpenAI from \"openai\";\n\nconst client = new OpenAI();\nconst start = performance.now();\n\nconst resp = await client.chat.completions.create({\n  model: \"gpt-5-mini\",\n  messages: [{ role: \"user\",\n    content: \"Write a 200-word story about a robot barista.\" }],\n});\nconsole.log(resp.choices[0].message.content);\nconst elapsed = (performance.now() - start) / 1000;\nconsole.log(`\\nUser stared at a blank screen for ${elapsed.toFixed(2)}s`);"
+          }
+        ],
+        "practice": [
+          "Run each script three times and compute average TTFT vs average total time for both providers.",
+          "Ask for a 1000-word essay instead — verify TTFT barely changes while total time grows roughly linearly.",
+          "Iterate the Anthropic stream's raw events instead of `text_stream`/`on(\"text\")` and count the `content_block_delta` events.",
+          "Print a spinner (or `...waiting`) that stops the moment the first token arrives.",
+          "Expose one of the streams over HTTP as Server-Sent Events (FastAPI `StreamingResponse` / Express `res.write`) and consume it with `curl -N`."
+        ]
+      }
+    }
+  ]
+}

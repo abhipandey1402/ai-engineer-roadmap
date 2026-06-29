@@ -1,0 +1,518 @@
+{
+  "id": "platforms-apis",
+  "title": "Platforms, Ecosystem & APIs",
+  "description": "Hugging Face, local model runners, routers, and the major provider SDKs.",
+  "topics": [
+    {
+      "id": "hugging-face",
+      "title": "Hugging Face",
+      "subsection": "Platforms",
+      "minutes": 5,
+      "intro": "Hugging Face is the GitHub of machine learning — the central open platform for models, datasets, libraries, and demos across NLP, vision, and audio.",
+      "summary": [
+        "Hugging Face started as a chatbot company and became the home of open machine learning. Its core asset is the `transformers` library, which gives a single, consistent Python API over thousands of pre-trained architectures (BERT, GPT-2, T5, Llama, Qwen, Whisper, CLIP and far beyond): load any model with `from_pretrained()` or run a task in one line with `pipeline()`. Around the library sits an entire stack — `datasets` for data loading, `tokenizers` for fast tokenization, `peft` for LoRA fine-tuning, `accelerate` for multi-GPU training, `diffusers` for image generation, and TGI (Text Generation Inference) for production serving.",
+        "The platform side is the Hugging Face Hub: 1M+ model checkpoints, hundreds of thousands of datasets, and Spaces — free hosted web demos (typically Gradio or Streamlit apps) where you can try models in the browser. Almost every open model release from Meta, Google, Alibaba, Mistral, or DeepSeek lands on the Hub on day one, making it the canonical distribution channel for open AI.",
+        "For an AI engineer, Hugging Face is both a toolbox and a discovery engine: search leaderboards and model cards to pick a model, prototype with `pipeline()`, fine-tune with `peft`, then deploy via Inference Endpoints or your own vLLM server. The free official course (LLM/NLP course) is one of the best structured ways to learn the ecosystem."
+      ],
+      "keyPoints": [
+        "`transformers` gives one API over thousands of model architectures; `pipeline()` is the one-line entry point.",
+        "The Hub hosts 1M+ models, datasets, and Spaces (free hosted demos) — open model releases land here first.",
+        "The wider stack covers the full lifecycle: `datasets`, `tokenizers`, `peft` (LoRA), `accelerate`, `diffusers`, TGI.",
+        "Model cards and leaderboards on the Hub are the standard way to evaluate and choose open models.",
+        "Free tier is generous: model downloads are free; you pay only for managed inference/compute upgrades.",
+        "The official Hugging Face course is free and the fastest structured path into the ecosystem."
+      ],
+      "code": [
+        {
+          "title": "Quickstart with transformers",
+          "language": "python",
+          "code": "# pip install transformers torch\nfrom transformers import pipeline\n\ngen = pipeline(\"text-generation\", model=\"Qwen/Qwen2.5-0.5B-Instruct\")\nout = gen([{\"role\": \"user\", \"content\": \"Define embeddings in one sentence.\"}],\n          max_new_tokens=60)\nprint(out[0][\"generated_text\"][-1][\"content\"])"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Hugging Face Official Video Course",
+          "url": "https://www.youtube.com/watch?v=00GKzGyWFEs&list=PLo2EIpI_JMQvWfQndUesu0nPBAtZ9gP1o",
+          "type": "course"
+        },
+        {
+          "title": "Hugging Face",
+          "url": "https://huggingface.co",
+          "type": "official"
+        },
+        {
+          "title": "What is Hugging Face? - Machine Learning Hub Explained",
+          "url": "https://www.youtube.com/watch?v=1AUjKfpRZVo",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "hugging-face-tasks",
+      "title": "Hugging Face Tasks",
+      "subsection": "Platforms",
+      "minutes": 4,
+      "intro": "Hugging Face organizes the entire model ecosystem around standardized task names — pick the task, and the platform shows you the models, datasets, and APIs for it.",
+      "summary": [
+        "Everything on Hugging Face is indexed by task. NLP tasks include text classification, token classification (NER), question answering, summarization, translation, and text generation; vision tasks include image classification, object detection, and segmentation; audio tasks include speech recognition and text-to-speech; and multimodal tasks span image-to-text, visual question answering (VQA), image-text matching, and document question answering. Each task has a dedicated page on the Hub describing what it does, recommended models, datasets, metrics, and demo widgets.",
+        "The task taxonomy is not just documentation — it is the API. The `pipeline()` function takes a task string (`\"summarization\"`, `\"automatic-speech-recognition\"`, `\"visual-question-answering\"`) and wires up an appropriate pre-trained model, tokenizer/processor, and pre/post-processing automatically. The same task names drive the Hub's filters, the Serverless Inference API, and export tools like Optimum's task manager (which maps tasks to exportable ONNX configurations).",
+        "Practical workflow: when you face a new problem, first translate it into a Hub task name. 'Pull invoice numbers from PDFs' becomes document question answering; 'flag toxic comments' becomes text classification. Filter Hub models by that task plus your size and license constraints, try the top few in the hosted widget, then drop the winner into a pipeline. This task-first thinking saves hours compared to browsing models blindly."
+      ],
+      "keyPoints": [
+        "Tasks span NLP (classification, NER, QA, summarization, translation), vision, audio, and multimodal (VQA, image-text matching).",
+        "`pipeline(\"<task-name>\")` auto-selects a default model and handles all pre/post-processing.",
+        "Each Hub task page lists recommended models, datasets, metrics, and live demo widgets.",
+        "Translate business problems into task names first, then filter models by task, size, and license.",
+        "The same task taxonomy powers the Inference API and export tooling (Optimum task manager).",
+        "Most task models are small encoder-style models — far cheaper than calling an LLM for classification-style work."
+      ],
+      "code": [
+        {
+          "title": "Different tasks, one API",
+          "language": "python",
+          "code": "from transformers import pipeline\n\nner = pipeline(\"token-classification\")  # named entity recognition\nsummarizer = pipeline(\"summarization\")\nvqa = pipeline(\"visual-question-answering\")\n\nprint(ner(\"Sundar Pichai announced Gemini 3 in Mountain View.\"))"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Task and Model",
+          "url": "https://huggingface.co/learn/computer-vision-course/en/unit4/multimodal-models/tasks-models-part1",
+          "type": "official"
+        },
+        {
+          "title": "Task Summary",
+          "url": "https://huggingface.co/docs/transformers/v4.14.1/en/task_summary",
+          "type": "official"
+        },
+        {
+          "title": "Task Manager",
+          "url": "https://huggingface.co/docs/optimum/en/exporters/task_manager",
+          "type": "official"
+        }
+      ]
+    },
+    {
+      "id": "hugging-face-hub",
+      "title": "Hugging Face Hub",
+      "subsection": "Platforms",
+      "minutes": 4,
+      "intro": "The Hub is Hugging Face's git-based platform for hosting, versioning, and collaborating on models, datasets, and live demo Spaces.",
+      "summary": [
+        "The Hub is essentially GitHub for ML artifacts. Every model, dataset, and Space is a git repository (with Git LFS / Xet for large weight files), so you get version history, branches, diffs, pull requests, and discussions. Model repos carry a model card — a README documenting what the model does, how it was trained, its license, limitations, and intended use — plus config and weight files (increasingly in the safe `safetensors` format). Datasets work the same way, and Spaces wrap a repo in a hosted Gradio/Streamlit app for instant demos.",
+        "Programmatic access comes through the `huggingface_hub` Python library: `login()` for auth tokens, `snapshot_download()` to pull a model locally, `list_models()` to search, and `upload_folder()`/`push_to_hub()` to publish your own fine-tunes. The same credentials gate access to 'gated' models like Llama, where you accept a license before downloading. Private repos, organizations, and enterprise features support team workflows.",
+        "Why it matters: the Hub is the de facto registry of open AI. Day-one releases, fine-tunes, quantized GGUF conversions, and leaderboards all live there, and tools like Ollama, LM Studio, and vLLM pull weights from it directly. Knowing how to search the Hub, read a model card critically (license! training data! eval numbers!), and push your own artifacts is baseline AI-engineering literacy."
+      ],
+      "keyPoints": [
+        "Every model/dataset/Space is a git repo — versioning, branches, PRs, and discussions included.",
+        "Model cards document license, training details, and limitations — always read them before adopting a model.",
+        "`huggingface_hub` library handles auth, search, download (`snapshot_download`), and publishing (`push_to_hub`).",
+        "Gated models (e.g. Llama) require accepting a license with your HF token before download.",
+        "Spaces give you free hosted demos; great for sharing prototypes without infrastructure.",
+        "Ollama, LM Studio, and vLLM all pull weights straight from the Hub."
+      ],
+      "code": [
+        {
+          "title": "Download and search models programmatically",
+          "language": "python",
+          "code": "# pip install huggingface_hub\nfrom huggingface_hub import snapshot_download, list_models\n\nfor m in list_models(task=\"text-generation\", search=\"qwen3\", limit=3):\n    print(m.id)\n\npath = snapshot_download(\"Qwen/Qwen3-0.6B\")\nprint(\"weights at:\", path)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "The Hugging Face Hub (LLM Course)",
+          "url": "https://huggingface.co/learn/nlp-course/en/chapter4/1",
+          "type": "course"
+        },
+        {
+          "title": "Hugging Face Documentation",
+          "url": "https://huggingface.co/docs/hub/en/index",
+          "type": "official"
+        }
+      ]
+    },
+    {
+      "id": "transformers-js",
+      "title": "Transformers.js",
+      "subsection": "Platforms",
+      "minutes": 4,
+      "intro": "Transformers.js runs Hugging Face models directly in the browser or Node.js via ONNX Runtime and WebGPU — no server, no API key, no data leaving the device.",
+      "summary": [
+        "Transformers.js (the `@huggingface/transformers` npm package) is a JavaScript port of the Python `transformers` API. It runs models client-side by converting them to ONNX and executing them with WebAssembly or, much faster, WebGPU acceleration. The API mirrors Python deliberately: `pipeline('sentiment-analysis')` works the same way, and it supports a wide range of tasks — text generation with small LLMs, embeddings, translation, summarization, Whisper speech-to-text, image classification, object detection, and background removal.",
+        "The value proposition is everything that comes from local execution: zero inference cost, no API keys to protect, complete privacy (user data never leaves the browser), offline functionality, and no network latency per request. The constraints are mirror images — models must be small enough to download and fit in browser memory (think 50M-1B parameter models, often quantized to 4-8 bit), and the first load incurs a download that you should cache.",
+        "Use cases that fit well: semantic search and autocomplete in web apps, on-device transcription, smart form validation, content moderation pre-checks, and demos that need to scale to many users for free. Models come from the Hub (filtered by ONNX compatibility), and the same library works in Node.js, Electron, and browser extensions. For anything needing frontier-quality generation, you still call a server-side API — Transformers.js complements rather than replaces it."
+      ],
+      "keyPoints": [
+        "Same `pipeline()` API as Python, running on ONNX Runtime with WASM or WebGPU backends.",
+        "Client-side inference = zero per-request cost, full privacy, offline support, no API keys in the frontend.",
+        "Practical model range is ~50M-1B parameters, usually quantized; first load downloads the weights (cache them).",
+        "Supports text, embeddings, Whisper STT, vision, and more — hundreds of ONNX-ready models on the Hub.",
+        "WebGPU gives order-of-magnitude speedups over WASM where available.",
+        "Works in browsers, Node.js, Electron, and extensions — great for demos and privacy-sensitive features."
+      ],
+      "code": [
+        {
+          "title": "In-browser sentiment analysis",
+          "language": "javascript",
+          "code": "// npm i @huggingface/transformers\nimport { pipeline } from '@huggingface/transformers';\n\nconst classify = await pipeline('sentiment-analysis');\nconst result = await classify('Transformers.js is shockingly easy.');\nconsole.log(result); // [{ label: 'POSITIVE', score: 0.99 }]"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Transformers.js on Hugging Face",
+          "url": "https://huggingface.co/docs/transformers.js/en/index",
+          "type": "official"
+        },
+        {
+          "title": "How Transformer.js Can Help You Create Smarter AI In Your Browser",
+          "url": "https://www.youtube.com/watch?v=MNJHu9zjpqg",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "ollama",
+      "title": "Ollama",
+      "subsection": "Local Runners",
+      "minutes": 5,
+      "intro": "Ollama is the docker-like CLI for local LLMs: one command pulls a quantized model and serves it behind a local, OpenAI-compatible API.",
+      "summary": [
+        "Ollama wraps llama.cpp in a developer-friendly experience modeled on Docker. Install it (macOS, Linux, Windows), run `ollama run llama3.3`, and it downloads a quantized GGUF build of the model, loads it onto your GPU or CPU, and drops you into a chat. A library of ready-to-pull models covers Llama, Qwen, Gemma, Mistral, DeepSeek-R1 distills, and embedding models, each in multiple sizes and quantizations. A `Modelfile` (analogous to a Dockerfile) lets you customize system prompts, parameters, and even import your own GGUF weights.",
+        "The real power for engineers is the server: Ollama exposes a REST API on `localhost:11434`, including an OpenAI-compatible `/v1` endpoint, so any OpenAI SDK or framework (LangChain, LlamaIndex, etc.) can target local models by switching the base URL. Official Python and JavaScript SDKs cover chat, streaming, embeddings, and tool calling. Models stay loaded in memory between requests, giving snappy local latency.",
+        "Typical uses: private prototyping without sending data to a vendor, zero-cost development and CI against a local model before deploying with a paid API, offline tools, and powering local agents/IDE assistants. Hardware guidance: 7-8B models run well on 8-16 GB RAM machines (Apple Silicon is excellent), 70B-class models want ~40 GB+ of unified memory or VRAM. For multi-user production serving, graduate to vLLM; Ollama is optimized for single-machine developer use."
+      ],
+      "keyPoints": [
+        "`ollama run <model>` downloads, loads, and chats in one command; `ollama pull/list/rm` manage the library.",
+        "Serves a REST API on `localhost:11434` plus an OpenAI-compatible `/v1` endpoint — point any OpenAI SDK at it.",
+        "Models are quantized GGUF builds; pick size to fit RAM (7-8B ≈ 8 GB, 70B ≈ 40 GB+).",
+        "`Modelfile` customizes system prompts and parameters, Docker-style.",
+        "Great for privacy, offline work, and free local development; use vLLM for multi-user production throughput.",
+        "Also serves embedding models locally — a full free RAG stack on your laptop."
+      ],
+      "code": [
+        {
+          "title": "Install, run, and call Ollama",
+          "language": "bash",
+          "code": "# install from https://ollama.com, then:\nollama run llama3.3          # interactive chat\n\ncurl http://localhost:11434/api/generate -d '{\n  \"model\": \"llama3.3\",\n  \"prompt\": \"Why is the sky blue?\",\n  \"stream\": false\n}'"
+        },
+        {
+          "title": "Use the OpenAI SDK against Ollama",
+          "language": "python",
+          "code": "from openai import OpenAI\n\nclient = OpenAI(base_url=\"http://localhost:11434/v1\", api_key=\"ollama\")\nresp = client.chat.completions.create(\n    model=\"llama3.3\",\n    messages=[{\"role\": \"user\", \"content\": \"Hello from local inference!\"}],\n)\nprint(resp.choices[0].message.content)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Ollama",
+          "url": "https://ollama.com/",
+          "type": "official"
+        },
+        {
+          "title": "Ollama: Easily run LLMs locally",
+          "url": "https://klu.ai/glossary/ollama",
+          "type": "article"
+        },
+        {
+          "title": "What is Ollama? Running Local LLMs Made Simple",
+          "url": "https://www.youtube.com/watch?v=5RIOQuHOihY",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "lm-studio",
+      "title": "LM Studio",
+      "subsection": "Local Runners",
+      "minutes": 4,
+      "intro": "LM Studio is a polished desktop GUI for discovering, downloading, and chatting with local LLMs — plus a local OpenAI-compatible server for development.",
+      "summary": [
+        "LM Studio is the GUI counterpart to Ollama. The desktop app (macOS, Windows, Linux) has a built-in model browser that searches Hugging Face for GGUF (and Apple-optimized MLX) builds, shows which quantizations will fit in your RAM/VRAM before you download, and provides a full-featured chat interface with system prompts, parameter controls (temperature, context length), conversation history, and document attachment for local RAG-style chat. Recent versions also support tool use/MCP and running models fully offline.",
+        "For development, LM Studio runs a local server exposing OpenAI-compatible endpoints (default `localhost:1234/v1` for chat, completions, and embeddings), an enhanced REST API, plus `lms`, a headless CLI for scripting model loads, and SDKs for Python and TypeScript. That means the same base-URL switch trick works: develop against a free local model, deploy against a paid API.",
+        "Choose LM Studio when you want the friendliest on-ramp — visual model discovery, VRAM fit estimates, and chat without touching a terminal — or when teammates who don't live in the CLI need local models. It's free for personal and commercial use (with enterprise options), keeps everything on-device for privacy, and complements rather than competes with Ollama: many engineers use LM Studio to explore and compare models, then script against whichever runner fits the workflow."
+      ],
+      "keyPoints": [
+        "Desktop GUI with built-in Hugging Face model search and RAM/VRAM fit estimates before downloading.",
+        "Runs GGUF (llama.cpp) and MLX (Apple Silicon) builds; fully offline and private.",
+        "Local OpenAI-compatible server on `localhost:1234/v1` covers chat, completions, and embeddings.",
+        "`lms` CLI and Python/TypeScript SDKs enable headless, scripted use.",
+        "Chat UI supports system prompts, parameter tuning, and attaching documents for local file chat.",
+        "Free for personal and work use — the gentlest on-ramp to local LLMs for non-CLI users."
+      ],
+      "code": [
+        {
+          "title": "Call LM Studio's local server",
+          "language": "python",
+          "code": "from openai import OpenAI\n\nclient = OpenAI(base_url=\"http://localhost:1234/v1\", api_key=\"lm-studio\")\nresp = client.chat.completions.create(\n    model=\"qwen3-8b\",  # whatever model you loaded in the app\n    messages=[{\"role\": \"user\", \"content\": \"Summarize what LM Studio does.\"}],\n)\nprint(resp.choices[0].message.content)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "LMStudio",
+          "url": "https://lmstudio.ai/",
+          "type": "official"
+        },
+        {
+          "title": "LM Studio Tutorial: Run Large Language Models (LLM) on Your Laptop",
+          "url": "https://www.youtube.com/watch?v=ygUEbCpOOLg",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "openrouter",
+      "title": "OpenRouter",
+      "subsection": "Local Runners",
+      "minutes": 4,
+      "intro": "OpenRouter is a unified gateway that puts hundreds of models from every major provider behind one OpenAI-compatible API and one billing account.",
+      "summary": [
+        "OpenRouter solves the many-providers problem: instead of juggling separate accounts, keys, SDKs, and invoices for OpenAI, Anthropic, Google, Mistral, DeepSeek, Meta-hosting providers, and dozens of others, you get a single API key and a single OpenAI-compatible endpoint (`https://openrouter.ai/api/v1`). Models are addressed as `vendor/model` strings — `anthropic/claude-sonnet-4.6`, `openai/gpt-5-mini`, `deepseek/deepseek-r1` — so switching models is literally a string change. Billing is unified credits with a small platform fee on top of provider list prices, and some free-tier models are available for experimentation.",
+        "Beyond aggregation, OpenRouter adds routing intelligence: automatic fallbacks if a provider is down or rate-limits you, price- or latency-optimized routing among multiple hosts of the same open model, and provider preferences you can pin. The dashboard shows real-time rankings, pricing, latency, and uptime per model — genuinely useful market data even if you never buy through them. App-level analytics track spend per model and per key.",
+        "It shines for prototyping (compare ten models against your eval set in an afternoon), for products that let users pick models, and as a resilience layer. Considerations: requests pass through OpenRouter's infrastructure (review data policies for sensitive workloads), and the newest provider-specific features sometimes lag the native APIs. Many teams prototype on OpenRouter, then go direct to providers for the one or two models they standardize on."
+      ],
+      "keyPoints": [
+        "One key, one OpenAI-compatible endpoint, hundreds of models addressed as `vendor/model` strings.",
+        "Automatic fallbacks and price/latency-based routing across multiple hosts of the same model.",
+        "Unified billing with a small markup over provider list prices; some free models for testing.",
+        "The model rankings page doubles as a live market view of pricing, latency, and popularity.",
+        "Great for model comparison, user-selectable models, and provider-outage resilience.",
+        "Trade-offs: an extra hop for your data and occasional lag on bleeding-edge provider features."
+      ],
+      "code": [
+        {
+          "title": "Switch models across vendors with one client",
+          "language": "python",
+          "code": "from openai import OpenAI\n\nclient = OpenAI(\n    base_url=\"https://openrouter.ai/api/v1\",\n    api_key=\"<OPENROUTER_API_KEY>\",\n)\nfor model in [\"openai/gpt-5-mini\", \"anthropic/claude-sonnet-4.6\",\n              \"deepseek/deepseek-chat\"]:\n    r = client.chat.completions.create(\n        model=model,\n        messages=[{\"role\": \"user\", \"content\": \"One-line haiku about APIs.\"}],\n    )\n    print(model, \"->\", r.choices[0].message.content)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "OpenRouter",
+          "url": "https://openrouter.ai/",
+          "type": "official"
+        },
+        {
+          "title": "What is OpenRouter? A Guide with Practical Examples",
+          "url": "https://www.codecademy.com/article/what-is-openrouter",
+          "type": "article"
+        },
+        {
+          "title": "What is Open Router ?",
+          "url": "https://www.youtube.com/watch?v=pfT6l0yMsB0",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "openai-responses-api",
+      "title": "OpenAI Responses API",
+      "subsection": "APIs & SDKs",
+      "minutes": 6,
+      "intro": "The Responses API is OpenAI's current primary interface — a superset of Chat Completions that adds built-in tools, stateful conversations, and agentic primitives.",
+      "summary": [
+        "OpenAI built the Responses API as the successor to both Chat Completions and the Assistants API. The core call is simple: POST to `/v1/responses` with a `model` and an `input` (a plain string or a structured message list), and read `output_text` from the result. On top of that it layers what used to require manual orchestration: hosted tools (web search, file search, code interpreter, computer use), function calling, structured outputs via JSON schema, image input, and streaming via server-sent events. Parameters like `temperature`, `max_output_tokens`, and reasoning-effort controls tune behavior per request.",
+        "The signature feature is statefulness. Each response has an id; pass it as `previous_response_id` in the next call and OpenAI maintains the conversation server-side — no more re-sending the whole message history each turn. This also lets reasoning models preserve their internal reasoning state across tool-call turns, which measurably improves agentic performance and cache utilization compared to Chat Completions. You can also store and retrieve responses later, making audit and debugging easier.",
+        "Migration picture: Chat Completions remains supported indefinitely as the industry-standard shape (and is what 'OpenAI-compatible' providers emulate), but the Assistants API is deprecated in favor of Responses, and new OpenAI features ship Responses-first. For new OpenAI-only projects, start with Responses; if you need portability across many providers, Chat Completions syntax remains the lingua franca."
+      ],
+      "keyPoints": [
+        "One endpoint (`/v1/responses`) supersedes Chat Completions + Assistants for new OpenAI projects.",
+        "`previous_response_id` gives server-side conversation state — stop re-sending full message histories.",
+        "Built-in hosted tools: web search, file search, code interpreter, computer use — no orchestration code.",
+        "Reasoning state persists across tool calls, improving agent performance and cache hit rates.",
+        "Structured Outputs (JSON schema) and streaming are first-class.",
+        "Chat Completions isn't going away — it's the cross-provider standard; Responses is OpenAI-specific power.",
+        "Read `response.output_text` for the simple case; the full `output` array carries tool calls and reasoning items."
+      ],
+      "code": [
+        {
+          "title": "Stateful conversation with built-in web search",
+          "language": "python",
+          "code": "from openai import OpenAI\n\nclient = OpenAI()\nfirst = client.responses.create(\n    model=\"gpt-5\",\n    tools=[{\"type\": \"web_search\"}],\n    input=\"What changed in the latest React release?\",\n)\nprint(first.output_text)\n\nfollowup = client.responses.create(\n    model=\"gpt-5\",\n    previous_response_id=first.id,  # server keeps the context\n    input=\"Show me a code example of that change.\",\n)\nprint(followup.output_text)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Responses API",
+          "url": "https://developers.openai.com/api/reference/resources/responses/",
+          "type": "official"
+        },
+        {
+          "title": "Why we built the Responses API",
+          "url": "https://developers.openai.com/blog/responses-api/",
+          "type": "opensource"
+        },
+        {
+          "title": "OpenAI Responses API Tutorial (2025)",
+          "url": "https://www.youtube.com/playlist?list=PL4HikwTaYE0EWV3qieOYooyxb9osQLgou",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "claude-messages-api",
+      "title": "Claude Messages API",
+      "subsection": "APIs & SDKs",
+      "minutes": 6,
+      "intro": "The Messages API is the single endpoint for all Claude interaction — conversational turns in, structured content blocks out, with tools, vision, and caching built in.",
+      "summary": [
+        "Claude's API centers on one endpoint: POST `/v1/messages` with a `model`, a required `max_tokens`, and a `messages` array of alternating `user`/`assistant` turns. Two shape differences from OpenAI matter: the system prompt is a separate top-level `system` parameter (not a message role), and content is an array of typed blocks — text, image (base64 or URL), document/PDF, tool_use, and tool_result — rather than a single string. The response mirrors this with a content-block array, plus a `stop_reason` and exact token usage. Official SDKs cover Python and TypeScript; the same API is available through Amazon Bedrock and Google Vertex AI.",
+        "Getting started (per the Zapier walkthrough): create an account on the Claude developer platform, generate an API key from the console (it's shown once — store it as `ANTHROPIC_API_KEY`), pre-pay for usage credits, then call the API via SDK or curl with the key in an `x-api-key` header plus an `anthropic-version` header. Model choice follows the tier ladder — Haiku for cheap/fast, Sonnet as the default, Opus for the hardest work.",
+        "The API is stateless — you resend conversation history each turn — but power features compensate: prompt caching (mark stable prefixes with `cache_control` for up to 90 percent input savings), extended thinking (allocate a reasoning token budget for hard problems), tool use with parallel calls and structured outputs, streaming via SSE, a Batch API at 50 percent discount, and the Files API. Multi-turn tool flows work by returning Claude's `tool_use` block, executing your function, and replying with a `tool_result` block in the next user message."
+      ],
+      "keyPoints": [
+        "Single endpoint: POST `/v1/messages`; `max_tokens` is required, and the system prompt is a top-level `system` param.",
+        "Content is typed blocks (text, image, document, tool_use, tool_result), not plain strings — check `stop_reason` on responses.",
+        "Auth uses an `x-api-key` header plus `anthropic-version`; keys are shown once at creation.",
+        "The API is stateless — resend history every turn, and use prompt caching to make that cheap (up to ~90 percent input savings).",
+        "Extended thinking gives Claude a controllable reasoning budget; Batch API halves cost for offline jobs.",
+        "Same API surface via Amazon Bedrock and Google Vertex AI for cloud-native enterprises.",
+        "Tool use loop: model emits `tool_use` → you run the function → reply with a `tool_result` block."
+      ],
+      "code": [
+        {
+          "title": "Messages API with system prompt and image input",
+          "language": "python",
+          "code": "# pip install anthropic\nfrom anthropic import Anthropic\n\nclient = Anthropic()  # reads ANTHROPIC_API_KEY\nresp = client.messages.create(\n    model=\"claude-sonnet-4-6\",\n    max_tokens=1024,\n    system=\"You are a concise technical reviewer.\",\n    messages=[{\n        \"role\": \"user\",\n        \"content\": [\n            {\"type\": \"image\", \"source\": {\"type\": \"url\",\n             \"url\": \"https://example.com/architecture.png\"}},\n            {\"type\": \"text\", \"text\": \"Critique this architecture diagram.\"},\n        ],\n    }],\n)\nprint(resp.content[0].text, resp.usage)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Messages API",
+          "url": "https://platform.claude.com/docs/en/api/messages",
+          "type": "official"
+        },
+        {
+          "title": "Using the Messages API",
+          "url": "https://platform.claude.com/docs/en/build-with-claude/working-with-messages",
+          "type": "official"
+        },
+        {
+          "title": "Claude API: How to get a key and use the API",
+          "url": "https://zapier.com/blog/claude-api/",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "google-gemini-api",
+      "title": "Google Gemini API",
+      "subsection": "APIs & SDKs",
+      "minutes": 5,
+      "intro": "The Gemini API gives programmatic access to Google's multimodal models through AI Studio keys and the unified google-genai SDK — with one of the most generous free tiers around.",
+      "summary": [
+        "Setup is the fastest of any major provider: sign into Google AI Studio (a free browser playground), click 'Get API key', and you can immediately prototype — the free tier's rate limits are generous enough for real development work. The unified `google-genai` SDK (Python, JavaScript/TypeScript, Go, Java) replaced the older `google-generativeai` package; the core call is `client.models.generate_content(model=..., contents=...)`. AI Studio doubles as a prompt IDE: tune prompts visually, then export working code.",
+        "The API's defining strength is multimodality with a huge context window: pass text, images, PDFs, audio, or video (uploaded via the Files API for large media) in `contents`, and Gemini processes them natively — up to 1M tokens on Pro-tier models. Feature set includes streaming, function calling, structured output (JSON schema), grounding with Google Search (citations included), code execution as a built-in tool, thinking budgets on 2.5+ models, context caching for repeated large prefixes, and a Live API for low-latency voice/video interactions. Model choice mirrors the tier ladder: Flash-Lite/Flash for speed and cost, Pro for frontier reasoning.",
+        "Two deployment paths matter: the Gemini Developer API (AI Studio keys, fastest start, pay-as-you-go) versus Vertex AI (same models behind Google Cloud IAM, VPC, compliance, and MLOps tooling) — the `google-genai` SDK can target either with a flag. Free-tier caveat: data may be used to improve products on the free tier, so switch to paid/Vertex for sensitive workloads."
+      ],
+      "keyPoints": [
+        "Get a free API key in Google AI Studio in under a minute; the free tier supports real prototyping.",
+        "Use the unified `google-genai` SDK (not the deprecated `google-generativeai` package).",
+        "Natively multimodal `contents`: text, images, PDFs, audio, video — with up to 1M-token context.",
+        "Built-in tools: Google Search grounding, code execution, function calling, structured JSON output.",
+        "Same SDK targets the Developer API (quick start) or Vertex AI (enterprise IAM/compliance).",
+        "Free tier may use your data for product improvement — go paid or Vertex for sensitive data.",
+        "Flash models are among the cheapest capable models anywhere; Pro adds thinking budgets for hard tasks."
+      ],
+      "code": [
+        {
+          "title": "Multimodal call with the google-genai SDK",
+          "language": "python",
+          "code": "# pip install google-genai\nfrom google import genai\n\nclient = genai.Client()  # reads GEMINI_API_KEY\nresp = client.models.generate_content(\n    model=\"gemini-2.5-flash\",\n    contents=[\n        \"What's in this image, in one sentence?\",\n        genai.types.Part.from_uri(\n            file_uri=\"https://example.com/photo.jpg\",\n            mime_type=\"image/jpeg\"),\n    ],\n)\nprint(resp.text)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Gemini API",
+          "url": "https://ai.google.dev/gemini-api/docs",
+          "type": "official"
+        },
+        {
+          "title": "Everything you need to know about the Gemini API as a developer in less than 5 minutes",
+          "url": "https://medium.com/around-the-prompt/everything-you-need-to-know-about-the-gemini-api-as-a-developer-in-less-than-5-minutes-5e75343ccff9",
+          "type": "article"
+        },
+        {
+          "title": "Introduction to Gemini APIs and AI Studio",
+          "url": "https://www.youtube.com/watch?v=4oyqd7CB09c",
+          "type": "video"
+        }
+      ]
+    },
+    {
+      "id": "hugging-face-inference-sdk",
+      "title": "Hugging Face Inference SDK",
+      "subsection": "APIs & SDKs",
+      "minutes": 5,
+      "intro": "The InferenceClient (Python and JS) calls models on Hugging Face's serverless Inference Providers network — one client, thousands of open models, no servers.",
+      "summary": [
+        "The Inference SDK lives inside `huggingface_hub` (Python) and `@huggingface/inference` (JavaScript). You create an `InferenceClient` with your HF token and call task methods — `chat_completion()` for LLMs, `text_to_image()`, `feature_extraction()` for embeddings, `automatic_speech_recognition()`, and dozens more — against models hosted on the Hub. Under the hood, Hugging Face evolved its old free Inference API into 'Inference Providers': a routing layer over serverless GPU partners (Together, Fireworks, Replicate, Cerebras, Groq, and others), so one token gives you access to open models like Llama, Qwen, and DeepSeek across many backends, with a small free monthly credit allowance and pay-as-you-go beyond it.",
+        "The chat method is deliberately OpenAI-compatible — same `messages` array, same response shape — so the client can drop into existing code, and you can even point the OpenAI SDK at HF's router URL. Both sync and async (`AsyncInferenceClient`) variants exist, plus streaming. The same client can target your own dedicated Inference Endpoints (managed, autoscaling deployments of any Hub model) or a local TGI server just by changing the URL.",
+        "Use it when you want quick serverless access to open models without picking a GPU host yourself: prototype a Llama- or Qwen-based feature in minutes, generate images from a Space-hosted diffusion model, or compute embeddings without infrastructure. For heavy production traffic you'd graduate to a dedicated endpoint or self-hosted vLLM, but the SDK keeps the same interface throughout."
+      ],
+      "keyPoints": [
+        "`InferenceClient` (Python `huggingface_hub`) and `@huggingface/inference` (JS) cover all major tasks with one client.",
+        "Serverless 'Inference Providers' routes to partner GPU clouds (Together, Groq, Fireworks...) under one HF token.",
+        "`chat_completion()` is OpenAI-compatible — drop-in for existing message-array code.",
+        "Sync, async, and streaming variants are all supported.",
+        "The same client targets serverless, dedicated Inference Endpoints, or a local TGI server via URL change.",
+        "Free monthly inference credits make it an easy way to try open models; pay-as-you-go beyond that."
+      ],
+      "code": [
+        {
+          "title": "Chat and image generation with InferenceClient",
+          "language": "python",
+          "code": "# pip install huggingface_hub\nfrom huggingface_hub import InferenceClient\n\nclient = InferenceClient(api_key=\"<HF_TOKEN>\")\nresp = client.chat_completion(\n    model=\"meta-llama/Llama-3.3-70B-Instruct\",\n    messages=[{\"role\": \"user\", \"content\": \"Explain LoRA in two sentences.\"}],\n    max_tokens=120,\n)\nprint(resp.choices[0].message.content)\n\nimage = client.text_to_image(\"a watercolor robot reading documentation\")\nimage.save(\"robot.png\")"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Inference",
+          "url": "https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client",
+          "type": "official"
+        },
+        {
+          "title": "Endpoint Setup",
+          "url": "https://www.npmjs.com/package/@huggingface/inference",
+          "type": "article"
+        }
+      ]
+    },
+    {
+      "id": "openai-compatible-apis",
+      "title": "OpenAI-compatible APIs",
+      "subsection": "APIs & SDKs",
+      "minutes": 5,
+      "intro": "Because the OpenAI Chat Completions format became the industry's lingua franca, most providers and local runners expose compatible endpoints — making model switching a one-line base_url change.",
+      "summary": [
+        "OpenAI's Chat Completions API shape — `POST /v1/chat/completions` with a `messages` array, returning `choices[0].message` — became the de facto standard for LLM inference. Nearly everyone now implements it: cloud providers (Gemini via its compatibility endpoint, DeepSeek, Mistral, xAI, Groq, Together, Fireworks), gateways (OpenRouter, LiteLLM), and local runners (Ollama, LM Studio, vLLM, llama.cpp). The practical consequence: you keep using the official OpenAI SDK and change only two values — `base_url` and `api_key` — plus the model name, to talk to a completely different provider or your own laptop.",
+        "This unlocks the patterns the BentoML guide highlights: A/B testing models without rewriting integration code, avoiding vendor lock-in, building fallback chains for outages or rate limits, cost-optimizing by routing traffic across providers, and developing locally against Ollama for free before deploying against a paid API. Tools like LiteLLM generalize it further, proxying 100+ providers behind the OpenAI shape with retries, budgets, and routing policies — and self-hosted vLLM means even your own GPUs speak the same protocol.",
+        "Know the limits: compatibility usually covers chat completions, streaming, and often embeddings and function calling, but provider-specific features (Anthropic's prompt-caching block syntax, OpenAI's Responses-only hosted tools, Gemini's grounding) may be partially mapped or missing, and parameter behaviors (e.g. unsupported `logprobs`, different sampling defaults) can differ subtly. The standard is also a snapshot of 2023-era API design — OpenAI's own newest features ship on the Responses API instead. Treat the compatible layer as the portable common denominator, and drop to native SDKs when you need a provider's edge features."
+      ],
+      "keyPoints": [
+        "The Chat Completions shape is the lingua franca: switch providers by changing `base_url`, `api_key`, and model name.",
+        "Works across clouds (Gemini, DeepSeek, Mistral, Groq, Together), gateways (OpenRouter, LiteLLM), and local runners (Ollama, LM Studio, vLLM).",
+        "Enables A/B tests, fallback chains, cost routing, and free local development with zero integration rewrites.",
+        "Compatibility is partial: provider-specific features and some parameters may be unmapped or behave differently — test before swapping in production.",
+        "LiteLLM and OpenRouter industrialize the pattern with retries, budgets, and routing policies.",
+        "OpenAI's newest features ship on the Responses API; the compatible layer is the stable, portable subset."
+      ],
+      "code": [
+        {
+          "title": "One client, four backends",
+          "language": "python",
+          "code": "from openai import OpenAI\n\nBACKENDS = {\n    \"openai\":   (\"https://api.openai.com/v1\",        \"gpt-5-mini\"),\n    \"gemini\":   (\"https://generativelanguage.googleapis.com/v1beta/openai/\",\n                  \"gemini-2.5-flash\"),\n    \"deepseek\": (\"https://api.deepseek.com\",          \"deepseek-chat\"),\n    \"local\":    (\"http://localhost:11434/v1\",         \"llama3.3\"),\n}\n\nbase_url, model = BACKENDS[\"local\"]\nclient = OpenAI(base_url=base_url, api_key=\"<KEY-or-ollama>\")\nresp = client.chat.completions.create(\n    model=model,\n    messages=[{\"role\": \"user\", \"content\": \"Ping?\"}],\n)\nprint(resp.choices[0].message.content)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "OpenAI-compatible API",
+          "url": "https://bentoml.com/llm/llm-inference-basics/openai-compatible-api",
+          "type": "article"
+        },
+        {
+          "title": "OpenAI compatibility - Gemini",
+          "url": "https://ai.google.dev/gemini-api/docs/openai",
+          "type": "article"
+        }
+      ]
+    }
+  ]
+}

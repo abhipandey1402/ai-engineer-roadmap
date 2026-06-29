@@ -1,0 +1,163 @@
+SECTION 7: Embeddings
+DESCRIPTION: What embeddings are, what they're used for, and the main embedding model families.
+======================================================================
+
+
+### TOPIC: What are Embeddings  (id: what-are-embeddings)  [group: Fundamentals]
+
+# What are Embeddings
+
+Embeddings are dense, numerical vector representations of data, such as words, sentences, images, or audio, that capture their semantic meaning and relationships. By converting data into fixed-length vectors, embeddings allow machine learning models to process and understand the data more effectively. For example, word embeddings represent similar words with similar vectors, enabling tasks like semantic search, recommendation systems, and clustering. Embeddings make it easier to compare, search, and analyze complex, unstructured data by mapping similar items close together in a high-dimensional space.
+
+Visit the following resources to learn more:
+
+- [@article@What is Embedding? -IBM](https://www.ibm.com/topics/embedding)
+- [@article@What are Embeddings in Machine Learning?](https://www.cloudflare.com/en-gb/learning/ai/what-are-embeddings/)
+- [@video@What are Word Embeddings](https://www.youtube.com/watch?v=wgfSDrqYMJ4)
+
+----------------------------------------------------------------------
+
+### TOPIC: Semantic Search  (id: semantic-search)  [group: Use Cases]
+
+# Semantic Search
+
+Embeddings are used for semantic search by converting text, such as queries and documents, into high-dimensional vectors that capture the underlying meaning and context, rather than just exact words. These embeddings represent the semantic relationships between words or phrases, allowing the system to understand the query’s intent and retrieve relevant information, even if the exact terms don’t match.
+
+Visit the following resources to learn more:
+
+- [@article@What is Semantic Search?](https://www.elastic.co/what-is/semantic-search)
+- [@video@What is Semantic Search? - Cohere](https://www.youtube.com/watch?v=fFt4kR4ntAA)
+
+----------------------------------------------------------------------
+
+### TOPIC: Data Classification  (id: data-classification)  [group: Use Cases]
+
+# Data Classification
+
+Once data is embedded, a classification algorithm, such as a neural network or a logistic regression model, can be trained on these embeddings to classify the data into different categories. The advantage of using embeddings is that they capture underlying relationships and similarities between data points, even if the raw data is complex or high-dimensional, improving classification accuracy in tasks like text classification, image categorization, and recommendation systems.
+
+Visit the following resources to learn more:
+
+- [@article@What Is Data Classification?](https://www.paloaltonetworks.com/cyberpedia/data-classification)
+- [@video@Text Embeddings, Classification, and Semantic Search (w/ Python Code)](https://www.youtube.com/watch?v=sNa_uiqSlJo)
+
+----------------------------------------------------------------------
+
+### TOPIC: Recommendation Systems  (id: recommendation-systems)  [group: Use Cases]
+
+# Recommendation Systems
+
+In the context of embeddings, recommendation systems use vector representations to capture similarities between items, such as products or content. By converting items and user preferences into embeddings, these systems can measure how closely related different items are based on vector proximity, allowing them to recommend similar products or content based on a user's past interactions. This approach improves recommendation accuracy and efficiency by enabling meaningful, scalable comparisons of complex data.
+
+Visit the following resources to learn more:
+
+- [@article@What Role does AI Play in Recommendation Systems and Engines?](https://www.algolia.com/blog/ai/what-role-does-ai-play-in-recommendation-systems-and-engines/)
+- [@article@What is a Recommendation Engine?](https://www.ibm.com/think/topics/recommendation-engine)
+
+----------------------------------------------------------------------
+
+### TOPIC: Anomaly Detection  (id: anomaly-detection)  [group: Use Cases]
+
+# Anomaly Detection
+
+Anomaly detection with embeddings works by transforming data, such as text, images, or time-series data, into vector representations that capture their patterns and relationships. In this high-dimensional space, similar data points are positioned close together, while anomalies stand out as those that deviate significantly from the typical distribution. This approach is highly effective for detecting outliers in tasks like fraud detection, network security, and quality control.
+
+Visit the following resources to learn more:
+
+- [@article@Anomaly in Embeddings](https://ai.google.dev/gemini-api/tutorials/anomaly_detection)
+- [@article@Boosting Your Anomaly Detection With LLMs](https://towardsdatascience.com/boosting-your-anomaly-detection-with-llms/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration)
+
+----------------------------------------------------------------------
+
+### TOPIC: Embedding Models  (id: embedding-models)  [group: Models]
+
+# Embedding Models
+
+Embedding models transform data, like text or images, into numerical representations called embeddings. These embeddings capture the semantic meaning and relationships within the data in a vector space. By representing data as vectors, we can perform mathematical operations to determine similarity, cluster related items, and feed the data into machine learning models.
+
+Visit the following resources to learn more:
+
+- [@article@What are Embedding Models? An Overview](https://www.couchbase.com/blog/embedding-models/)
+- [@article@Best Open-Source Embedding Models Benchmarked and Ranked](https://supermemory.ai/blog/best-open-source-embedding-models-benchmarked-and-ranked/)
+
+----------------------------------------------------------------------
+
+### TOPIC: OpenAI Embeddings API  (id: openai-embeddings-api)  [group: Models]
+
+# OpenAI Embeddings API
+
+The OpenAI Embeddings API provides a straightforward way to transform text into numerical vector representations called embeddings. These embeddings capture the semantic meaning of text, allowing you to perform tasks like semantic search, clustering, and similarity comparison by analyzing the relationships between these vectors. The API simplifies the process of generating these embeddings, abstracting away the complexities of training and managing embedding models.
+
+Visit the following resources to learn more:
+
+- [@official@OpenAI Embeddings API](https://platform.openai.com/docs/api-reference/embeddings/create)
+- [@video@Master OpenAI Embedding API](https://www.youtube.com/watch?v=9oCS-VQupoc)
+
+----------------------------------------------------------------------
+
+### TOPIC: Gemini Embedding  (id: gemini-embedding)  [group: Models]
+
+# Gemini Embedding
+
+The Gemini API offers methods to convert text, images, or other data types into numerical vector representations called embeddings. These embeddings capture the semantic meaning and relationships between different pieces of information, allowing for efficient similarity search, clustering, and other machine learning tasks. These proprietary models are offered as a service, often through an API, and require payment or subscription.
+
+Visit the following resources to learn more:
+
+- [@official@Embeddings](https://ai.google.dev/gemini-api/docs/embeddings)
+- [@official@Gemini Embedding now generally available in the Gemini API](https://developers.googleblog.com/gemini-embedding-available-gemini-api/)
+- [@video@What are text embeddings?](https://www.youtube.com/watch?v=vlcQV4j2kTo&t=117s)
+
+----------------------------------------------------------------------
+
+### TOPIC: Cohere Embed  (id: cohere-embed)  [group: Models]
+
+# Cohere Embeddings
+
+Cohere offers powerful text embeddings, which are numerical representations of text data. These embeddings capture the semantic meaning of words, sentences, and documents, allowing AI models to understand relationships and perform tasks like similarity search, clustering, and information retrieval. Cohere's embedding models are designed for high accuracy and performance across various natural language processing applications.
+
+Visit the following resources to learn more:
+
+- [@official@Introduction to Embeddings at Cohere](https://docs.cohere.com/docs/embeddings)
+- [@official@What are embedding models? Benefits and best practices](https://cohere.com/blog/embedding-models)
+
+----------------------------------------------------------------------
+
+### TOPIC: Sentence Transformers  (id: sentence-transformers)  [group: Models]
+
+# Sentence Transformers
+
+Sentence Transformers are a type of model designed to generate high-quality embeddings for sentences, allowing them to capture the semantic meaning of text. Unlike traditional word embeddings, which represent individual words, Sentence Transformers understand the context of entire sentences, making them ideal for tasks that require semantic similarity, such as sentence clustering, semantic search, and paraphrase detection. Built on top of transformer models like BERT and RoBERTa, they convert sentences into dense vectors, where similar sentences are placed closer together in vector space.
+
+Visit the following resources to learn more:
+
+- [@article@What is BERT?](https://h2o.ai/wiki/bert/)
+- [@article@SentenceTransformers Documentation](https://sbert.net/)
+- [@article@Using Sentence Transformers at Hugging Face](https://huggingface.co/docs/hub/sentence-transformers)
+
+----------------------------------------------------------------------
+
+### TOPIC: Models on Hugging Face  (id: models-on-hugging-face)  [group: Models]
+
+# Models on Hugging Face
+
+Embedding models are used to convert raw data like text, code, or images into high-dimensional vectors that capture semantic meaning. These vector representations allow AI systems to compare, cluster, and retrieve information based on similarity rather than exact matches. Hugging Face provides a wide range of pretrained embedding models, which are commonly used for tasks like semantic search, recommendation systems, duplicate detection, and retrieval-augmented generation (RAG). These models can be accessed through libraries like `transformers` or `sentence-transformers`, making it easy to generate high-quality embeddings for both general-purpose and task-specific applications.
+
+Visit the following resources to learn more:
+
+- [@official@Hugging Face Embedding Models](https://huggingface.co/models?pipeline_tag=feature-extraction)
+- [@video@Hugging Face - Text embeddings & semantic search](https://www.youtube.com/watch?v=OATCgQtNX2o)
+
+----------------------------------------------------------------------
+
+### TOPIC: Jina Embeddings  (id: jina-embeddings)  [group: Models]
+
+# Jina AI
+
+Jina Embeddings are a family of high-performance, open-source, multilingual, and multimodal embedding models developed by Jina AI. They transform text and visual data (like images and charts) into dense numerical vectors for semantic search, RAG, and AI applications. Key features include supporting long contexts (up to 32k tokens), multi-task capabilities, and specialized versions for text-to-image and code retrieval.
+
+Visit the following resources to learn more:
+
+- [@official@Jina Embeddings](https://jina.ai/en-US/embeddings/)
+- [@official@https://jina.ai/news/jina-embeddings-v5-text-distilling-4b-quality-into-sub-1b-multilingual-embeddings/](https://jina.ai/news/jina-embeddings-v5-text-distilling-4b-quality-into-sub-1b-multilingual-embeddings/)
+
+----------------------------------------------------------------------

@@ -1,0 +1,425 @@
+{
+  "id": "multimodal",
+  "title": "Multimodal AI",
+  "description": "Models that work across text, images, audio, and video — tasks and APIs.",
+  "topics": [
+    {
+      "id": "what-is-multimodal-ai",
+      "title": "What is Multimodal AI?",
+      "subsection": "Fundamentals",
+      "minutes": 4,
+      "intro": "Multimodal AI combines and reasons over multiple data types — text, images, audio, and video — in a single model or system.",
+      "summary": [
+        "A modality is a type of data: text, images, audio, video, sensor readings. Classic ML models were unimodal — a text classifier saw only text, an image classifier only pixels. Multimodal AI processes several modalities together, which mirrors how humans perceive the world: you understand a meme by reading the caption AND seeing the picture. The payoff is context: a model that sees a chart and reads the surrounding paragraph can answer questions neither input answers alone.",
+        "Under the hood, multimodal models map each modality into a shared representation space. Encoders (a vision transformer for images, an audio encoder for sound) turn raw inputs into embeddings, and the model learns to align them — CLIP famously did this by training image and text encoders contrastively on 400M image-caption pairs, so 'a photo of a dog' and an actual dog photo land near each other in vector space. Modern frontier models (GPT-5, Gemini, Claude) go further: they are natively multimodal, trained end-to-end on interleaved text, images, and audio, so vision is not a bolt-on but part of the same transformer.",
+        "For an AI engineer the practical shift is that one API call can now accept mixed content: an image plus a question, an audio clip plus instructions. This enables visual question answering, document understanding, voice assistants, and content moderation pipelines without stitching together separate OCR, vision, and NLP services. The rest of this section covers the main multimodal tasks and the concrete APIs (OpenAI vision, image generation, Whisper, TTS, Gemini image) you will use to build them."
+      ],
+      "keyPoints": [
+        "A modality = a data type (text, image, audio, video); multimodal models process several at once.",
+        "Encoders map each modality into a shared embedding space; CLIP's contrastive image-text training is the canonical example.",
+        "Frontier models (GPT-5, Gemini, Claude) are natively multimodal — vision and audio are trained in, not bolted on.",
+        "Multimodal context produces answers that no single modality could support alone (e.g. chart + caption).",
+        "Typical applications: visual QA, document understanding, voice assistants, multimodal search, content moderation.",
+        "As an engineer you consume this mostly through APIs that accept mixed content blocks in one request."
+      ],
+      "code": [],
+      "resources": [
+        { "title": "A Multimodal World - Hugging Face", "url": "https://huggingface.co/learn/computer-vision-course/en/unit4/multimodal-models/a_multimodal_world", "type": "article" },
+        { "title": "Multimodal AI - Google", "url": "https://cloud.google.com/use-cases/multimodal-ai?hl=en", "type": "article" },
+        { "title": "What Is Multimodal AI? A Complete Introduction", "url": "https://www.splunk.com/en_us/blog/learn/multimodal-ai.html", "type": "article" }
+      ]
+    },
+    {
+      "id": "multimodal-use-cases",
+      "title": "Multimodal Use Cases",
+      "subsection": "Fundamentals",
+      "minutes": 3,
+      "intro": "The application patterns where combining text, images, audio, and video produces real product value.",
+      "summary": [
+        "The most common production pattern is visual question answering and document understanding: feed the model a screenshot, invoice, chart, or PDF page and ask questions in natural language. This replaces brittle OCR-plus-rules pipelines for receipt processing, insurance claims, KYC document checks, and data extraction from forms. Closely related is accessibility — generating alt text and audio descriptions automatically — and e-commerce, where models tag, caption, and search product images ('find me this jacket in blue').",
+        "Content moderation is another major use case: a single multimodal model can flag policy violations that only emerge from the combination of an image and its caption, or audio paired with video. Multimodal search and recommendation engines embed images, text, and audio into one vector space so users can search photos with words or find products from a picture. Interactive assistants round out the list — voice agents that hear speech, look at your screen, and respond with synthesized speech, and AR apps that identify what the camera sees in real time.",
+        "When evaluating a use case, ask whether the second modality actually changes the answer. If text alone suffices, a multimodal call adds cost and latency for nothing. The strongest wins come where information genuinely lives in pixels or audio — charts, UI screenshots, spoken conversations, physical-world imagery — and where the alternative was either manual review or a chain of fragile specialized models."
+      ],
+      "keyPoints": [
+        "Document understanding (invoices, forms, charts, screenshots) is the highest-ROI multimodal use case in most companies.",
+        "Content moderation benefits because violations often emerge only from image + text combined.",
+        "Multimodal embeddings power cross-modal search: query images with text, or text with images.",
+        "Voice assistants combine STT, an LLM, and TTS — three multimodal tasks chained together.",
+        "Accessibility (alt text, audio description, live captions) is a built-in win for any product.",
+        "Only add a modality when it changes the answer — otherwise you pay extra cost and latency for nothing."
+      ],
+      "code": [],
+      "resources": [
+        { "title": "Hugging Face Multimodal Models", "url": "https://huggingface.co/learn/computer-vision-course/en/unit4/multimodal-models/a_multimodal_world", "type": "official" }
+      ]
+    },
+    {
+      "id": "image-understanding",
+      "title": "Image Understanding",
+      "subsection": "Multimodal Tasks",
+      "minutes": 4,
+      "intro": "Image understanding is the task of interpreting visual content — objects, text, scenes, charts — and reasoning about it in natural language.",
+      "summary": [
+        "Vision-capable LLMs accept images alongside text and can describe scenes, read text (OCR), interpret charts and diagrams, compare multiple images, and answer free-form questions about visual content. Unlike classic computer-vision models that output fixed labels or bounding boxes, a vision LLM produces language — which means you can ask it anything, from 'transcribe this receipt into JSON' to 'which of these two UI mockups violates our style guide and why'.",
+        "Cost and quality are controlled by image resolution. OpenAI's APIs expose a `detail` parameter: `low` processes a small fixed-size thumbnail at a flat, cheap token cost — good for rough scene classification; `high` tiles the image into 512px chunks and spends tokens proportional to size — necessary for reading small text, dense charts, or fine detail. Sending a 4K screenshot at high detail can cost thousands of input tokens, so resize images client-side to the smallest size that preserves the information you need.",
+        "Know the failure modes: vision models are weak at precise counting, exact pixel coordinates, spatial measurements, and reading very low-contrast or rotated text. They can also hallucinate plausible details that are not in the image. For high-stakes extraction, constrain outputs with a JSON schema, ask the model to quote the text it sees, and validate downstream. Despite the caveats, vision LLMs have effectively replaced bespoke OCR-plus-NLP pipelines for most document tasks."
+      ],
+      "keyPoints": [
+        "Vision LLMs output language, not labels — you can ask arbitrary questions about an image.",
+        "The `detail`/fidelity setting trades token cost for resolution: low = cheap thumbnail, high = tiled full resolution.",
+        "Resize images client-side; oversized screenshots burn input tokens without improving answers.",
+        "Strong at: OCR, chart reading, captioning, comparing images, UI understanding.",
+        "Weak at: precise counting, exact coordinates, measurements, and it can hallucinate details.",
+        "For extraction tasks, pair vision input with structured (JSON-schema) output and validate."
+      ],
+      "code": [],
+      "resources": [
+        { "title": "Low or High Fidelity Image Understanding - OpenAI", "url": "https://platform.openai.com/docs/guides/images", "type": "article" }
+      ]
+    },
+    {
+      "id": "image-generation",
+      "title": "Image Generation",
+      "subsection": "Multimodal Tasks",
+      "minutes": 5,
+      "intro": "Image generation models create new images from text prompts (and optionally reference images) using diffusion or autoregressive transformer architectures.",
+      "summary": [
+        "Three architecture families got us here. GANs (generator vs discriminator in an adversarial game) produced the first photorealistic faces but were unstable to train. VAEs learn a compressed latent space you can sample from, but outputs were blurry. Diffusion models won: they learn to reverse a gradual noising process — start from pure noise and denoise step by step, guided by a text embedding. Stable Diffusion made this efficient by running diffusion in a compressed latent space; DALL-E 2 used a CLIP text encoder, a 'prior' mapping text embeddings to image embeddings, and a diffusion decoder.",
+        "The current generation has shifted again. DALL-E 3 (still available via API) tightly couples generation with an LLM that rewrites your prompt for better adherence. OpenAI's `gpt-image-1` and Google's Gemini image models (the 'Nano Banana' line) are natively multimodal transformers — the same model that understands images also generates them, which gives dramatically better instruction following, legible text rendering inside images, and conversational editing ('same scene, but at night').",
+        "Practical prompting: describe subject, style, lighting, composition, and medium explicitly ('studio photo, 85mm, soft rim lighting'); models fill unspecified details with defaults. For products you typically generate at 1024px+, request specific aspect ratios, and watch for provider watermarking (Google embeds SynthID in generated images). Costs are per-image and scale with resolution and quality tier, so cache aggressively and generate small drafts before final renders."
+      ],
+      "keyPoints": [
+        "Diffusion models generate by iteratively denoising random noise, guided by a text embedding.",
+        "GANs and VAEs were the precursors; latent diffusion (Stable Diffusion) made generation cheap enough to commodify.",
+        "DALL-E 2 = CLIP text encoder + prior + diffusion decoder; DALL-E 3 added LLM prompt rewriting.",
+        "2025-era models (gpt-image-1, Gemini/Nano Banana) are native multimodal transformers: better text-in-image, better edits.",
+        "Prompt with explicit subject, style, lighting, and composition — unspecified details become model defaults.",
+        "Generated images may carry invisible watermarks (e.g. Google SynthID); pricing is per image, scaling with size/quality."
+      ],
+      "code": [],
+      "resources": [
+        { "title": "DALL-E", "url": "https://openai.com/index/dall-e-2/", "type": "official" },
+        { "title": "How DALL-E 2 Actually Works", "url": "https://www.assemblyai.com/blog/how-dall-e-2-actually-works/", "type": "article" },
+        { "title": "How AI Image Generators Work (Stable Diffusion / Dall-E)", "url": "https://www.youtube.com/watch?v=1CIpzeNxIhU", "type": "video" }
+      ]
+    },
+    {
+      "id": "video-understanding",
+      "title": "Video Understanding",
+      "subsection": "Multimodal Tasks",
+      "minutes": 4,
+      "intro": "Video understanding analyzes visual frames and audio together to summarize, search, moderate, and answer questions about video content.",
+      "summary": [
+        "Video is the hardest mainstream modality because it is huge: one minute of 30fps video is 1,800 frames plus an audio track. Most LLM-based approaches therefore sample — extract frames at a low rate (e.g. 1fps), transcribe the audio with a speech model, and feed both into a multimodal LLM. Gemini supports video natively in its API (it handles the frame sampling and audio for you, with multi-hour context); with OpenAI models you typically build the frames-plus-transcript pipeline yourself.",
+        "The core tasks are summarization (key scenes and a narrative summary), temporal localization ('at what timestamp does X happen'), video QA, indexing for search (embed segments so users can query 'find the part where they discuss pricing'), and moderation (detect policy-violating visuals or speech). Because audio and visuals carry complementary information — a tutorial's narration explains what the screen shows — combining them substantially beats either alone.",
+        "Engineering realities: token cost scales with sampled frames, so tune the sampling rate to the content (slides change slowly; sports do not). Long videos need chunking with overlap and a map-reduce summarization pass. Timestamps from sampled frames are approximate. The research area is active — the Awesome-LLMs-for-Video-Understanding repo tracks the rapidly evolving model landscape (Video-LLaVA, VideoChat, and successors) if you need open-source or fine-tunable options."
+      ],
+      "keyPoints": [
+        "Standard pipeline: sample frames at low fps + transcribe audio, then feed both to a multimodal LLM.",
+        "Gemini accepts video natively (upload or URL) and handles sampling internally with very long context.",
+        "Key tasks: summarization, video QA, temporal search/indexing, content moderation, highlight extraction.",
+        "Audio + visual together beat either alone — narration and visuals carry complementary information.",
+        "Token cost scales with frames sampled: tune fps to content dynamics and chunk long videos map-reduce style.",
+        "Open-source video LLMs evolve fast — track curated lists rather than memorizing model names."
+      ],
+      "code": [],
+      "resources": [
+        { "title": "Awesome LLM for Video Understanding", "url": "https://github.com/yunlong10/Awesome-LLMs-for-Video-Understanding", "type": "opensource" },
+        { "title": "Video Understanding", "url": "https://dl.acm.org/doi/10.1145/3503161.3551600", "type": "article" }
+      ]
+    },
+    {
+      "id": "audio-processing",
+      "title": "Audio Processing",
+      "subsection": "Multimodal Tasks",
+      "minutes": 4,
+      "intro": "Audio processing covers how machines represent, analyze, and generate sound — the foundation under speech-to-text, text-to-speech, and voice agents.",
+      "summary": [
+        "Raw audio is a waveform: amplitude sampled tens of thousands of times per second (16kHz is standard for speech, 44.1kHz for music). ML models rarely consume waveforms directly; the classic preprocessing step converts audio to a spectrogram — a 2D time-frequency image computed with short-time Fourier transforms, usually on the perceptual mel scale (mel spectrograms, MFCCs). That 'audio as image' trick is why convolutional and transformer vision architectures transferred so well to audio: Whisper, for example, is a transformer that reads log-mel spectrograms.",
+        "The task landscape: speech recognition (audio to text), speaker diarization (who spoke when), audio classification (alarm vs music vs speech), keyword spotting, emotion recognition, music tagging, and audio generation. In multimodal systems these combine with other modalities — meeting tools pair live transcription with on-screen content; voice assistants pair recognized commands with app state; moderation systems scan both an audio track and its video.",
+        "The frontier is speech-native LLMs: models like the GPT realtime family and Gemini Live consume and produce audio directly, preserving tone, emotion, and interruptions instead of flattening everything through a text transcript. For most applications today you still build the pragmatic pipeline — STT, then an LLM, then TTS — but the latency and naturalness gap is closing fast, and the engineering decision (pipeline vs speech-to-speech) is now a real architecture choice."
+      ],
+      "keyPoints": [
+        "Audio = sampled waveform; models usually consume mel spectrograms (time-frequency images), not raw samples.",
+        "The spectrogram-as-image trick let vision architectures (CNNs, transformers) dominate audio ML.",
+        "Core tasks: speech recognition, diarization, classification, keyword spotting, generation.",
+        "16kHz mono is the standard for speech models; higher rates mostly matter for music.",
+        "Voice products today are usually STT to LLM to TTS pipelines; speech-native models (GPT realtime, Gemini Live) remove the text bottleneck.",
+        "Pipeline vs speech-to-speech is now an architecture decision: pipelines are debuggable and cheap, native speech is lower-latency and preserves tone."
+      ],
+      "code": [],
+      "resources": [
+        { "title": "The State of Audio Processing", "url": "https://appwrite.io/blog/post/state-of-audio-processing", "type": "article" },
+        { "title": "Audio Signal Processing for Machine Learning", "url": "https://www.youtube.com/watch?v=iCwMQJnKk2c", "type": "video" }
+      ]
+    },
+    {
+      "id": "text-to-speech",
+      "title": "Text-to-Speech",
+      "subsection": "Multimodal Tasks",
+      "minutes": 4,
+      "intro": "Text-to-speech (TTS) converts written text into natural-sounding spoken audio, powering voice assistants, audiobooks, accessibility, and voice agents.",
+      "summary": [
+        "TTS has gone through three eras. Concatenative synthesis stitched together recorded speech fragments — intelligible but robotic. Parametric synthesis generated speech from acoustic features — flexible but muffled. Neural TTS (WaveNet, Tacotron, and successors) learned to generate audio directly and crossed the naturalness threshold; today's LLM-based TTS models go further, inferring prosody, emotion, and emphasis from context, and accepting instructions like 'speak in a calm, reassuring tone'.",
+        "The practical API surface: you send text plus a voice selection and get back audio (MP3, WAV, Opus, or PCM for streaming). OpenAI's speech endpoint offers a set of built-in voices with steerable delivery on its `gpt-4o-mini-tts` model; Amazon Polly, Google Cloud TTS, and Azure offer large multi-language voice catalogs with SSML control over pronunciation and pacing; ElevenLabs leads on voice quality and voice cloning. Pricing is per character or per minute of generated audio.",
+        "Engineering concerns: latency matters most in conversational agents — use streaming output (chunked PCM/Opus) and start playback before synthesis finishes; time-to-first-byte under ~300ms feels responsive. Cache generated audio for static strings (menus, notifications). For accessibility and long-form reading, SSML or instruction-based control over pauses, numbers, and acronym pronunciation makes the difference between usable and annoying. And treat voice cloning with care — most providers require consent verification for custom voices."
+      ],
+      "keyPoints": [
+        "Neural TTS replaced concatenative/parametric synthesis; modern models infer prosody and emotion from context.",
+        "API shape: text + voice (+ optional style instructions) in, audio bytes (MP3/WAV/Opus/PCM) out.",
+        "OpenAI `gpt-4o-mini-tts` accepts natural-language delivery instructions; Polly/Google/Azure offer SSML control.",
+        "Stream audio output in conversational apps — time-to-first-byte is the UX metric that matters.",
+        "Cache synthesized audio for repeated static strings to cut cost and latency.",
+        "Voice cloning is powerful but consent-gated on most platforms; ElevenLabs is the quality leader."
+      ],
+      "code": [
+        {
+          "title": "OpenAI TTS request (Python)",
+          "language": "python",
+          "code": "from openai import OpenAI\n\nclient = OpenAI()\n\nwith client.audio.speech.with_streaming_response.create(\n    model=\"gpt-4o-mini-tts\",\n    voice=\"alloy\",\n    input=\"Your order has shipped and arrives Tuesday.\",\n    instructions=\"Speak in a warm, upbeat customer-service tone.\",\n) as response:\n    response.stream_to_file(\"update.mp3\")"
+        }
+      ],
+      "resources": [
+        { "title": "What is Text-to-Speech?", "url": "https://aws.amazon.com/polly/what-is-text-to-speech/", "type": "article" },
+        { "title": "From Text to Speech: The Evolution of Synthetic Voices", "url": "https://ignitetech.ai/about/blogs/text-speech-evolution-synthetic-voices", "type": "article" }
+      ]
+    },
+    {
+      "id": "speech-to-text",
+      "title": "Speech-to-Text",
+      "subsection": "Multimodal Tasks",
+      "minutes": 4,
+      "intro": "Speech-to-text (STT, or ASR) converts spoken audio into written text, enabling transcription, voice commands, captions, and voice-driven LLM apps.",
+      "summary": [
+        "Modern STT is dominated by end-to-end neural models: audio goes in as mel spectrograms, text comes out of a transformer, with no separate acoustic/pronunciation/language model stages. OpenAI's Whisper — trained on 680k hours of multilingual web audio — set the open-source standard and handles accents, background noise, and 90+ languages robustly. Cloud providers (Google Speech-to-Text, AWS Transcribe, Azure, Deepgram, AssemblyAI) compete on accuracy, latency, and features like speaker diarization, word-level timestamps, and custom vocabulary.",
+        "Two operating modes matter architecturally. Batch transcription processes recorded files — highest accuracy, used for meeting notes, podcast transcripts, media indexing. Streaming transcription returns partial results in real time over a websocket — required for live captions, voice agents, and dictation, at some accuracy cost. Quality is measured in word error rate (WER); always evaluate on YOUR audio (your accents, domain jargon, microphone quality) because published benchmarks rarely transfer.",
+        "In multimodal systems STT is usually the front door: a voice agent is STT feeding an LLM feeding TTS; a video-analysis pipeline transcribes the soundtrack and aligns it with sampled frames; a meeting assistant merges the transcript with shared-screen captures. Practical tips: send 16kHz mono, give the model a prompt with domain terms and proper nouns to boost accuracy, and request timestamps if you need to align text back to media."
+      ],
+      "keyPoints": [
+        "End-to-end transformers (Whisper and successors) replaced multi-stage ASR pipelines.",
+        "Batch mode = best accuracy for recorded files; streaming mode = real-time partials for live use.",
+        "Accuracy is measured as word error rate (WER) — benchmark on your own audio and jargon.",
+        "Features to compare across providers: diarization, word timestamps, custom vocabulary, language coverage.",
+        "STT is the front of most voice stacks: STT to LLM to TTS.",
+        "Boost accuracy by passing domain terms/proper nouns in the transcription prompt."
+      ],
+      "code": [],
+      "resources": [
+        { "title": "What is Speech to Text?", "url": "https://aws.amazon.com/what-is/speech-to-text/", "type": "article" },
+        { "title": "Turn Speech into Text using Google AI", "url": "https://cloud.google.com/speech-to-text", "type": "article" },
+        { "title": "How is Speech to Text Used?", "url": "https://h2o.ai/wiki/speech-to-text/", "type": "article" }
+      ]
+    },
+    {
+      "id": "openai-vision-api",
+      "title": "OpenAI Vision API",
+      "subsection": "Implementing Multimodal AI",
+      "minutes": 5,
+      "intro": "OpenAI's vision capability lets you send images (URLs or base64) alongside text in a normal chat/responses request and get language answers about them.",
+      "summary": [
+        "There is no separate 'Vision API' endpoint — vision is a content type on the standard API. You send a message whose content is an array of blocks: text blocks plus image blocks, where each image is either a public URL or a base64 data URL. The model (GPT-4o, GPT-4.1, GPT-5 family) sees the images in context and responds in text. You can send multiple images in one request and ask comparative questions across them.",
+        "The `detail` parameter is the main cost lever: `low` uses a fixed small thumbnail (cheap, fast, fine for 'what is this a picture of'); `high` tiles the image at full resolution (needed for small text, dense documents, charts); `auto` lets the API choose. Supported formats are PNG, JPEG, WEBP, and non-animated GIF, with per-image size limits — resize before upload, since tokens are charged per tile at high detail.",
+        "Typical production patterns: document extraction (image + JSON-schema structured output), screenshot QA for support tooling, moderation pre-filters, and accessibility alt-text generation. Remember the model limitations — imprecise counting and localization, occasional hallucinated detail — and design prompts that ask the model to quote visible text and admit uncertainty. For multi-page PDFs, render pages to images or use a file-input pathway rather than cramming everything into one giant image."
+      ],
+      "keyPoints": [
+        "Vision is part of the standard chat/responses API: content arrays mix text blocks and image blocks.",
+        "Images go in as public URLs or base64 data URLs; multiple images per request are supported.",
+        "`detail: low | high | auto` trades token cost against resolution — high tiles the image in 512px chunks.",
+        "Formats: PNG, JPEG, WEBP, non-animated GIF; resize client-side to control cost.",
+        "Pair vision with structured outputs for reliable document extraction.",
+        "Design around weaknesses: counting, precise coordinates, and hallucinated detail."
+      ],
+      "code": [
+        {
+          "title": "Vision request with an image URL (Python)",
+          "language": "python",
+          "code": "from openai import OpenAI\n\nclient = OpenAI()\n\nresponse = client.responses.create(\n    model=\"gpt-5\",\n    input=[{\n        \"role\": \"user\",\n        \"content\": [\n            {\"type\": \"input_text\",\n             \"text\": \"What is in this image? Quote any visible text.\"},\n            {\"type\": \"input_image\",\n             \"image_url\": \"https://example.com/invoice.png\",\n             \"detail\": \"high\"},\n        ],\n    }],\n)\nprint(response.output_text)"
+        }
+      ],
+      "resources": [
+        { "title": "Vision", "url": "https://platform.openai.com/docs/guides/vision", "type": "official" },
+        { "title": "OpenAI Vision API Crash Course", "url": "https://www.youtube.com/watch?v=ZjkS11DSeEk", "type": "video" }
+      ]
+    },
+    {
+      "id": "dall-e-api",
+      "title": "DALL-E API",
+      "subsection": "Implementing Multimodal AI",
+      "minutes": 5,
+      "intro": "OpenAI's Images API generates and edits images from text prompts using DALL-E 3 and the newer gpt-image-1 model.",
+      "summary": [
+        "The Images API has one core operation — `images.generate(model, prompt, size, quality)` — plus edit and variation endpoints. Two model families serve it: DALL-E 3, the diffusion-based model that automatically rewrites your prompt with an LLM for better adherence (you can see the revised prompt in the response), and `gpt-image-1`, the natively multimodal successor that is now the recommended default — it follows instructions more faithfully, renders legible text inside images, and accepts reference images for editing and inpainting.",
+        "Key request knobs: `size` (square, portrait, landscape variants like 1024x1024 or 1536x1024), `quality` (trade cost for detail), `n` for multiple candidates, and output format. Responses return either a URL (expires after ~an hour — download and store it) or base64 image data. The edits endpoint takes an input image plus a prompt (and optionally a mask) for targeted changes; this is how you build 'replace the background' or 'put the product on a beach' features.",
+        "Production guidance: prompts pass through a safety system and can be rejected, so handle content-policy errors gracefully. Generation takes seconds — run it async with a placeholder UI. Cost is per image and scales with size/quality, so render small drafts for iteration and only produce full-quality finals on user confirmation. For brand work, pin a detailed style description in every prompt; the API has no persistent style memory between calls."
+      ],
+      "keyPoints": [
+        "One endpoint family: `images.generate`, `images.edit` (with optional mask), and variations.",
+        "DALL-E 3 rewrites your prompt with an LLM internally; the revised prompt is returned in the response.",
+        "`gpt-image-1` is the current recommended model: better instruction following, text rendering, and reference-image edits.",
+        "Returned URLs expire quickly — download and persist generated images immediately (or request base64).",
+        "Handle safety rejections and run generation asynchronously; it takes seconds per image.",
+        "Cost scales with size and quality — iterate cheap, finalize expensive."
+      ],
+      "code": [
+        {
+          "title": "Generate an image (Python)",
+          "language": "python",
+          "code": "import base64\nfrom openai import OpenAI\n\nclient = OpenAI()\n\nresult = client.images.generate(\n    model=\"gpt-image-1\",\n    prompt=\"Isometric illustration of a tiny robot watering a bonsai \"\n           \"tree, soft pastel palette, clean studio background\",\n    size=\"1024x1024\",\n    quality=\"high\",\n)\n\nimage_bytes = base64.b64decode(result.data[0].b64_json)\nwith open(\"robot.png\", \"wb\") as f:\n    f.write(image_bytes)"
+        }
+      ],
+      "resources": [
+        { "title": "OpenAI Image Generation", "url": "https://platform.openai.com/docs/guides/images", "type": "official" },
+        { "title": "DALL E API - Introduction (Generative AI Pictures from OpenAI)", "url": "https://www.youtube.com/watch?v=Zr6vAWwjHN0", "type": "video" }
+      ]
+    },
+    {
+      "id": "nanobanana-gemini-image-api",
+      "title": "NanoBanana (Gemini Image) API",
+      "subsection": "Implementing Multimodal AI",
+      "minutes": 5,
+      "intro": "Nano Banana is the nickname for Google's Gemini image generation models, accessed through the standard Gemini API for native image generation and conversational editing.",
+      "summary": [
+        "'Nano Banana' started as the anonymous codename that topped image-editing leaderboards and stuck as the public nickname for Gemini's image models (`gemini-2.5-flash-image` and its successors). Unlike a separate image service, generation lives in the normal `generate_content` call: you ask for an image in the same API you use for text, and the response contains inline image data. Because the generator is the same multimodal transformer that understands images, it excels at instruction-heavy edits and at keeping characters and products consistent across generations.",
+        "Its standout capabilities, which the Towards Data Science writeup demonstrates, are consistency workflows: give it reference photos of a person, product, or character and it preserves identity across new scenes, outfits, and angles — something diffusion pipelines needed LoRA fine-tuning to approximate. It also supports multi-turn conversational editing ('now make it night', 'remove the third person') where each turn refines the previous image, and it can fuse multiple input images into one composition. All output images carry Google's invisible SynthID watermark.",
+        "Practically: use the official `google-genai` SDK, request the image-capable model, and read image parts out of the response candidates. Pricing is per generated image; the same models are available in Google AI Studio for free experimentation and via Vertex AI for enterprise deployments. Be aware that third-party sites squatting on the 'nanobanana' name resell access — the canonical entry points are Google AI Studio and the Gemini API."
+      ],
+      "keyPoints": [
+        "Nano Banana = Gemini's native image generation models (gemini-2.5-flash-image line), not a separate product.",
+        "Image generation happens inside the standard `generate_content` call; images come back as inline data parts.",
+        "Best-in-class at character/product consistency from reference images — no fine-tuning required.",
+        "Supports multi-turn conversational editing: each message refines the previous image.",
+        "All generated images are watermarked with invisible SynthID.",
+        "Canonical access: Google AI Studio and the Gemini API (`google-genai` SDK); beware third-party resellers."
+      ],
+      "code": [
+        {
+          "title": "Gemini image generation (Python)",
+          "language": "python",
+          "code": "from google import genai\n\nclient = genai.Client()  # uses GEMINI_API_KEY\n\nresponse = client.models.generate_content(\n    model=\"gemini-2.5-flash-image\",\n    contents=\"A product shot of a ceramic mug on a walnut desk, \"\n             \"morning light, shallow depth of field\",\n)\n\nfor part in response.candidates[0].content.parts:\n    if part.inline_data:\n        with open(\"mug.png\", \"wb\") as f:\n            f.write(part.inline_data.data)"
+        }
+      ],
+      "resources": [
+        { "title": "NanoBanana API", "url": "https://nanobananaapi.ai/", "type": "official" },
+        { "title": "Generating Consistent Imagery with Gemini", "url": "https://towardsdatascience.com/generating-consistent-imagery-with-gemini/?utm_source=roadmap&utm_medium=Referral&utm_campaign=TDS+roadmap+integration", "type": "article" }
+      ]
+    },
+    {
+      "id": "whisper-api",
+      "title": "Whisper API",
+      "subsection": "Implementing Multimodal AI",
+      "minutes": 5,
+      "intro": "Whisper is OpenAI's speech recognition model — open-sourced for self-hosting and available as a hosted transcription API for converting audio to text.",
+      "summary": [
+        "Whisper is an encoder-decoder transformer trained on 680,000 hours of multilingual, multitask audio scraped from the web. That scale is why it is so robust to accents, background noise, and technical jargon compared with older ASR systems. It supports ~99 languages, and beyond plain transcription it can translate non-English speech directly to English text. OpenAI released the weights (MIT license), so you can run it yourself — community ports like `faster-whisper` and `whisper.cpp` make local inference fast and cheap.",
+        "The hosted API is simpler for most products: upload an audio file (mp3, mp4, wav, webm, and more, up to 25MB per request) to the transcriptions endpoint and get back text — optionally with timestamps in `verbose_json`, or as ready-to-use SRT/VTT subtitle files. A separate translations endpoint outputs English regardless of input language. An optional `prompt` parameter lets you feed proper nouns and domain terms to improve their spelling in the output. For files over 25MB, chunk on silence boundaries and stitch the transcripts.",
+        "Since Whisper's release OpenAI has added newer hosted transcription models (`gpt-4o-transcribe` and mini variants) on the same endpoint with better word error rates and streaming support — switching is just the `model` string. Decision guide: hosted API for simplicity and best accuracy; self-hosted Whisper for privacy-sensitive audio, high volume at low marginal cost, or offline operation. Note that Whisper transcribes recorded audio; truly real-time use cases pair the streaming-capable models or a streaming vendor."
+      ],
+      "keyPoints": [
+        "Trained on 680k hours of web audio — robust to accents, noise, and jargon across ~99 languages.",
+        "Open weights (MIT): self-host with `faster-whisper`/`whisper.cpp` for privacy or volume; API for convenience.",
+        "API limit: 25MB per file; chunk longer audio on silence and stitch transcripts.",
+        "Output formats include plain text, `verbose_json` with timestamps, and SRT/VTT subtitles.",
+        "Use the `prompt` parameter to teach proper nouns and domain vocabulary.",
+        "Newer `gpt-4o-transcribe` models run on the same endpoint with lower WER and streaming — just swap the model string."
+      ],
+      "code": [
+        {
+          "title": "Transcribe audio with Whisper (Python)",
+          "language": "python",
+          "code": "from openai import OpenAI\n\nclient = OpenAI()\n\nwith open(\"meeting.mp3\", \"rb\") as audio_file:\n    transcript = client.audio.transcriptions.create(\n        model=\"whisper-1\",  # or \"gpt-4o-transcribe\"\n        file=audio_file,\n        response_format=\"verbose_json\",  # includes timestamps\n        prompt=\"Acme Corp, Kubernetes, LangChain\",  # domain terms\n    )\n\nprint(transcript.text)"
+        }
+      ],
+      "resources": [
+        { "title": "OpenAI Whisper", "url": "https://openai.com/index/whisper/", "type": "official" },
+        { "title": "Whisper on GitHub", "url": "https://github.com/openai/whisper", "type": "opensource" }
+      ]
+    },
+    {
+      "id": "hugging-face-multimodal-models",
+      "title": "Hugging Face Multimodal Models",
+      "subsection": "Implementing Multimodal AI",
+      "minutes": 5,
+      "intro": "The Hugging Face Hub hosts thousands of open multimodal models — vision-language, audio, and image generation — runnable in a few lines via the transformers library.",
+      "summary": [
+        "Hugging Face is the GitHub of open models: a hub of pretrained checkpoints with standardized cards, licenses, and one-line loading through `transformers`, `diffusers`, and `datasets`. For multimodal work the catalog spans CLIP (image-text embeddings for search and zero-shot classification), BLIP-2 and LLaVA-style vision-language models (captioning and visual QA), Whisper checkpoints for speech recognition, Stable Diffusion and FLUX for image generation, and document-understanding models like Donut and LayoutLM. Filtering by task ('image-to-text', 'automatic-speech-recognition', 'text-to-image') is how you navigate it.",
+        "The `pipeline` abstraction is the fastest path: it bundles preprocessing (image transforms, audio resampling, tokenization), model inference, and postprocessing behind one call. The same three lines work for captioning, VQA, or transcription by changing the task string and model id. When you outgrow pipelines, processors and model classes give you full control, and you can fine-tune any checkpoint on your own data — the decisive advantage over closed APIs when you need domain adaptation, on-prem deployment, or zero per-call costs.",
+        "Choosing open vs hosted: open models win on privacy, cost-at-scale, offline use, and customization; hosted frontier APIs win on raw capability and zero ops. A common production pattern is hybrid — CLIP embeddings locally for cheap multimodal search, a frontier API for the hard reasoning queries. Check model licenses (not all permit commercial use) and benchmark on your data; leaderboard rank rarely survives contact with your domain."
+      ],
+      "keyPoints": [
+        "The Hub organizes models by task — filter 'image-to-text', 'text-to-image', 'automatic-speech-recognition' to find multimodal models.",
+        "`pipeline()` gives you preprocessing + inference + postprocessing in one call.",
+        "Key open multimodal families: CLIP (embeddings), BLIP-2/LLaVA (vision-language), Whisper (ASR), Stable Diffusion/FLUX (generation).",
+        "Open models enable fine-tuning, on-prem deployment, and zero marginal cost — the things closed APIs cannot offer.",
+        "Hybrid architectures are common: local embeddings for search, frontier API for hard reasoning.",
+        "Always check the model license and benchmark on your own data."
+      ],
+      "code": [
+        {
+          "title": "Image captioning with a pipeline (Python)",
+          "language": "python",
+          "code": "from transformers import pipeline\n\n# Vision-language: image captioning\ncaptioner = pipeline(\"image-to-text\",\n                     model=\"Salesforce/blip-image-captioning-base\")\nprint(captioner(\"https://example.com/photo.jpg\"))\n\n# Speech recognition with open Whisper weights\nasr = pipeline(\"automatic-speech-recognition\",\n               model=\"openai/whisper-small\")\nprint(asr(\"meeting.mp3\")[\"text\"])"
+        }
+      ],
+      "resources": [
+        { "title": "Hugging Face Models", "url": "https://huggingface.co/models", "type": "official" },
+        { "title": "How to Use Pretrained Models from Hugging Face in a Few Lines of Code", "url": "https://www.youtube.com/watch?v=ntz160EnWIc", "type": "video" }
+      ]
+    },
+    {
+      "id": "langchain-for-multimodal-apps",
+      "title": "LangChain for Multimodal Apps",
+      "subsection": "Implementing Multimodal AI",
+      "minutes": 4,
+      "intro": "LangChain provides a provider-agnostic way to send images and other media to LLMs and to compose multimodal steps into chains and agents.",
+      "summary": [
+        "LangChain's core value for multimodal work is abstraction: a `HumanMessage` whose content is a list of blocks (text, image URL, base64 data) works across OpenAI, Gemini, and Anthropic chat models, so you can swap providers without rewriting your pipeline. The same message format flows through everything else in the ecosystem — prompt templates, structured-output parsers, LCEL chains, and agents — which means a vision call can be one step in a larger workflow rather than a one-off API request.",
+        "Typical compositions: an extraction chain that sends a document image to a vision model and parses the response into a Pydantic schema; a media pipeline that transcribes audio (Whisper as a document loader or tool), summarizes with an LLM, and answers follow-up questions; an agent whose tools include 'look at this image', 'generate an image', and 'transcribe this clip', letting the model route between modalities. For multimodal RAG, LangChain integrates multimodal embeddings and vector stores so retrieved context can include images.",
+        "Honest guidance: if your app makes a single vision call, the raw provider SDK is simpler. LangChain pays off when you need provider portability, when multimodal calls are steps inside larger chains/agents, or when you want its tracing (LangSmith), retries, and structured-output machinery around the calls. Keep an eye on content-block format details per provider — the abstraction is thin, and image size/format constraints still come from the underlying model."
+      ],
+      "keyPoints": [
+        "Multimodal inputs are content-block lists on messages — portable across OpenAI, Gemini, and Anthropic.",
+        "Vision/audio calls become composable steps in chains and agents, not isolated API requests.",
+        "Pair vision input with LangChain's structured-output parsing for document extraction pipelines.",
+        "Agents can route between modality tools: analyze image, generate image, transcribe audio.",
+        "Use the raw SDK for one-off calls; use LangChain when you need composition, portability, or tracing.",
+        "Underlying model constraints (image size, formats, token cost) still apply through the abstraction."
+      ],
+      "code": [
+        {
+          "title": "Vision call through LangChain (Python)",
+          "language": "python",
+          "code": "from langchain_openai import ChatOpenAI\nfrom langchain_core.messages import HumanMessage\n\nllm = ChatOpenAI(model=\"gpt-5\")\n\nmsg = HumanMessage(content=[\n    {\"type\": \"text\", \"text\": \"List every product visible in this shelf photo.\"},\n    {\"type\": \"image_url\",\n     \"image_url\": {\"url\": \"https://example.com/shelf.jpg\"}},\n])\n\nresponse = llm.invoke([msg])\nprint(response.content)"
+        }
+      ],
+      "resources": [
+        { "title": "LangChain", "url": "https://www.langchain.com/", "type": "official" },
+        { "title": "Build a Multimodal GenAI App with LangChain and Gemini LLMs", "url": "https://www.youtube.com/watch?v=bToMzuiOMhg", "type": "video" }
+      ]
+    },
+    {
+      "id": "llamaindex-for-multimodal-apps",
+      "title": "LlamaIndex for Multimodal Apps",
+      "subsection": "Implementing Multimodal AI",
+      "minutes": 4,
+      "intro": "LlamaIndex extends its retrieval-augmented generation toolkit to images, enabling multimodal RAG over mixed text-and-image document collections.",
+      "summary": [
+        "LlamaIndex is a data framework for connecting LLMs to your documents, and its multimodal support extends the same index-retrieve-synthesize loop to images. Documents become nodes that can be text or images; a multimodal index embeds both (text with a text embedding model, images with CLIP-style embeddings) into vector stores; at query time the retriever pulls back the most relevant text chunks AND images, and a multimodal LLM synthesizes an answer that has actually looked at the retrieved pictures.",
+        "This is the architecture for question-answering over real-world document sets — PDFs with figures, product catalogs, slide decks, scanned forms — where the answer often lives in a chart or photo rather than prose. LlamaIndex wraps the multimodal LLMs (OpenAI, Gemini, Anthropic) behind a common interface, supports image-aware parsing of complex documents (its LlamaParse service extracts figures and tables), and lets you build retrieval that returns images as evidence alongside text citations.",
+        "Choose LlamaIndex when retrieval over your own data is the heart of the app — it is more opinionated and batteries-included for RAG than LangChain, which is broader for agents and chains (many teams use both). Practical notes: image embeddings and storage grow your index size quickly, retrieval quality depends heavily on how documents are parsed into nodes, and you should evaluate with queries whose answers genuinely require the visual content."
+      ],
+      "keyPoints": [
+        "Multimodal RAG: index text and images together, retrieve both, and synthesize with a vision-capable LLM.",
+        "Images are embedded with CLIP-style models; text with standard embedding models — stored side by side in vector stores.",
+        "Ideal for PDFs with figures, slide decks, catalogs, and scanned documents where answers live in images.",
+        "LlamaParse handles complex document parsing, extracting tables and figures into indexable nodes.",
+        "LlamaIndex is RAG-first and opinionated; LangChain is broader for agents — they are often used together.",
+        "Evaluate with queries that genuinely require the visual content, not just the surrounding text."
+      ],
+      "code": [],
+      "resources": [
+        { "title": "LlamaIndex Multi-modal", "url": "https://docs.llamaindex.ai/en/stable/use_cases/multimodal/", "type": "official" },
+        { "title": "Multi-modal Retrieval Augmented Generation with LlamaIndex", "url": "https://www.youtube.com/watch?v=35RlrrgYDyU", "type": "video" }
+      ]
+    }
+  ]
+}

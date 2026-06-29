@@ -1,0 +1,100 @@
+SECTION 13: LLM Observability & Evaluations
+DESCRIPTION: Tracing, monitoring, and systematically evaluating LLM applications in production.
+======================================================================
+
+
+### TOPIC: LLM Observability  (id: llm-observability)  [group: Observability]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: Tracing & Logging  (id: tracing-logging)  [group: Observability]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: Cost & Latency Monitoring  (id: cost-latency-monitoring)  [group: Observability]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: Production Monitoring  (id: production-monitoring)  [group: Observability]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: LangSmith  (id: langsmith)  [group: Observability Tools]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: Langfuse  (id: langfuse)  [group: Observability Tools]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: Helicone  (id: helicone)  [group: Observability Tools]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: Arize AI  (id: arize-ai)  [group: Observability Tools]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: LLM Evaluations  (id: llm-evaluations)  [group: Evaluations]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: Deterministic Evals  (id: deterministic-evals)  [group: Evaluation Types]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: Model-Based Evals (LLM-as-Judge)  (id: model-based-evals-llm-as-judge)  [group: Evaluation Types]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: Human Evals  (id: human-evals)  [group: Evaluation Types]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: Evaluation Metrics  (id: evaluation-metrics)  [group: Evaluation Types]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: Regression Testing  (id: regression-testing)  [group: Evaluation Types]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: DeepEval  (id: deepeval)  [group: Evaluation Tools]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------
+
+### TOPIC: RAGAS  (id: ragas)  [group: Evaluation Tools]
+
+(no roadmap.sh content file — author this topic from your own knowledge; include 2-3 high-quality official-doc resource links you are confident exist)
+
+----------------------------------------------------------------------

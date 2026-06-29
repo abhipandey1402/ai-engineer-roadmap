@@ -1,0 +1,484 @@
+{
+  "id": "observability-evals",
+  "title": "LLM Observability & Evaluations",
+  "description": "Tracing, monitoring, and systematically evaluating LLM applications in production.",
+  "topics": [
+    {
+      "id": "llm-observability",
+      "title": "LLM Observability",
+      "subsection": "Observability",
+      "minutes": 5,
+      "intro": "LLM observability is the practice of capturing what your model calls actually did — inputs, outputs, costs, latency, and quality — so you can debug, optimize, and trust a non-deterministic system.",
+      "summary": [
+        "Classic APM tells you whether a request succeeded, how long it took, and where it failed. That is necessary but nowhere near sufficient for LLM apps, because an LLM call can return HTTP 200 in 800ms and still be completely wrong. The failure modes that matter — hallucinations, ignored instructions, broken JSON, retrieval misses, prompt regressions after a model upgrade — are invisible to traditional monitoring. LLM observability extends the classic pillars (logs, metrics, traces) with LLM-specific signals: the exact prompt and completion for every call, token counts and dollar cost, model and parameter versions, and quality scores attached to each interaction.",
+        "Three properties of LLM systems force this shift. First, non-determinism: the same input can produce different outputs, so you cannot reason about behavior from code alone — you need recorded real traffic. Second, cost is per-token and variable: a single prompt change or a retry loop in an agent can multiply your bill, so spend must be observable per request, per user, and per feature. Third, quality drifts silently: providers update models, your data distribution shifts, and users find new edge cases. Without continuous measurement, an app that worked at launch quietly degrades.",
+        "A mature setup has four layers: instrumentation (SDKs or proxies that capture every LLM call and its surrounding context), tracing (linking multi-step chains, RAG retrievals, and agent tool calls into one tree per request), monitoring (dashboards and alerts on cost, latency, error rate, and quality scores), and feedback (user thumbs up/down, edits, and automated evaluators attached to traces). The payoff is a flywheel: production traces become eval datasets, evals catch regressions before deploys, and dashboards tell you where to spend your next optimization hour.",
+        "The tool landscape maps to these layers: LangSmith (from the LangChain team) and Langfuse (open source, self-hostable) are full tracing-plus-evals platforms; Helicone is a lightweight proxy that captures calls with a one-line base URL change; Arize Phoenix focuses on tracing and evals with strong OpenTelemetry support. You will meet each of them later in this section."
+      ],
+      "keyPoints": [
+        "A 200 OK from the model API tells you nothing about answer quality — LLM observability captures prompts, completions, cost, and quality signals, not just status codes.",
+        "Non-determinism means you debug from recorded traces of real traffic, not by re-reading code.",
+        "Token-based pricing makes cost a first-class observable: track spend per request, per user, and per feature.",
+        "Quality drifts over time from model updates and data shift, so measurement must be continuous, not a one-time launch checklist.",
+        "Production traces are the raw material for evaluation datasets — observability and evals form one feedback loop.",
+        "Main tools: LangSmith, Langfuse (open source), Helicone (proxy-based), Arize Phoenix (OpenTelemetry-native)."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "Langfuse Docs: LLM Observability", "url": "https://langfuse.com/docs", "type": "official"},
+        {"title": "LangSmith Documentation", "url": "https://docs.smith.langchain.com/", "type": "official"},
+        {"title": "Arize Phoenix (open-source LLM tracing & evals)", "url": "https://github.com/Arize-ai/phoenix", "type": "opensource"}
+      ]
+    },
+    {
+      "id": "tracing-logging",
+      "title": "Tracing & Logging",
+      "subsection": "Observability",
+      "minutes": 6,
+      "intro": "Tracing records each request as a tree of spans — LLM calls, retrievals, tool invocations — so you can see exactly what happened inside a multi-step chain or agent.",
+      "summary": [
+        "A modern LLM feature is rarely one API call. A RAG request might embed the query, search a vector store, rerank results, build a prompt, call the model, and validate the output; an agent might loop through several tool calls. When the final answer is wrong, you need to know which step failed. Tracing borrows the distributed-tracing model from systems like OpenTelemetry: a trace represents one end-to-end request, and spans represent nested steps inside it. LLM platforms add specialized span types — generations (with prompt, completion, model, parameters, token usage) and retrievals (with query and returned documents) — so the trace tree reads like a replay of the request.",
+        "Instrumentation comes in three flavors. Decorator/SDK-based: wrap functions with something like Langfuse's `@observe()` or LangSmith's `@traceable`, and nested calls are linked into the trace automatically. Framework-native: LangChain, LlamaIndex, and the OpenAI Agents SDK emit traces with a one-line callback or env-var setup. Proxy-based: route API calls through a gateway like Helicone, which logs everything without touching your code but sees only individual calls, not your app's internal structure. OpenTelemetry-based instrumentation (used by Phoenix and supported by Langfuse) is emerging as the vendor-neutral standard via OpenInference semantic conventions.",
+        "Logging for LLM apps means capturing the full payloads, not just metadata: the exact rendered prompt (after template substitution), the raw completion, system messages, tool schemas, and retrieved context. This is what makes debugging possible — most 'model bugs' turn out to be prompt bugs, truncated context, or bad retrieval that only the rendered payload reveals. Two cautions: prompts and outputs often contain user PII, so apply masking/redaction features and retention policies; and at scale you may sample traces rather than store every one, while always keeping errored and low-scored traces."
+      ],
+      "keyPoints": [
+        "A trace is one end-to-end request; spans are its nested steps — generations, retrievals, and tool calls get LLM-specific span types.",
+        "Log full rendered prompts and raw completions, not just metadata — most production bugs are visible only in the actual payload.",
+        "Three instrumentation styles: SDK decorators (`@observe`, `@traceable`), framework callbacks (LangChain/LlamaIndex), and zero-code proxies (Helicone).",
+        "OpenTelemetry with OpenInference conventions is the emerging vendor-neutral standard for LLM tracing.",
+        "Prompts and outputs frequently contain PII — use masking, redaction, and retention controls.",
+        "Attach metadata (user ID, session ID, feature, prompt version) to traces so you can filter and group later."
+      ],
+      "code": [
+        {
+          "title": "Langfuse @observe decorator (Python)",
+          "language": "python",
+          "code": "from langfuse import observe\nfrom openai import OpenAI\n\nclient = OpenAI()\n\n@observe()  # creates a span; nested calls are linked automatically\ndef retrieve(query: str) -> list[str]:\n    return vector_store.search(query, k=4)\n\n@observe()  # root call becomes the trace\ndef answer(query: str) -> str:\n    docs = retrieve(query)\n    resp = client.chat.completions.create(\n        model=\"gpt-4o-mini\",\n        messages=[\n            {\"role\": \"system\", \"content\": f\"Context:\\n{docs}\"},\n            {\"role\": \"user\", \"content\": query},\n        ],\n    )\n    return resp.choices[0].message.content"
+        }
+      ],
+      "resources": [
+        {"title": "Langfuse Docs: Tracing", "url": "https://langfuse.com/docs/tracing", "type": "official"},
+        {"title": "LangSmith Docs: Observability", "url": "https://docs.smith.langchain.com/", "type": "official"},
+        {"title": "OpenTelemetry Documentation", "url": "https://opentelemetry.io/docs/", "type": "official"}
+      ]
+    },
+    {
+      "id": "cost-latency-monitoring",
+      "title": "Cost & Latency Monitoring",
+      "subsection": "Observability",
+      "minutes": 5,
+      "intro": "Cost and latency are the two operational budgets of an LLM app: track tokens and dollars per request, and measure both time-to-first-token and total generation time.",
+      "summary": [
+        "LLM cost is usage-based and asymmetric: you pay per input token and (usually more) per output token, with separate rates for cached input, batch requests, and different models. Observability platforms compute dollar cost per call by multiplying recorded token counts by a model price table, then let you aggregate by user, feature, session, or prompt version. This granularity is what makes cost actionable: it reveals that one verbose system prompt accounts for 40% of spend, that an agent retry loop occasionally burns 50 calls on one request, or that a single power user is costing more than their subscription. Common levers once you can see cost: shorten or cache prompts (prompt caching can cut input cost dramatically), route easy requests to cheaper models, cap output tokens, and add loop guards to agents.",
+        "Latency needs two numbers, not one. Time-to-first-token (TTFT) is what a user perceives as responsiveness when you stream output; total generation time is what matters for non-streamed calls, agent steps, and downstream timeouts. A 20-second total latency can feel fine if TTFT is 400ms and tokens stream steadily; the same request without streaming feels broken. Track p50 and p95/p99 rather than averages — LLM latency has a long tail from provider load, long outputs, and retries. Also watch tokens-per-second as a throughput signal, and remember output length is the biggest latency driver you actually control.",
+        "Set budgets and alerts the same way you would SLOs: alert when daily spend deviates from baseline, when p95 TTFT crosses your threshold, or when error/retry rates spike (retries multiply both cost and latency). Helicone and Langfuse give these dashboards out of the box; for custom stacks, emit token counts and timing as standard metrics into your existing Prometheus/Datadog setup so LLM health lives next to the rest of your system."
+      ],
+      "keyPoints": [
+        "Cost = input tokens + output tokens at different rates; output tokens are usually several times more expensive.",
+        "Aggregate cost per user, feature, and prompt version — totals hide where the money actually goes.",
+        "Measure TTFT (perceived responsiveness when streaming) separately from total generation time.",
+        "Use p95/p99, not averages — LLM latency has a long tail from retries and long outputs.",
+        "Biggest levers: prompt caching, shorter prompts, cheaper-model routing, output token caps, and agent loop guards.",
+        "Alert on spend anomalies and retry spikes — a buggy retry loop multiplies cost and latency simultaneously."
+      ],
+      "code": [
+        {
+          "title": "Tracking TTFT and tokens with a streamed call",
+          "language": "python",
+          "code": "import time\nfrom openai import OpenAI\n\nclient = OpenAI()\nstart = time.perf_counter()\nttft = None\nchunks = []\n\nstream = client.chat.completions.create(\n    model=\"gpt-4o-mini\",\n    messages=[{\"role\": \"user\", \"content\": \"Explain RAG in 3 bullets\"}],\n    stream=True,\n    stream_options={\"include_usage\": True},\n)\nfor chunk in stream:\n    if ttft is None and chunk.choices and chunk.choices[0].delta.content:\n        ttft = time.perf_counter() - start  # time to first token\n    if chunk.usage:  # final chunk carries token usage\n        usage = chunk.usage\n\ntotal = time.perf_counter() - start\nprint(f\"TTFT={ttft:.2f}s total={total:.2f}s \"\n      f\"in={usage.prompt_tokens} out={usage.completion_tokens}\")"
+        }
+      ],
+      "resources": [
+        {"title": "Helicone Docs: Cost & Usage Tracking", "url": "https://docs.helicone.ai/", "type": "official"},
+        {"title": "Langfuse Docs: Model Usage & Cost", "url": "https://langfuse.com/docs", "type": "official"},
+        {"title": "OpenAI API Pricing", "url": "https://openai.com/api/pricing/", "type": "official"}
+      ]
+    },
+    {
+      "id": "production-monitoring",
+      "title": "Production Monitoring",
+      "subsection": "Observability",
+      "minutes": 5,
+      "intro": "Production monitoring for LLM apps combines classic health signals with continuous quality measurement — online evaluation, user feedback, and drift detection on live traffic.",
+      "summary": [
+        "Once an LLM feature ships, evaluation splits into two modes. Offline evaluation runs on a curated dataset before deploy — it is controlled, repeatable, and catches regressions, but only for cases you thought to include. Online evaluation scores real production traffic as it happens — it is noisy and lacks ground truth, but it sees the actual distribution of user behavior, including everything your test set missed. Mature teams run both: offline evals gate releases, online evals watch the live system, and interesting production failures flow back into the offline dataset.",
+        "Online quality signals come from three sources. Implicit user feedback: regenerate clicks, abandoned sessions, copy events, edits to generated text, and follow-up corrections like 'no, I meant...'. Explicit feedback: thumbs up/down and ratings attached to trace IDs, so a bad rating links directly to the full trace that produced it. Automated online evaluators: cheap LLM-as-judge or rule-based checks run on a sample of live traces (sampling keeps judge cost bounded), scoring things like answer relevance, groundedness against retrieved context, or policy compliance. Langfuse, LangSmith, and Arize all support attaching scores to traces from any of these sources.",
+        "Beyond per-request quality, watch for drift and incidents. Input drift: users start asking question types you never tested (topic distribution shifts are visible by clustering trace embeddings). Behavior drift: a provider model update changes tone, formatting, or refusal rates even though your code did not change — pin model versions where possible and re-run your eval suite when you upgrade. Operationally, alert on the LLM-specific failure modes: structured-output parse failures, guardrail trigger rates, refusal spikes, empty or truncated completions, and provider rate-limit errors. Each alert should link to the offending traces so the on-call path goes straight from symptom to payload."
+      ],
+      "keyPoints": [
+        "Offline evals (curated dataset, pre-deploy) and online evals (live traffic, post-deploy) are complementary — run both.",
+        "Capture explicit feedback (thumbs up/down tied to trace IDs) and implicit feedback (regenerates, edits, abandonment).",
+        "Run automated LLM-as-judge evaluators on a sample of production traces to keep scoring cost bounded.",
+        "Provider model updates can change behavior without any code change — pin versions and re-run evals on upgrade.",
+        "Alert on LLM-specific failures: JSON parse errors, refusal spikes, guardrail triggers, truncated outputs, rate limits.",
+        "Route interesting production failures back into your offline eval dataset — this loop is what improves the system."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "Langfuse Docs: Scores & User Feedback", "url": "https://langfuse.com/docs", "type": "official"},
+        {"title": "LangSmith Docs: Online Evaluation", "url": "https://docs.smith.langchain.com/", "type": "official"},
+        {"title": "Arize: LLM Observability Platform", "url": "https://arize.com/", "type": "official"}
+      ]
+    },
+    {
+      "id": "langsmith",
+      "title": "LangSmith",
+      "subsection": "Observability Tools",
+      "minutes": 5,
+      "intro": "LangSmith is the LangChain team's commercial platform for tracing, evaluating, and monitoring LLM applications — deeply integrated with LangChain/LangGraph but usable with any stack.",
+      "summary": [
+        "LangSmith covers the full loop in one product: tracing (every chain, agent step, and tool call rendered as an inspectable tree), datasets and evaluation (build test sets from traces, run evaluators, compare experiments side by side), prompt management (a playground plus versioned prompts), and monitoring (dashboards, online evaluators, and alerts on live traffic). Its standout convenience is the integration story: if you use LangChain or LangGraph, tracing requires zero code changes — set two environment variables and every run appears in the UI with full nesting. For non-LangChain code there is a `@traceable` decorator and an OpenAI client wrapper.",
+        "The eval workflow is where LangSmith shines for teams iterating on prompts. You curate a dataset (often by clicking 'add to dataset' on interesting production traces), define evaluators (off-the-shelf LLM-as-judge evaluators, custom Python functions, or pairwise comparators), and run experiments that score your chain against the dataset. Experiments are diffable: change a prompt or swap models, re-run, and see per-example score changes before shipping. Annotation queues let human reviewers grade outputs in the same place.",
+        "Trade-offs to know: LangSmith is closed-source SaaS (self-hosting exists but is an enterprise feature), so data residency and pricing matter for some teams — this is the most common reason teams choose Langfuse instead. It is framework-agnostic in principle, but you get the most leverage if you are already in the LangChain/LangGraph ecosystem. There is a free developer tier, which makes it an easy first observability tool for side projects."
+      ],
+      "keyPoints": [
+        "Full-loop platform: tracing, datasets/evals, prompt playground, and production monitoring in one UI.",
+        "Zero-code tracing for LangChain/LangGraph via env vars; `@traceable` decorator or OpenAI wrapper for everything else.",
+        "Experiments compare prompt/model variants against a dataset with per-example score diffs.",
+        "Turn production traces into eval dataset examples with one click — the trace-to-dataset loop is built in.",
+        "Closed-source SaaS; self-hosting is enterprise-only — the main reason teams pick open-source Langfuse instead.",
+        "Free developer tier makes it a low-friction default if you already use LangChain."
+      ],
+      "code": [
+        {
+          "title": "Enable LangSmith tracing (env vars + @traceable)",
+          "language": "python",
+          "code": "# Zero-code setup for LangChain/LangGraph apps:\n#   export LANGSMITH_TRACING=true\n#   export LANGSMITH_API_KEY=<your-key>\n#   export LANGSMITH_PROJECT=my-app   # optional grouping\n\n# For plain Python code, decorate functions:\nfrom langsmith import traceable\nfrom langsmith.wrappers import wrap_openai\nfrom openai import OpenAI\n\nclient = wrap_openai(OpenAI())  # logs every OpenAI call\n\n@traceable  # nests this function as a span in the trace\ndef rag_answer(question: str) -> str:\n    docs = retrieve(question)\n    resp = client.chat.completions.create(\n        model=\"gpt-4o-mini\",\n        messages=[{\"role\": \"user\", \"content\": f\"{docs}\\n\\n{question}\"}],\n    )\n    return resp.choices[0].message.content"
+        }
+      ],
+      "resources": [
+        {"title": "LangSmith Documentation", "url": "https://docs.smith.langchain.com/", "type": "official"},
+        {"title": "LangSmith Product Page", "url": "https://www.langchain.com/langsmith", "type": "official"},
+        {"title": "LangSmith Python SDK", "url": "https://github.com/langchain-ai/langsmith-sdk", "type": "opensource"}
+      ]
+    },
+    {
+      "id": "langfuse",
+      "title": "Langfuse",
+      "subsection": "Observability Tools",
+      "minutes": 5,
+      "intro": "Langfuse is the leading open-source LLM engineering platform — self-hostable tracing, prompt management, evaluation, and analytics with SDKs for Python and JS and integrations for every major framework.",
+      "summary": [
+        "Langfuse offers roughly the same surface as LangSmith — traces, sessions, users, prompt management, datasets, evaluations, and dashboards — but is MIT-licensed at its core and designed to be self-hosted with Docker/Kubernetes (Postgres, ClickHouse, Redis, and S3-compatible storage under the hood). That makes it the default choice when data cannot leave your infrastructure, when you want to avoid per-seat SaaS pricing, or when you simply prefer open source. A managed Langfuse Cloud with a generous free tier exists if you do not want to operate it yourself.",
+        "Instrumentation is flexible: the Python SDK's `@observe()` decorator traces any function tree; drop-in wrappers instrument the OpenAI SDK automatically; native integrations cover LangChain, LlamaIndex, Haystack, LiteLLM, and the Vercel AI SDK; and Langfuse speaks OpenTelemetry, so OTel-instrumented apps can export straight to it. Traces carry token usage and cost (computed from a model price table), and you can attach scores from user feedback, custom code, or managed LLM-as-judge evaluators that run automatically on incoming traces.",
+        "Beyond tracing, two features see heavy production use. Prompt management: store prompts in Langfuse with versions and labels (`production`, `staging`), fetch them at runtime, and roll back without a deploy — linked traces show exactly which prompt version produced which output. Datasets and experiments: build test sets from traces, run your app against them, and compare runs in the UI. For a busy engineer the practical takeaway: Langfuse is the safe open-source default — start with the cloud free tier, move to self-hosting if compliance demands it."
+      ],
+      "keyPoints": [
+        "Open source (MIT core) and fully self-hostable — the standard pick when traces must stay in your infrastructure.",
+        "`@observe()` decorator, OpenAI drop-in wrapper, and native LangChain/LlamaIndex/LiteLLM integrations; also accepts OpenTelemetry.",
+        "Prompt management with versioning and labels lets you update or roll back prompts without redeploying code.",
+        "Scores attach to traces from user feedback, custom pipelines, or built-in LLM-as-judge evaluators.",
+        "Datasets + experiments support offline eval and run comparison, same loop as LangSmith.",
+        "Managed cloud with a free tier exists if you do not want to run the stack yourself."
+      ],
+      "code": [
+        {
+          "title": "Langfuse setup with OpenAI drop-in integration",
+          "language": "python",
+          "code": "# pip install langfuse openai\n# export LANGFUSE_PUBLIC_KEY=pk-...\n# export LANGFUSE_SECRET_KEY=sk-...\n# export LANGFUSE_HOST=https://cloud.langfuse.com  # or your self-hosted URL\n\nfrom langfuse import observe\nfrom langfuse.openai import OpenAI  # drop-in: auto-traces every call\n\nclient = OpenAI()\n\n@observe()\ndef summarize(text: str) -> str:\n    resp = client.chat.completions.create(\n        model=\"gpt-4o-mini\",\n        messages=[{\"role\": \"user\", \"content\": f\"Summarize: {text}\"}],\n    )\n    return resp.choices[0].message.content\n\n# Trace appears in Langfuse with tokens, cost, and latency attached."
+        }
+      ],
+      "resources": [
+        {"title": "Langfuse Documentation", "url": "https://langfuse.com/docs", "type": "official"},
+        {"title": "Langfuse on GitHub", "url": "https://github.com/langfuse/langfuse", "type": "opensource"},
+        {"title": "Langfuse Self-Hosting Guide", "url": "https://langfuse.com/self-hosting", "type": "official"}
+      ]
+    },
+    {
+      "id": "helicone",
+      "title": "Helicone",
+      "subsection": "Observability Tools",
+      "minutes": 4,
+      "intro": "Helicone is a proxy-based, open-source LLM observability platform: change one base URL and every request is logged with cost, latency, and usage — no SDK required.",
+      "summary": [
+        "Helicone's core design choice is to sit between your app and the model provider as a gateway. Instead of instrumenting code, you point your OpenAI (or Anthropic, or other provider) client at Helicone's base URL and pass your Helicone key in a header; from then on, every request and response is captured with tokens, computed cost, latency, and any custom properties you add via headers (user ID, feature, session). This makes it the fastest possible integration — one line — and it works identically across languages and frameworks because there is no SDK to adopt.",
+        "Because it is in the request path, Helicone can do more than observe: it offers response caching (identical requests served from cache save money and latency), rate limiting per user or key, retries and fallbacks, prompt/response logging with omission controls, and an AI gateway that routes one unified API across many providers. Dashboards aggregate cost and usage by model, user, and custom property, making it particularly strong as a cost-control tool.",
+        "The trade-offs mirror the architecture. A proxy sees individual API calls but not your application's internal structure, so you do not get the nested chain/agent trace trees that LangSmith or Langfuse provide (Helicone does offer session grouping via headers, and async logging options exist to keep the proxy out of the critical path). Adding any proxy also introduces a dependency in your request path — evaluate its latency overhead and availability story for production. Helicone is open source and self-hostable, with a managed cloud as the common starting point. A good mental model: Helicone for instant, zero-code cost and usage visibility; an SDK-based tracer when you need deep chain-level debugging."
+      ],
+      "keyPoints": [
+        "Integration is one line: swap the client's `base_url` to Helicone's gateway and add an auth header.",
+        "Captures cost, tokens, and latency per request; segment by user/feature via custom property headers.",
+        "Being in the request path enables extras: caching, rate limiting, retries, and multi-provider routing.",
+        "Proxy sees calls, not code — no deep nested traces of chains/agents like SDK-based tools provide.",
+        "A proxy adds a hop to your critical path — check latency overhead and availability before production use.",
+        "Open source and self-hostable, with a managed cloud free tier."
+      ],
+      "code": [
+        {
+          "title": "Helicone proxy setup (one-line base_url change)",
+          "language": "python",
+          "code": "import os\nfrom openai import OpenAI\n\nclient = OpenAI(\n    base_url=\"https://oai.helicone.ai/v1\",  # was api.openai.com/v1\n    default_headers={\n        \"Helicone-Auth\": f\"Bearer {os.environ['HELICONE_API_KEY']}\",\n        # Optional: segment analytics with custom properties\n        \"Helicone-User-Id\": \"user-123\",\n        \"Helicone-Property-Feature\": \"doc-summarizer\",\n    },\n)\n\nresp = client.chat.completions.create(\n    model=\"gpt-4o-mini\",\n    messages=[{\"role\": \"user\", \"content\": \"Hello!\"}],\n)\n# Request now appears in Helicone with cost, tokens, and latency."
+        }
+      ],
+      "resources": [
+        {"title": "Helicone Documentation", "url": "https://docs.helicone.ai/", "type": "official"},
+        {"title": "Helicone on GitHub", "url": "https://github.com/Helicone/helicone", "type": "opensource"},
+        {"title": "Helicone Website", "url": "https://www.helicone.ai/", "type": "official"}
+      ]
+    },
+    {
+      "id": "arize-ai",
+      "title": "Arize AI",
+      "subsection": "Observability Tools",
+      "minutes": 4,
+      "intro": "Arize AI builds ML/LLM observability tools: the enterprise Arize AX platform and Phoenix, a popular open-source library for tracing and evaluating LLM apps built on OpenTelemetry.",
+      "summary": [
+        "Arize came from classic ML observability (drift and performance monitoring for tabular models) and expanded into LLMs, which gives its products a strong evaluation-and-monitoring DNA. For most engineers the entry point is Phoenix, the open-source project: it runs locally with `pip install arize-phoenix` and `phoenix.launch_app()`, or as a self-hosted/cloud instance, and provides trace visualization, dataset management, experiments, and a library of built-in LLM evaluators (hallucination, QA correctness, relevance, toxicity) that you can run over traces at scale.",
+        "Phoenix's distinguishing technical bet is OpenTelemetry. Instrumentation goes through OpenInference — a set of open semantic conventions for LLM spans — with auto-instrumentors for OpenAI, LangChain, LlamaIndex, Anthropic, and more. Because traces are standard OTel data, you are not locked in: the same instrumentation can export to any OTel-compatible backend, and Phoenix can ingest traces emitted by other OTel-instrumented systems. This vendor-neutral posture is Phoenix's main differentiator versus LangSmith and Langfuse.",
+        "The commercial platform (Arize AX) layers enterprise features on the same concepts: large-scale online evaluation, monitoring and alerting, embedding-based drift analysis (clustering production queries to spot new topics and failure pockets), and dashboards for both LLM and traditional ML workloads. A reasonable take for a busy engineer: use Phoenix when you want open-source, OTel-native tracing plus a solid built-in evaluator library — especially for notebook-driven RAG debugging — and look at Arize AX when an org needs enterprise-scale monitoring across many models."
+      ],
+      "keyPoints": [
+        "Two products: Phoenix (open source, OTel-native tracing + evals) and Arize AX (enterprise observability platform).",
+        "Phoenix runs locally in one line — handy for notebook-based debugging of RAG and agent pipelines.",
+        "Built on OpenTelemetry with OpenInference conventions: vendor-neutral instrumentation, no lock-in.",
+        "Ships built-in evaluators (hallucination, QA correctness, relevance, toxicity) you can run over traces.",
+        "Embedding-based clustering of production queries helps spot drift and failure pockets.",
+        "Strong heritage in classic ML monitoring makes Arize a fit for orgs running both ML and LLM workloads."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "Arize Phoenix on GitHub", "url": "https://github.com/Arize-ai/phoenix", "type": "opensource"},
+        {"title": "Phoenix Documentation", "url": "https://arize.com/docs/phoenix", "type": "official"},
+        {"title": "Arize AI Website", "url": "https://arize.com/", "type": "official"}
+      ]
+    },
+    {
+      "id": "llm-evaluations",
+      "title": "LLM Evaluations",
+      "subsection": "Evaluations",
+      "minutes": 6,
+      "intro": "LLM evaluation (evals) is the discipline of systematically measuring output quality so you can improve prompts, models, and pipelines based on evidence instead of vibes.",
+      "summary": [
+        "Traditional software has unit tests with exact expected outputs; LLM outputs are open-ended text where many different answers can be correct. Evals replace `assertEqual` with graded measurement: define what 'good' means for your task (correct, grounded, relevant, safe, on-format), build a dataset of representative inputs (ideally with reference answers), run your system over it, and score the outputs. The score is rarely a perfect measure of quality — the goal is a signal reliable enough to compare variants: prompt A vs prompt B, GPT-4o vs a cheaper model, chunk size 500 vs 1000. Practitioners like Hamel Husain argue evals are the single highest-leverage investment in an LLM product, because without them every change is a guess.",
+        "There are three families of evaluation methods, each covered in upcoming topics. Deterministic (code-based) checks are cheap, fast, and objective — exact match, regex, JSON schema validation, contains/not-contains — but only work when correctness is mechanically checkable. Model-based evals (LLM-as-judge) use a strong model to grade outputs against a rubric — flexible enough for fuzzy qualities like helpfulness or faithfulness, but subject to judge biases and cost. Human evals are the gold standard for quality and the source of truth you calibrate other methods against, but too slow and expensive to run on everything.",
+        "Evals also split by where they run: offline (against a curated dataset, in development and CI — repeatable, gating releases) and online (scoring live production traffic — realistic, catching what your dataset missed). The two feed each other: production failures discovered online become new offline test cases. A pragmatic starting recipe for any new LLM feature: collect 20-50 real or realistic examples, write deterministic asserts for everything mechanically checkable, add one or two LLM-as-judge criteria for the fuzzy parts, run the suite on every prompt change, and grow the dataset from production traces. Small but real beats large but synthetic."
+      ],
+      "keyPoints": [
+        "Evals replace exact-match unit tests with graded measurement, because many different LLM outputs can be correct.",
+        "The main purpose is comparison: scores let you choose between prompts, models, and pipeline settings with evidence.",
+        "Three method families: deterministic/code-based checks, LLM-as-judge, and human evaluation — combine them.",
+        "Offline evals gate releases in CI; online evals score live traffic; production failures become new test cases.",
+        "Start small: 20-50 representative examples with clear pass criteria beats a large synthetic benchmark.",
+        "Without evals, every prompt or model change is an unverifiable guess — treat the eval suite like you treat tests."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "Your AI Product Needs Evals (Hamel Husain)", "url": "https://hamel.dev/blog/posts/evals/", "type": "article"},
+        {"title": "OpenAI Evals (open-source framework)", "url": "https://github.com/openai/evals", "type": "opensource"},
+        {"title": "LangSmith Docs: Evaluation", "url": "https://docs.smith.langchain.com/", "type": "official"}
+      ]
+    },
+    {
+      "id": "deterministic-evals",
+      "title": "Deterministic Evals",
+      "subsection": "Evaluation Types",
+      "minutes": 4,
+      "intro": "Deterministic evals are plain code-based checks — exact match, regex, schema validation, reference-based scores — that grade LLM outputs cheaply, instantly, and with zero ambiguity.",
+      "summary": [
+        "Whenever a quality criterion can be checked mechanically, check it mechanically. Deterministic evals are ordinary functions over the output string (or parsed object): exact or normalized match against an expected answer for classification-style tasks; contains/not-contains for required facts or forbidden phrases; regex for formats like dates, order IDs, or citations; `json.loads` plus Pydantic/JSON Schema validation for structured outputs; length and language checks; code execution for generated code (does it run, do the tests pass); and tool-call assertions for agents (did it call `search_flights` with the right arguments). They cost nothing per run, execute in milliseconds, never disagree with themselves, and slot directly into pytest and CI.",
+        "Between exact match and LLM judges sits a middle band of reference-based similarity metrics from NLP: BLEU and ROUGE (n-gram overlap, common for translation/summarization), Levenshtein distance, and embedding-based semantic similarity (cosine similarity between output and reference embeddings, e.g. BERTScore). These are deterministic and cheap but correlate weakly with human judgment for open-ended generation — two excellent answers can share few n-grams. Use them as coarse signals, not gates.",
+        "The design pattern that makes deterministic evals powerful is decomposition: break 'is this response good?' into many small mechanically-checkable properties. A support-bot answer might need to: mention the product name, include a ticket link matching a URL pattern, stay under 150 words, contain no competitor names, and parse as valid markdown. Each property is one cheap assert; together they cover a surprising fraction of quality. Run the deterministic layer first and only spend LLM-judge money on outputs that pass it. The limitation is real, though: code cannot grade truthfulness, reasoning quality, or tone — that is what model-based and human evals are for."
+      ],
+      "keyPoints": [
+        "Use code-based checks for anything mechanically verifiable: exact match, regex, JSON schema, length, forbidden content, tool-call arguments.",
+        "Free, instant, and perfectly reproducible — they belong in pytest/CI and run on every change.",
+        "Decompose 'good response' into many small checkable properties instead of one fuzzy judgment.",
+        "N-gram metrics (BLEU/ROUGE) and embedding similarity are deterministic but correlate weakly with human judgment — treat as coarse signals.",
+        "Run deterministic checks first; only spend LLM-judge cost on outputs that pass.",
+        "Hard limit: code cannot grade truthfulness, reasoning, or tone — pair with model-based and human evals."
+      ],
+      "code": [
+        {
+          "title": "Deterministic checks as plain pytest asserts",
+          "language": "python",
+          "code": "import json\nimport re\nfrom pydantic import BaseModel\n\nclass TicketReply(BaseModel):\n    answer: str\n    ticket_url: str\n\ndef test_support_reply_format():\n    raw = generate_reply(\"My order #4521 never arrived\")\n\n    # 1. Valid structured output\n    reply = TicketReply(**json.loads(raw))\n\n    # 2. Required content present\n    assert \"4521\" in reply.answer\n\n    # 3. Format constraints\n    assert re.match(r\"https://support\\.example\\.com/t/\\d+\", reply.ticket_url)\n    assert len(reply.answer.split()) <= 150\n\n    # 4. Forbidden content absent\n    assert \"as an AI\" not in reply.answer.lower()"
+        }
+      ],
+      "resources": [
+        {"title": "DeepEval Docs: Metrics Overview", "url": "https://deepeval.com/docs/metrics-introduction", "type": "official"},
+        {"title": "OpenAI Evals (templates for code-based evals)", "url": "https://github.com/openai/evals", "type": "opensource"},
+        {"title": "Langfuse Docs: Evaluation", "url": "https://langfuse.com/docs", "type": "official"}
+      ]
+    },
+    {
+      "id": "model-based-evals-llm-as-judge",
+      "title": "Model-Based Evals (LLM-as-Judge)",
+      "subsection": "Evaluation Types",
+      "minutes": 6,
+      "intro": "LLM-as-judge uses a strong model with a grading rubric to score outputs on fuzzy qualities — scalable like code, flexible like a human, but with biases you must actively control.",
+      "summary": [
+        "Many qualities that matter — helpfulness, faithfulness to source documents, tone, reasoning correctness — cannot be checked by code, and humans cannot grade thousands of outputs per day. LLM-as-judge fills the gap: prompt a capable model with the input, the output (optionally a reference answer or retrieved context), and an explicit rubric, and have it return a score with a justification. Three common forms: direct scoring (grade one output on a 1-5 scale or pass/fail against criteria), pairwise comparison (which of two outputs is better — more reliable than absolute scores for A/B-ing prompts or models), and reference-guided grading (compare against a gold answer). Research such as the MT-Bench/Chatbot Arena work showed strong judges can agree with human preferences at rates comparable to human-human agreement, which is what made the technique mainstream.",
+        "Judges inherit LLM failure modes, and you must design around the known biases. Position bias: in pairwise comparisons judges favor the first (or sometimes second) answer — mitigate by judging both orderings and keeping only consistent verdicts. Verbosity bias: longer answers score higher regardless of quality — instruct the judge explicitly that length is not quality, or control for length. Self-preference/self-enhancement bias: models rate their own family's outputs higher — prefer a judge from a different provider than the model being judged. Judges are also poor at fine-grained numeric scales (a 7 vs an 8 is noise) — prefer binary pass/fail or small scales (1-3) with concretely described levels, and always require a reasoning justification before the verdict, which improves reliability and gives you something to audit.",
+        "Treat the judge as a model you must validate: calibrate it against a small set of human-labeled examples and measure agreement before trusting it at scale; version the judge prompt and pin the judge model so scores stay comparable over time; and remember each judged example costs a model call, so sample production traffic rather than judging everything. Frameworks productize this pattern — DeepEval's `GEval` builds rubric-based judges from plain-language criteria, RAGAS implements judge-based RAG metrics, and LangSmith/Langfuse ship managed judge evaluators — but the calibration responsibility stays with you."
+      ],
+      "keyPoints": [
+        "LLM-as-judge scores fuzzy qualities (helpfulness, faithfulness, tone) at a scale humans cannot match and code cannot reach.",
+        "Three modes: direct scoring with a rubric, pairwise comparison (best for A/B tests), and reference-guided grading.",
+        "Position bias: swap answer order in pairwise judging and keep only consistent verdicts.",
+        "Verbosity bias: judges reward longer answers — explicitly instruct that length is not quality.",
+        "Self-preference bias: use a judge from a different model family than the system being evaluated.",
+        "Prefer binary or small scales with described levels over 1-10 scores, and require a written justification.",
+        "Calibrate the judge against human labels, pin its model and prompt version, and sample traffic to control cost."
+      ],
+      "code": [
+        {
+          "title": "Minimal LLM-as-judge with rubric and justification",
+          "language": "python",
+          "code": "JUDGE_PROMPT = \"\"\"You are grading a customer-support answer.\n\nQuestion: {question}\nRetrieved context: {context}\nAnswer to grade: {answer}\n\nCriteria (pass only if ALL hold):\n1. Every factual claim is supported by the context.\n2. The question is directly addressed.\n3. No invented policies, prices, or links.\nNote: answer length is NOT a quality signal.\n\nFirst write 1-2 sentences of reasoning, then output exactly\nPASS or FAIL on the final line.\"\"\"\n\ndef judge(question, context, answer):\n    resp = judge_client.chat.completions.create(\n        model=\"claude-sonnet-4-6\",  # different family than system under test\n        messages=[{\"role\": \"user\", \"content\": JUDGE_PROMPT.format(\n            question=question, context=context, answer=answer)}],\n        temperature=0,\n    )\n    text = resp.choices[0].message.content\n    return text.strip().splitlines()[-1] == \"PASS\", text"
+        }
+      ],
+      "resources": [
+        {"title": "Judging LLM-as-a-Judge with MT-Bench (paper)", "url": "https://arxiv.org/abs/2306.05685", "type": "article"},
+        {"title": "DeepEval Docs: G-Eval Metric", "url": "https://deepeval.com/docs/metrics-llm-evals", "type": "official"},
+        {"title": "Langfuse Docs: LLM-as-a-Judge", "url": "https://langfuse.com/docs", "type": "official"}
+      ]
+    },
+    {
+      "id": "human-evals",
+      "title": "Human Evals",
+      "subsection": "Evaluation Types",
+      "minutes": 4,
+      "intro": "Human evaluation — domain experts or users grading outputs — is the ground truth that anchors every other eval method, used sparingly where judgment matters most.",
+      "summary": [
+        "Humans remain the most reliable graders for nuance: domain correctness (is this medical or legal answer actually right?), tone and brand fit, subtle hallucinations a judge model misses, and overall 'would I ship this?' quality. The cost is throughput — human review is slow and expensive — so the craft is spending human attention where it buys the most: building the initial labeled dataset that defines what good looks like, calibrating LLM judges (measure judge-vs-human agreement before trusting the judge at scale), auditing samples of production traffic, and reviewing the failures other eval layers flag. A widely-followed practice (popularized by Hamel Husain's eval writing) is for a domain expert to regularly read raw traces; nothing reveals failure modes faster.",
+        "Process quality determines data quality. Give annotators a written rubric with concrete examples of each grade; prefer simple judgments (pass/fail, or A-vs-B preference) over fine-grained scales; have at least two people label an overlapping subset and measure inter-annotator agreement (e.g. Cohen's kappa) — if humans cannot agree, your criteria are underspecified and no automated eval built on them will be meaningful. Randomize and blind: reviewers should not know which model or prompt version produced an output, or position and brand bias creep in just as with LLM judges.",
+        "In production, human signal arrives as user feedback: explicit thumbs up/down and ratings, and implicit signals like regenerations, edits, and abandonment. It is free and abundant but biased (annoyed users click more than satisfied ones) and noisy, so treat it as a flag for traces deserving expert review rather than as a clean metric. Tooling supports the loop: LangSmith annotation queues and Langfuse human-annotation features let reviewers grade traces in the same UI where evals and traces live, feeding labeled examples straight back into datasets."
+      ],
+      "keyPoints": [
+        "Humans are the gold standard for nuance and the source of truth used to calibrate LLM judges.",
+        "Spend scarce human attention on: building the seed labeled dataset, calibrating judges, and auditing flagged or sampled production traces.",
+        "Write a rubric with examples, prefer pass/fail or pairwise preference, and blind reviewers to which variant produced each output.",
+        "Measure inter-annotator agreement — if humans disagree, your criteria are underspecified.",
+        "User feedback (thumbs, edits, regenerations) is abundant but biased — use it to flag traces for review, not as a clean metric.",
+        "Regularly reading raw production traces is the fastest way to discover real failure modes."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "LangSmith Docs: Annotation Queues", "url": "https://docs.smith.langchain.com/", "type": "official"},
+        {"title": "Langfuse Docs: Human Annotation", "url": "https://langfuse.com/docs", "type": "official"},
+        {"title": "Your AI Product Needs Evals (Hamel Husain)", "url": "https://hamel.dev/blog/posts/evals/", "type": "article"}
+      ]
+    },
+    {
+      "id": "evaluation-metrics",
+      "title": "Evaluation Metrics",
+      "subsection": "Evaluation Types",
+      "minutes": 6,
+      "intro": "Evaluation metrics quantify specific qualities of LLM output — correctness, relevancy, faithfulness, safety — with a dedicated family of metrics for RAG pipelines.",
+      "summary": [
+        "General-purpose metrics cover most applications. Answer correctness/accuracy: does the output match a reference answer (exact match for closed-form tasks, semantic or judge-graded for open-ended ones). Answer relevancy: does the response actually address the question asked, regardless of truth. Faithfulness/groundedness: are the claims in the response supported by the provided source material — the inverse measure of hallucination rate, and the single most important metric for RAG and summarization. Completeness: does the answer cover all parts of the question. Plus safety-oriented metrics: toxicity, bias, PII leakage, and prompt-injection susceptibility. Task-specific apps add their own: tool-call accuracy for agents, pass@k for code generation, schema-compliance rate for structured output.",
+        "RAG pipelines need component-level metrics because a bad answer can come from retrieval, generation, or both. On the retrieval side: context precision (what fraction of retrieved chunks are actually relevant — low precision means noise is diluting the prompt) and context recall (did retrieval surface all the information needed to answer — low recall means the answer cannot be right no matter how good the model is). On the generation side: faithfulness (does the answer stick to the retrieved context) and answer relevancy (does it address the question). This decomposition, popularized by the RAGAS framework, is diagnostic gold: low recall says fix chunking/embeddings/query rewriting; low faithfulness with good retrieval says fix the generation prompt or model.",
+        "Choosing metrics is a design act. Pick the two or three that map to your product's real failure modes rather than running everything — a support bot cares about faithfulness and resolution rate; a code assistant cares about pass rate and diff size. Know how each metric is computed (judge-based metrics inherit judge noise and cost; n-gram metrics are cheap but crude) and validate that the metric moves when quality actually changes by spot-checking against human judgment. Finally, separate per-example scores from aggregates: track the distribution and the worst cases, not just the mean — a 0.9 average faithfulness with a fat tail of fabricated answers is a lawsuit, not a success."
+      ],
+      "keyPoints": [
+        "Core general metrics: answer correctness, answer relevancy, faithfulness/groundedness (inverse of hallucination rate), and completeness.",
+        "RAG metrics split by component: context precision and context recall for retrieval; faithfulness and answer relevancy for generation.",
+        "Component-level RAG metrics are diagnostic: low recall points at retrieval, low faithfulness points at generation.",
+        "Safety metrics (toxicity, bias, PII leakage, injection susceptibility) matter for anything user-facing.",
+        "Pick 2-3 metrics matching your product's actual failure modes instead of running every metric available.",
+        "Watch distributions and worst cases, not just averages — tail failures are what hurt users."
+      ],
+      "code": [],
+      "resources": [
+        {"title": "RAGAS Docs: Available Metrics", "url": "https://docs.ragas.io/en/stable/concepts/metrics/", "type": "official"},
+        {"title": "DeepEval Docs: Metrics", "url": "https://deepeval.com/docs/metrics-introduction", "type": "official"},
+        {"title": "Patterns for Building LLM-based Systems (Eugene Yan)", "url": "https://eugeneyan.com/writing/llm-patterns/", "type": "article"}
+      ]
+    },
+    {
+      "id": "regression-testing",
+      "title": "Regression Testing",
+      "subsection": "Evaluation Types",
+      "minutes": 5,
+      "intro": "Regression testing for LLM apps runs a golden dataset through your pipeline in CI on every change, so prompt tweaks and model upgrades cannot silently break what already worked.",
+      "summary": [
+        "The defining hazard of prompt engineering is non-local effects: you edit one line of a prompt to fix one complaint, and three unrelated behaviors quietly break. Model upgrades are worse — a new model version can change formatting, refusal behavior, and reasoning style across your whole app at once. The remedy is the same one software engineering already knows: a regression suite. Maintain a golden dataset — curated input examples with expected outputs or pass criteria — and run your full pipeline against it automatically on every prompt change, dependency bump, and model swap, comparing scores against the previous baseline.",
+        "Build the golden dataset from three sources: real production traces (especially every bug you have fixed — each past failure becomes a permanent test case, exactly like adding a unit test with a bug fix), hand-written edge cases (ambiguous queries, adversarial inputs, out-of-scope requests that should be refused), and a representative sample of common happy paths. Keep it small enough to run on every PR (tens to a few hundred examples) with a larger nightly suite if needed. Score with the layered approach from previous topics: deterministic asserts where possible, LLM-as-judge for fuzzy criteria, with thresholds that fail the build.",
+        "Mechanically, this runs in ordinary CI: DeepEval makes eval cases first-class pytest tests so `deepeval test run` works in GitHub Actions like any test job; LangSmith and Langfuse let CI trigger experiments against hosted datasets and compare runs to a baseline. Two LLM-specific gotchas: non-determinism means borderline judge-scored tests can flake — mitigate with temperature 0 where possible, binary criteria, score thresholds with margins, or best-of-n judging on borderline cases; and each CI run costs real API money — cache unchanged results, run the small suite per-PR and the big one nightly. Treat a score drop exactly like a failing test: block the merge, inspect the failing examples' traces, fix or consciously accept the trade-off."
+      ],
+      "keyPoints": [
+        "Prompt edits and model upgrades have non-local effects — a regression suite is the only way to change prompts with confidence.",
+        "Golden dataset = production traces (every fixed bug becomes a test) + hand-written edge cases + happy paths.",
+        "Keep a small per-PR suite (fast, cheap) and a larger nightly suite; fail the build on score drops below threshold.",
+        "Layer scoring: deterministic asserts first, LLM-as-judge for fuzzy criteria, both with explicit thresholds.",
+        "Fight flakiness with temperature 0, binary pass criteria, threshold margins, and re-judging borderline cases.",
+        "Always re-run the full suite before adopting a new model version — upgrades are the biggest regression events."
+      ],
+      "code": [
+        {
+          "title": "Eval regression job in GitHub Actions",
+          "language": "yaml",
+          "code": "name: llm-regression\non:\n  pull_request:\n    paths: [\"prompts/**\", \"src/pipeline/**\"]\n\njobs:\n  evals:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-python@v5\n        with: { python-version: \"3.12\" }\n      - run: pip install -r requirements.txt deepeval\n      - name: Run golden-dataset evals\n        env:\n          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}\n        run: deepeval test run tests/eval_golden_set.py\n        # Fails the PR if any metric drops below its threshold"
+        }
+      ],
+      "resources": [
+        {"title": "DeepEval Docs: Unit Testing in CI/CD", "url": "https://deepeval.com/docs/getting-started", "type": "official"},
+        {"title": "LangSmith Docs: Datasets & Experiments", "url": "https://docs.smith.langchain.com/", "type": "official"},
+        {"title": "Langfuse Docs: Datasets", "url": "https://langfuse.com/docs", "type": "official"}
+      ]
+    },
+    {
+      "id": "deepeval",
+      "title": "DeepEval",
+      "subsection": "Evaluation Tools",
+      "minutes": 5,
+      "intro": "DeepEval is an open-source Python framework that treats LLM evals like unit tests — pytest-style test cases, 20+ research-backed metrics, and first-class CI integration.",
+      "summary": [
+        "DeepEval's core idea is that LLM evaluation should feel like the testing you already do. You define an `LLMTestCase` (input, the model's `actual_output`, optionally `expected_output`, `retrieval_context`, or tool calls), attach metrics with thresholds, and run `assert_test` inside ordinary pytest functions. `deepeval test run` executes the suite with parallelism and reporting, and exits nonzero on failures — which is exactly what a CI gate needs. This 'evals as unit tests' framing made it the natural choice for teams who want regression testing without adopting a whole platform.",
+        "The metric library covers the common ground out of the box: RAG metrics (answer relevancy, faithfulness, contextual precision/recall/relevancy), safety metrics (bias, toxicity), task metrics (summarization, hallucination), agent metrics (task completion, tool correctness), and conversational metrics for multi-turn chats. The flagship is `GEval`, an implementation of the G-Eval technique: you write evaluation criteria in plain language ('penalize answers that contradict the retrieved context'), and DeepEval builds a chain-of-thought LLM-as-judge that scores against those criteria. Most metrics are judge-based, so you configure which model judges (OpenAI by default, any model via custom adapters) — all the LLM-as-judge caveats about bias and calibration apply.",
+        "Around the framework sit practical extras: dataset management (`EvaluationDataset`) for golden sets, synthetic test-data generation from your documents via the Synthesizer, component-level evals for tracing through multi-step pipelines, red-teaming for safety probing (via the companion DeepTeam project), and benchmarks (MMLU, HumanEval, etc.) if you need to compare base models. DeepEval is maintained by Confident AI, which offers an optional cloud platform for hosting datasets and viewing eval reports — but the framework itself runs fully local and open source. Reach for DeepEval when you want code-first, CI-native evals; reach for RAGAS when you specifically want the reference RAG-metric implementations."
+      ],
+      "keyPoints": [
+        "Evals as pytest: `LLMTestCase` + metrics + `assert_test`, run with `deepeval test run` — drops straight into CI.",
+        "20+ built-in metrics: RAG (faithfulness, contextual precision/recall), safety (bias, toxicity), agents (tool correctness), conversations.",
+        "`GEval` builds an LLM-as-judge from plain-language criteria using chain-of-thought grading.",
+        "Most metrics are judge-based — choose the judge model deliberately and calibrate against human labels.",
+        "Includes dataset management and a Synthesizer for generating test cases from your own documents.",
+        "Open source (Confident AI offers an optional cloud for reports and dataset hosting)."
+      ],
+      "code": [
+        {
+          "title": "DeepEval pytest test with GEval",
+          "language": "python",
+          "code": "# pip install deepeval  •  run with: deepeval test run test_rag.py\nfrom deepeval import assert_test\nfrom deepeval.metrics import GEval, FaithfulnessMetric\nfrom deepeval.test_case import LLMTestCase, LLMTestCaseParams\n\ncorrectness = GEval(\n    name=\"Correctness\",\n    criteria=\"Check that actual output answers the question and \"\n             \"does not contradict the expected output.\",\n    evaluation_params=[LLMTestCaseParams.INPUT,\n                       LLMTestCaseParams.ACTUAL_OUTPUT,\n                       LLMTestCaseParams.EXPECTED_OUTPUT],\n    threshold=0.7,\n)\n\ndef test_refund_policy_answer():\n    test_case = LLMTestCase(\n        input=\"What is your refund window?\",\n        actual_output=rag_pipeline(\"What is your refund window?\"),\n        expected_output=\"Refunds are available within 30 days.\",\n        retrieval_context=[\"Our policy allows refunds within 30 days.\"],\n    )\n    assert_test(test_case, [correctness, FaithfulnessMetric(threshold=0.8)])"
+        }
+      ],
+      "resources": [
+        {"title": "DeepEval Documentation", "url": "https://deepeval.com/docs/getting-started", "type": "official"},
+        {"title": "DeepEval on GitHub", "url": "https://github.com/confident-ai/deepeval", "type": "opensource"}
+      ]
+    },
+    {
+      "id": "ragas",
+      "title": "RAGAS",
+      "subsection": "Evaluation Tools",
+      "minutes": 5,
+      "intro": "RAGAS is the open-source framework that defined the standard metric suite for evaluating RAG pipelines — faithfulness, answer relevancy, context precision, and context recall.",
+      "summary": [
+        "RAGAS (Retrieval-Augmented Generation Assessment) began as a research paper proposing largely reference-free, LLM-judged metrics for RAG, and its metric definitions became the de facto vocabulary of RAG evaluation. The core four decompose quality across the pipeline: faithfulness (are the answer's claims inferable from the retrieved context — RAGAS computes this by extracting individual claims from the answer and verifying each against the context), answer relevancy (does the answer address the question — measured by generating questions from the answer and comparing them to the original via embeddings), context precision (are the relevant retrieved chunks ranked above irrelevant ones), and context recall (does the retrieved context contain everything needed, judged against a reference answer). Scores land in 0-1, and the component split tells you whether to fix retrieval or generation.",
+        "Practically, you build an evaluation dataset where each row has `user_input`, `response`, `retrieved_contexts`, and (for reference-based metrics like context recall) a `reference` answer, then call `evaluate()` with your chosen metrics. RAGAS uses an LLM and an embedding model under the hood for the judge-based computations — you supply those (OpenAI by default, anything via LangChain wrappers), and the usual judge caveats about cost, noise, and calibration apply. Because building eval data is the hard part, RAGAS also ships a test-set generator that synthesizes question/reference pairs from your document corpus — a fast way to bootstrap, though synthetic sets should be spot-checked and supplemented with real user queries.",
+        "RAGAS has since expanded beyond the original four metrics (noise sensitivity, agent and tool-use metrics, general-purpose scoring), but its sweet spot remains diagnosing RAG pipelines: run it while iterating on chunk size, embedding model, top-k, reranking, and prompts, and watch which component metric moves. It is a library, not a platform — pair it with Langfuse, LangSmith, or Phoenix (all of which integrate RAGAS) to track scores over time and attach them to traces."
+      ],
+      "keyPoints": [
+        "Defined the standard RAG metric quartet: faithfulness, answer relevancy, context precision, context recall.",
+        "Component decomposition is the diagnostic value: retrieval metrics vs generation metrics tell you what to fix.",
+        "Mostly reference-free via LLM-as-judge (context recall needs a reference answer) — judge cost and noise apply.",
+        "Dataset rows need `user_input`, `response`, `retrieved_contexts`, and optionally `reference`; then call `evaluate()`.",
+        "Built-in test-set generator synthesizes eval questions from your documents — bootstrap with it, then add real queries.",
+        "It is a library, not a platform — integrate with Langfuse/LangSmith/Phoenix to track scores on traces over time."
+      ],
+      "code": [
+        {
+          "title": "RAGAS evaluate() on a RAG dataset",
+          "language": "python",
+          "code": "# pip install ragas\nfrom ragas import evaluate, EvaluationDataset\nfrom ragas.metrics import (\n    Faithfulness, AnswerRelevancy, ContextPrecision, ContextRecall,\n)\n\nrows = [{\n    \"user_input\": \"What is your refund window?\",\n    \"retrieved_contexts\": [\"Our policy allows refunds within 30 days.\"],\n    \"response\": \"You can get a refund within 30 days of purchase.\",\n    \"reference\": \"Refunds are available within 30 days.\",\n}]\n\ndataset = EvaluationDataset.from_list(rows)\nresult = evaluate(\n    dataset=dataset,\n    metrics=[Faithfulness(), AnswerRelevancy(),\n             ContextPrecision(), ContextRecall()],\n)\nprint(result)  # e.g. {'faithfulness': 1.0, 'answer_relevancy': 0.98, ...}"
+        }
+      ],
+      "resources": [
+        {"title": "RAGAS Documentation", "url": "https://docs.ragas.io/", "type": "official"},
+        {"title": "RAGAS on GitHub", "url": "https://github.com/explodinggradients/ragas", "type": "opensource"},
+        {"title": "RAGAS Paper (arXiv)", "url": "https://arxiv.org/abs/2309.15217", "type": "article"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1148 @@
+[
+  {
+    "index": 1,
+    "id": "introduction",
+    "title": "Introduction",
+    "description": "What an AI Engineer is, what they do, and how the role differs from ML engineering.",
+    "topics": [
+      {
+        "id": "what-is-an-ai-engineer",
+        "nodeId": "GN6SnI7RXIeW8JeD-qORW",
+        "title": "What is an AI Engineer?",
+        "subsection": null
+      },
+      {
+        "id": "roles-and-responsibilities",
+        "nodeId": "K9EiuFgPBFgeRxY4wxAmb",
+        "title": "Roles and Responsibilities",
+        "subsection": null
+      },
+      {
+        "id": "impact-on-product-development",
+        "nodeId": "qJVgKe9uBvXc-YPfvX_Y7",
+        "title": "Impact on Product Development",
+        "subsection": null
+      },
+      {
+        "id": "ai-engineer-vs-ml-engineer",
+        "nodeId": "jSZ1LhPdhlkW-9QJhIvFs",
+        "title": "AI Engineer vs ML Engineer",
+        "subsection": null
+      }
+    ]
+  },
+  {
+    "index": 2,
+    "id": "how-llms-work",
+    "title": "How LLMs Work & Core Terminology",
+    "description": "The foundational vocabulary and mechanics behind large language models.",
+    "topics": [
+      {
+        "id": "large-language-model-llm",
+        "nodeId": "wf2BSyUekr1S1q6l8kyq6",
+        "title": "Large Language Model (LLM)",
+        "subsection": "Common Terminology"
+      },
+      {
+        "id": "ai-vs-agi",
+        "nodeId": "5QdihE1lLpMc3DFrGy46M",
+        "title": "AI vs AGI",
+        "subsection": "Common Terminology"
+      },
+      {
+        "id": "training",
+        "nodeId": "xostGgoaYkqMO28iN2gx8",
+        "title": "Training",
+        "subsection": "Common Terminology"
+      },
+      {
+        "id": "inference",
+        "nodeId": "4NtUD9V64gkp8SFudj_ai",
+        "title": "Inference",
+        "subsection": "Common Terminology"
+      },
+      {
+        "id": "embeddings",
+        "nodeId": "XyEp6jnBSpCxMGwALnYfT",
+        "title": "Embeddings",
+        "subsection": "Common Terminology"
+      },
+      {
+        "id": "vector-databases",
+        "nodeId": "dzPKW_fn82lY1OOVrggk3",
+        "title": "Vector Databases",
+        "subsection": "Common Terminology"
+      },
+      {
+        "id": "rag",
+        "nodeId": "IX1BJWGwGmB4L063g0Frf",
+        "title": "RAG",
+        "subsection": "Common Terminology"
+      },
+      {
+        "id": "ai-agents",
+        "nodeId": "Uffu609uQbIzDl88Ddccv",
+        "title": "AI Agents",
+        "subsection": "Common Terminology"
+      },
+      {
+        "id": "fine-tuning",
+        "nodeId": "zTvsCNS3ucsZmvy1tHyeI",
+        "title": "Fine-tuning",
+        "subsection": "Common Terminology"
+      },
+      {
+        "id": "prompt-engineering",
+        "nodeId": "VjXmSCdzi2ACv-W85Sy9D",
+        "title": "Prompt Engineering",
+        "subsection": "Common Terminology"
+      },
+      {
+        "id": "context-engineering",
+        "nodeId": "kCiHNaZ9CgnS9uksIQ_SY",
+        "title": "Context Engineering",
+        "subsection": "Common Terminology"
+      },
+      {
+        "id": "tokens",
+        "nodeId": "2WbVpRLqwi3Oeqk1JPui4",
+        "title": "Tokens",
+        "subsection": "Core LLM Elements"
+      },
+      {
+        "id": "context",
+        "nodeId": "vvpYkmycH0_W030E-L12f",
+        "title": "Context",
+        "subsection": "Core LLM Elements"
+      },
+      {
+        "id": "sampling-parameters",
+        "nodeId": "LbB2PeytxRSuU07Bk0KlJ",
+        "title": "Sampling Parameters",
+        "subsection": "Core LLM Elements"
+      },
+      {
+        "id": "temperature",
+        "nodeId": "_bPTciEA1GT1JwfXim19z",
+        "title": "Temperature",
+        "subsection": "Core LLM Elements"
+      },
+      {
+        "id": "top-k",
+        "nodeId": "qzvp6YxWDiGakA2mtspfh",
+        "title": "Top-K",
+        "subsection": "Core LLM Elements"
+      },
+      {
+        "id": "top-p",
+        "nodeId": "FjV3oD7G2Ocq5HhUC17iH",
+        "title": "Top-P",
+        "subsection": "Core LLM Elements"
+      },
+      {
+        "id": "repetition-penalties",
+        "nodeId": "0_pa739kMPWHfuSQV-VO7",
+        "title": "Repetition Penalties",
+        "subsection": "Core LLM Elements"
+      }
+    ]
+  },
+  {
+    "index": 3,
+    "id": "prompt-engineering",
+    "title": "Prompt Engineering",
+    "description": "Techniques for writing effective prompts: shot strategies, reasoning patterns, structure, and API features.",
+    "topics": [
+      {
+        "id": "system-prompting",
+        "nodeId": "S46Vaq8hYq6Ee1Id_-fSQ",
+        "title": "System Prompting",
+        "subsection": "Prompt Fundamentals"
+      },
+      {
+        "id": "role-behavior",
+        "nodeId": "N3TzWYxU0jgv1l99Ts58n",
+        "title": "Role & Behavior",
+        "subsection": "Prompt Fundamentals"
+      },
+      {
+        "id": "context",
+        "nodeId": "9oUpeEnaMWctQLTobbmY7",
+        "title": "Context",
+        "subsection": "Prompt Fundamentals"
+      },
+      {
+        "id": "constraints",
+        "nodeId": "PT3uDiUjiKhO8laOkCmgP",
+        "title": "Constraints",
+        "subsection": "Prompt Fundamentals"
+      },
+      {
+        "id": "input-format",
+        "nodeId": "LCHse57rXf3sl8ml1ow0T",
+        "title": "Input Format",
+        "subsection": "Prompt Fundamentals"
+      },
+      {
+        "id": "zero-shot-prompting",
+        "nodeId": "15XOFdVp0IC-kLYPXUJWh",
+        "title": "Zero-Shot Prompting",
+        "subsection": "Prompting Techniques"
+      },
+      {
+        "id": "few-shot-prompting",
+        "nodeId": "DZPM9zjCbYYWBPLmQImxQ",
+        "title": "Few-Shot Prompting",
+        "subsection": "Prompting Techniques"
+      },
+      {
+        "id": "chain-of-thought-cot",
+        "nodeId": "nyBgEHvUhwF-NANMwkRJW",
+        "title": "Chain of Thought (CoT)",
+        "subsection": "Prompting Techniques"
+      },
+      {
+        "id": "react",
+        "nodeId": "Waox7xR_yUeSnOtQFzU4c",
+        "title": "ReAct",
+        "subsection": "Prompting Techniques"
+      },
+      {
+        "id": "function-calling",
+        "nodeId": "wFfjHkGLrcCyLyXV4BiFM",
+        "title": "Function Calling",
+        "subsection": "API Features"
+      },
+      {
+        "id": "structured-output",
+        "nodeId": "zqhmLzHsmDlrTFVHzhq6-",
+        "title": "Structured Output",
+        "subsection": "API Features"
+      },
+      {
+        "id": "prompt-caching",
+        "nodeId": "bqqY0gsZkBpcHMZw1hcZ5",
+        "title": "Prompt Caching",
+        "subsection": "API Features"
+      },
+      {
+        "id": "streaming-responses",
+        "nodeId": "MUDBYjR7uCUZQ-kQxi2K_",
+        "title": "Streaming Responses",
+        "subsection": "API Features"
+      }
+    ]
+  },
+  {
+    "index": 4,
+    "id": "context-engineering",
+    "title": "Context Engineering",
+    "description": "Designing everything the model sees: memory, retrieval, compaction, and isolation strategies.",
+    "topics": [
+      {
+        "id": "prompt-vs-context-engineering",
+        "nodeId": "ozrR8IvjNFbHd44kZrExX",
+        "title": "Prompt vs Context Engineering",
+        "subsection": null
+      },
+      {
+        "id": "external-memory",
+        "nodeId": "KWjD4xEPhOOYS51dvRLd2",
+        "title": "External Memory",
+        "subsection": null
+      },
+      {
+        "id": "rag-and-dynamic-filters",
+        "nodeId": "LnQ2AatMWpExUHcZhDIPd",
+        "title": "RAG and Dynamic Filters",
+        "subsection": null
+      },
+      {
+        "id": "context-compaction",
+        "nodeId": "9XCxilAQ7FRet7lHQr1gE",
+        "title": "Context Compaction",
+        "subsection": null
+      },
+      {
+        "id": "context-isolation",
+        "nodeId": "9JwWIK0Z2MK8-6EQQJsCO",
+        "title": "Context Isolation",
+        "subsection": null
+      }
+    ]
+  },
+  {
+    "index": 5,
+    "id": "ai-models",
+    "title": "AI Models",
+    "description": "The model landscape: closed vs open source, major providers, and how to choose.",
+    "topics": [
+      {
+        "id": "types-of-models",
+        "nodeId": "2X0NDcq2ojBJ0RxY_U6bl",
+        "title": "Types of Models",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "pre-trained-models",
+        "nodeId": "d7fzv_ft12EopsQdmEsel",
+        "title": "Pre-trained Models",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "closed-vs-open-source-models",
+        "nodeId": "RBwGsq9DngUsl8PrrCbqx",
+        "title": "Closed vs Open Source Models",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "self-hosted-models",
+        "nodeId": "_qqITQ8O0Q0RWUeZsUXnY",
+        "title": "Self-Hosted Models",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "choosing-the-right-model",
+        "nodeId": "zeWoTtAFEpVXDQzWNsha4",
+        "title": "Choosing the Right Model",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "anthropic-claude",
+        "nodeId": "hy6EyKiNxk1x84J63dhez",
+        "title": "Anthropic Claude",
+        "subsection": "Closed Models"
+      },
+      {
+        "id": "google-gemini",
+        "nodeId": "oe8E6ZIQWuYvHVbYJHUc1",
+        "title": "Google Gemini",
+        "subsection": "Closed Models"
+      },
+      {
+        "id": "openai-gpt-o-series",
+        "nodeId": "3PQVZbcr4neNMRr6CuNzS",
+        "title": "OpenAI (GPT, o-series)",
+        "subsection": "Closed Models"
+      },
+      {
+        "id": "mistral",
+        "nodeId": "n-Ud2dXkqIzK37jlKItN4",
+        "title": "Mistral",
+        "subsection": "Closed Models"
+      },
+      {
+        "id": "cohere",
+        "nodeId": "a7qsvoauFe5u953I699ps",
+        "title": "Cohere",
+        "subsection": "Closed Models"
+      },
+      {
+        "id": "meta-llama",
+        "nodeId": "OkYO-aSPiuVYuLXHswBCn",
+        "title": "Meta Llama",
+        "subsection": "Open Source Models"
+      },
+      {
+        "id": "deepseek",
+        "nodeId": "UGYYh2W1XnnbgYNY8L8Hb",
+        "title": "DeepSeek",
+        "subsection": "Open Source Models"
+      },
+      {
+        "id": "gemma",
+        "nodeId": "MNtaY1_kOJHeoWuM-abb4",
+        "title": "Gemma",
+        "subsection": "Open Source Models"
+      },
+      {
+        "id": "qwen",
+        "nodeId": "c0RPhpD00VIUgF4HJgN2T",
+        "title": "Qwen",
+        "subsection": "Open Source Models"
+      }
+    ]
+  },
+  {
+    "index": 6,
+    "id": "platforms-apis",
+    "title": "Platforms, Ecosystem & APIs",
+    "description": "Hugging Face, local model runners, routers, and the major provider SDKs.",
+    "topics": [
+      {
+        "id": "hugging-face",
+        "nodeId": "v99C5Bml2a6148LCJ9gy9",
+        "title": "Hugging Face",
+        "subsection": "Platforms"
+      },
+      {
+        "id": "hugging-face-tasks",
+        "nodeId": "YKIPOiSj_FNtg0h8uaSMq",
+        "title": "Hugging Face Tasks",
+        "subsection": "Platforms"
+      },
+      {
+        "id": "hugging-face-hub",
+        "nodeId": "YLOdOvLXa5Fa7_mmuvKEi",
+        "title": "Hugging Face Hub",
+        "subsection": "Platforms"
+      },
+      {
+        "id": "transformers-js",
+        "nodeId": "bGLrbpxKgENe2xS1eQtdh",
+        "title": "Transformers.js",
+        "subsection": "Platforms"
+      },
+      {
+        "id": "ollama",
+        "nodeId": "rTT2UnvqFO3GH6ThPLEjO",
+        "title": "Ollama",
+        "subsection": "Local Runners"
+      },
+      {
+        "id": "lm-studio",
+        "nodeId": "a_3SabylVqzzOyw3tZN5f",
+        "title": "LM Studio",
+        "subsection": "Local Runners"
+      },
+      {
+        "id": "openrouter",
+        "nodeId": "1GlpMjmdAWor0X_BnISGg",
+        "title": "OpenRouter",
+        "subsection": "Local Runners"
+      },
+      {
+        "id": "openai-responses-api",
+        "nodeId": "ro3vY_sp6xMQ-hfzO-rc1",
+        "title": "OpenAI Responses API",
+        "subsection": "APIs & SDKs"
+      },
+      {
+        "id": "claude-messages-api",
+        "nodeId": "nxwMVla0-PNG8nlocKK5v",
+        "title": "Claude Messages API",
+        "subsection": "APIs & SDKs"
+      },
+      {
+        "id": "google-gemini-api",
+        "nodeId": "TsG_I7FL-cOCSw8gvZH3r",
+        "title": "Google Gemini API",
+        "subsection": "APIs & SDKs"
+      },
+      {
+        "id": "hugging-face-inference-sdk",
+        "nodeId": "3kRTzlLNBnXdTsAEXVu_M",
+        "title": "Hugging Face Inference SDK",
+        "subsection": "APIs & SDKs"
+      },
+      {
+        "id": "openai-compatible-apis",
+        "nodeId": "vnXtUupJUlyU_uCbZBbnk",
+        "title": "OpenAI-compatible APIs",
+        "subsection": "APIs & SDKs"
+      }
+    ]
+  },
+  {
+    "index": 7,
+    "id": "embeddings",
+    "title": "Embeddings",
+    "description": "What embeddings are, what they're used for, and the main embedding model families.",
+    "topics": [
+      {
+        "id": "what-are-embeddings",
+        "nodeId": "--ig0Ume_BnXb9K2U7HJN",
+        "title": "What are Embeddings",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "semantic-search",
+        "nodeId": "eMfcyBxnMY_l_5-8eg6sD",
+        "title": "Semantic Search",
+        "subsection": "Use Cases"
+      },
+      {
+        "id": "data-classification",
+        "nodeId": "06Xta-OqSci05nV2QMFdF",
+        "title": "Data Classification",
+        "subsection": "Use Cases"
+      },
+      {
+        "id": "recommendation-systems",
+        "nodeId": "HQe9GKy3p0kTUPxojIfSF",
+        "title": "Recommendation Systems",
+        "subsection": "Use Cases"
+      },
+      {
+        "id": "anomaly-detection",
+        "nodeId": "AglWJ7gb9rTT2rMkstxtk",
+        "title": "Anomaly Detection",
+        "subsection": "Use Cases"
+      },
+      {
+        "id": "embedding-models",
+        "nodeId": "fr0UOXlVVctkk1K84Z8Of",
+        "title": "Embedding Models",
+        "subsection": "Models"
+      },
+      {
+        "id": "openai-embeddings-api",
+        "nodeId": "l6priWeJhbdUD5tJ7uHyG",
+        "title": "OpenAI Embeddings API",
+        "subsection": "Models"
+      },
+      {
+        "id": "gemini-embedding",
+        "nodeId": "4GArjDYipit4SLqKZAWDf",
+        "title": "Gemini Embedding",
+        "subsection": "Models"
+      },
+      {
+        "id": "cohere-embed",
+        "nodeId": "y0qD5Kb4Pf-ymIwW-tvhX",
+        "title": "Cohere Embed",
+        "subsection": "Models"
+      },
+      {
+        "id": "sentence-transformers",
+        "nodeId": "ZV_V6sqOnRodgaw4mzokC",
+        "title": "Sentence Transformers",
+        "subsection": "Models"
+      },
+      {
+        "id": "models-on-hugging-face",
+        "nodeId": "dLEg4IA3F5jgc44Bst9if",
+        "title": "Models on Hugging Face",
+        "subsection": "Models"
+      },
+      {
+        "id": "jina-embeddings",
+        "nodeId": "apVYIV4EyejPft25oAvdI",
+        "title": "Jina Embeddings",
+        "subsection": "Models"
+      }
+    ]
+  },
+  {
+    "index": 8,
+    "id": "vector-databases",
+    "title": "Vector Databases",
+    "description": "Storing and searching embeddings: the major vector DBs and how similarity search works.",
+    "topics": [
+      {
+        "id": "vector-databases-overview",
+        "nodeId": "tt9u3oFlsjEMfPyojuqpc",
+        "title": "Vector Databases Overview",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "purpose-and-functionality",
+        "nodeId": "WcjX6p-V-Rdd77EL8Ega9",
+        "title": "Purpose and Functionality",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "chroma",
+        "nodeId": "dSd2C9lNl-ymmCRT9_ZC3",
+        "title": "Chroma",
+        "subsection": "Popular Vector DBs"
+      },
+      {
+        "id": "pinecone",
+        "nodeId": "_Cf7S1DCvX7p1_3-tP3C3",
+        "title": "Pinecone",
+        "subsection": "Popular Vector DBs"
+      },
+      {
+        "id": "weaviate",
+        "nodeId": "VgUnrZGKVjAAO4n_llq5-",
+        "title": "Weaviate",
+        "subsection": "Popular Vector DBs"
+      },
+      {
+        "id": "faiss",
+        "nodeId": "JurLbOO1Z8r6C3yUqRNwf",
+        "title": "FAISS",
+        "subsection": "Popular Vector DBs"
+      },
+      {
+        "id": "lancedb",
+        "nodeId": "rjaCNT3Li45kwu2gXckke",
+        "title": "LanceDB",
+        "subsection": "Popular Vector DBs"
+      },
+      {
+        "id": "qdrant",
+        "nodeId": "DwOAL5mOBgBiw-EQpAzQl",
+        "title": "Qdrant",
+        "subsection": "Popular Vector DBs"
+      },
+      {
+        "id": "supabase-pgvector",
+        "nodeId": "9kT7EEQsbeD2WDdN9ADx7",
+        "title": "Supabase (pgvector)",
+        "subsection": "Popular Vector DBs"
+      },
+      {
+        "id": "mongodb-atlas-vector-search",
+        "nodeId": "j6bkm0VUgLkHdMDDJFiMC",
+        "title": "MongoDB Atlas Vector Search",
+        "subsection": "Popular Vector DBs"
+      },
+      {
+        "id": "indexing-embeddings",
+        "nodeId": "5TQnO9B4_LTHwqjI7iHB1",
+        "title": "Indexing Embeddings",
+        "subsection": "Implementing Vector Search"
+      },
+      {
+        "id": "performing-similarity-search",
+        "nodeId": "ZcbRPtgaptqKqWBgRrEBU",
+        "title": "Performing Similarity Search",
+        "subsection": "Implementing Vector Search"
+      }
+    ]
+  },
+  {
+    "index": 9,
+    "id": "rag",
+    "title": "RAG & Implementation",
+    "description": "Retrieval-Augmented Generation end to end: the pipeline stages and the frameworks that implement them.",
+    "topics": [
+      {
+        "id": "what-is-rag",
+        "nodeId": "lVhWhZGR558O-ljHobxIi",
+        "title": "What is RAG?",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "rag-use-cases",
+        "nodeId": "GCn4LGNEtPI0NWYAZCRE-",
+        "title": "RAG Use Cases",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "rag-vs-fine-tuning",
+        "nodeId": "qlBEXrbV88e_wAGRwO9hW",
+        "title": "RAG vs Fine-tuning",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "chunking",
+        "nodeId": "mX987wiZF7p3V_gExrPeX",
+        "title": "Chunking",
+        "subsection": "The RAG Pipeline"
+      },
+      {
+        "id": "embedding",
+        "nodeId": "grTcbzT7jKk_sIUwOTZTD",
+        "title": "Embedding",
+        "subsection": "The RAG Pipeline"
+      },
+      {
+        "id": "vector-database",
+        "nodeId": "zZA1FBhf1y4kCoUZ-hM4H",
+        "title": "Vector Database",
+        "subsection": "The RAG Pipeline"
+      },
+      {
+        "id": "retrieval-process",
+        "nodeId": "OCGCzHQM2LQyUWmiqe6E0",
+        "title": "Retrieval Process",
+        "subsection": "The RAG Pipeline"
+      },
+      {
+        "id": "generation",
+        "nodeId": "2jJnS9vRYhaS69d6OxrMh",
+        "title": "Generation",
+        "subsection": "The RAG Pipeline"
+      },
+      {
+        "id": "using-sdks-directly",
+        "nodeId": "WZVW8FQu6LyspSKm1C_sl",
+        "title": "Using SDKs Directly",
+        "subsection": "Ways of Implementing RAG"
+      },
+      {
+        "id": "langchain",
+        "nodeId": "jM-Jbo0wUilhVY830hetJ",
+        "title": "LangChain",
+        "subsection": "Ways of Implementing RAG"
+      },
+      {
+        "id": "llamaindex",
+        "nodeId": "JT4mBXOjvvrUnynA7yrqt",
+        "title": "LlamaIndex",
+        "subsection": "Ways of Implementing RAG"
+      },
+      {
+        "id": "haystack",
+        "nodeId": "ebXXEhNRROjbbof-Gym4p",
+        "title": "Haystack",
+        "subsection": "Ways of Implementing RAG"
+      },
+      {
+        "id": "ragflow",
+        "nodeId": "d0ontCII8KI8wfP-8Y45R",
+        "title": "RAGFlow",
+        "subsection": "Ways of Implementing RAG"
+      }
+    ]
+  },
+  {
+    "index": 10,
+    "id": "ai-agents",
+    "title": "AI Agents",
+    "description": "Agents that reason, use tools, and act \u2014 from manual loops to agent SDKs.",
+    "topics": [
+      {
+        "id": "what-are-ai-agents",
+        "nodeId": "4_ap0rD9Gl6Ep_4jMfPpG",
+        "title": "What are AI Agents?",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "agent-use-cases",
+        "nodeId": "778HsQzTuJ_3c9OSn5DmH",
+        "title": "Agent Use Cases",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "react-prompting",
+        "nodeId": "voDKcKvXtyLzeZdx2g3Qn",
+        "title": "ReAct Prompting",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "tools-function-calling",
+        "nodeId": "eOqCBgBTKM8CmY3nsWjre",
+        "title": "Tools & Function Calling",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "multi-agent-systems",
+        "nodeId": "kG1bkF2oY21CJOm9zhdpn",
+        "title": "Multi-Agent Systems",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "manual-implementation",
+        "nodeId": "6xaRB34_g0HGt-y1dGYXR",
+        "title": "Manual Implementation",
+        "subsection": "Building AI Agents"
+      },
+      {
+        "id": "openai-agentkit-agents-sdk",
+        "nodeId": "Sm0Ne5Nx72hcZCdAcC0C2",
+        "title": "OpenAI AgentKit & Agents SDK",
+        "subsection": "Building AI Agents"
+      },
+      {
+        "id": "claude-agent-sdk",
+        "nodeId": "xXLyuUNrKEc32XLQxMjgT",
+        "title": "Claude Agent SDK",
+        "subsection": "Building AI Agents"
+      },
+      {
+        "id": "vertex-ai-agent-builder",
+        "nodeId": "AxzTGDCC2Ftp4G66U4Uqr",
+        "title": "Vertex AI Agent Builder",
+        "subsection": "Building AI Agents"
+      },
+      {
+        "id": "google-adk",
+        "nodeId": "mbp2NoL-VZ5hZIIblNBXt",
+        "title": "Google ADK",
+        "subsection": "Building AI Agents"
+      }
+    ]
+  },
+  {
+    "index": 11,
+    "id": "mcp",
+    "title": "Model Context Protocol (MCP)",
+    "description": "The open standard for connecting LLMs to tools and data: architecture, servers, clients, and transports.",
+    "topics": [
+      {
+        "id": "what-is-mcp",
+        "nodeId": "AeHkNU-uJ_gBdo5-xdpEu",
+        "title": "What is MCP?",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "mcp-host",
+        "nodeId": "MabZ9jOrSj539C5qZrVBd",
+        "title": "MCP Host",
+        "subsection": "Core Components"
+      },
+      {
+        "id": "mcp-client",
+        "nodeId": "po0fIZYaFhRbNlza7sB37",
+        "title": "MCP Client",
+        "subsection": "Core Components"
+      },
+      {
+        "id": "mcp-server",
+        "nodeId": "8Xkd88EjX3GE_9DWQhr7G",
+        "title": "MCP Server",
+        "subsection": "Core Components"
+      },
+      {
+        "id": "data-layer",
+        "nodeId": "Z0920V57_ziDhXbQJMN9O",
+        "title": "Data Layer",
+        "subsection": "Core Components"
+      },
+      {
+        "id": "transport-layer",
+        "nodeId": "o4gHDZ5p9lyeHuCAPvAKz",
+        "title": "Transport Layer",
+        "subsection": "Core Components"
+      },
+      {
+        "id": "building-an-mcp-server",
+        "nodeId": "oLGfKjcqBzJ3vd6Cg-T1B",
+        "title": "Building an MCP Server",
+        "subsection": "Hands-On"
+      },
+      {
+        "id": "building-an-mcp-client",
+        "nodeId": "0Rk0rCbmRFJT2GKwUibQS",
+        "title": "Building an MCP Client",
+        "subsection": "Hands-On"
+      },
+      {
+        "id": "connect-to-a-local-server",
+        "nodeId": "H-G93SsEgsA_NGL_v4hPv",
+        "title": "Connect to a Local Server",
+        "subsection": "Hands-On"
+      },
+      {
+        "id": "connect-to-a-remote-server",
+        "nodeId": "2t4uINxmzfx8FUF-_i_2B",
+        "title": "Connect to a Remote Server",
+        "subsection": "Hands-On"
+      }
+    ]
+  },
+  {
+    "index": 12,
+    "id": "ai-safety",
+    "title": "AI Safety and Ethics",
+    "description": "Security threats, bias, moderation, and the best practices for shipping AI responsibly.",
+    "topics": [
+      {
+        "id": "ai-safety-and-ethics-overview",
+        "nodeId": "8ndKHDJgL_gYwaXC7XMer",
+        "title": "AI Safety and Ethics Overview",
+        "subsection": "Understanding AI Safety Issues"
+      },
+      {
+        "id": "prompt-injection-attacks",
+        "nodeId": "cUyLT6ctYQ1pgmodCKREq",
+        "title": "Prompt Injection Attacks",
+        "subsection": "Understanding AI Safety Issues"
+      },
+      {
+        "id": "security-and-privacy-concerns",
+        "nodeId": "sWBT-j2cRuFqRFYtV_5TK",
+        "title": "Security and Privacy Concerns",
+        "subsection": "Understanding AI Safety Issues"
+      },
+      {
+        "id": "bias-and-fairness",
+        "nodeId": "lhIU0ulpvDAn1Xc3ooYz_",
+        "title": "Bias and Fairness",
+        "subsection": "Understanding AI Safety Issues"
+      },
+      {
+        "id": "content-moderation-apis",
+        "nodeId": "ljZLa3yjQpegiZWwtnn_q",
+        "title": "Content Moderation APIs",
+        "subsection": "Safety Best Practices"
+      },
+      {
+        "id": "adding-end-user-ids-in-prompts",
+        "nodeId": "4Q5x2VCXedAWISBXUIyin",
+        "title": "Adding End-User IDs in Prompts",
+        "subsection": "Safety Best Practices"
+      },
+      {
+        "id": "adversarial-testing",
+        "nodeId": "Pt-AJmSJrOxKvolb5_HEv",
+        "title": "Adversarial Testing",
+        "subsection": "Safety Best Practices"
+      },
+      {
+        "id": "robust-prompt-engineering",
+        "nodeId": "qmx6OHqx4_0JXVIv8dASp",
+        "title": "Robust Prompt Engineering",
+        "subsection": "Safety Best Practices"
+      },
+      {
+        "id": "know-your-customers-use-cases",
+        "nodeId": "t1SObMWkDZ1cKqNNlcd9L",
+        "title": "Know Your Customers / Use Cases",
+        "subsection": "Safety Best Practices"
+      },
+      {
+        "id": "constraining-outputs-and-inputs",
+        "nodeId": "ONLDyczNacGVZGojYyJrU",
+        "title": "Constraining Outputs and Inputs",
+        "subsection": "Safety Best Practices"
+      }
+    ]
+  },
+  {
+    "index": 13,
+    "id": "observability-evals",
+    "title": "LLM Observability & Evaluations",
+    "description": "Tracing, monitoring, and systematically evaluating LLM applications in production.",
+    "topics": [
+      {
+        "id": "llm-observability",
+        "nodeId": "1bBgMVISENC-XBwuZFlUk",
+        "title": "LLM Observability",
+        "subsection": "Observability"
+      },
+      {
+        "id": "tracing-logging",
+        "nodeId": "cdapQf0Owxdx6olAHTrbq",
+        "title": "Tracing & Logging",
+        "subsection": "Observability"
+      },
+      {
+        "id": "cost-latency-monitoring",
+        "nodeId": "CG3XTMPug98s-EP0_rn1Y",
+        "title": "Cost & Latency Monitoring",
+        "subsection": "Observability"
+      },
+      {
+        "id": "production-monitoring",
+        "nodeId": "3gwVG4XaO83z3Yzdd84Z-",
+        "title": "Production Monitoring",
+        "subsection": "Observability"
+      },
+      {
+        "id": "langsmith",
+        "nodeId": "bN_ReFUQgkJmWOAFMLXMg",
+        "title": "LangSmith",
+        "subsection": "Observability Tools"
+      },
+      {
+        "id": "langfuse",
+        "nodeId": "Xw6-crHimGrVC1u1xujc6",
+        "title": "Langfuse",
+        "subsection": "Observability Tools"
+      },
+      {
+        "id": "helicone",
+        "nodeId": "82LE-qxw1H_FYfVUdgkN9",
+        "title": "Helicone",
+        "subsection": "Observability Tools"
+      },
+      {
+        "id": "arize-ai",
+        "nodeId": "jx57heeBnacrlCyQPhlEi",
+        "title": "Arize AI",
+        "subsection": "Observability Tools"
+      },
+      {
+        "id": "llm-evaluations",
+        "nodeId": "FJ3ZwbTdiFyebrFi96tnz",
+        "title": "LLM Evaluations",
+        "subsection": "Evaluations"
+      },
+      {
+        "id": "deterministic-evals",
+        "nodeId": "kSDTJK74Tq0KHBfIawJuT",
+        "title": "Deterministic Evals",
+        "subsection": "Evaluation Types"
+      },
+      {
+        "id": "model-based-evals-llm-as-judge",
+        "nodeId": "LJ6_U5lOdc0uRngutj7Ro",
+        "title": "Model-Based Evals (LLM-as-Judge)",
+        "subsection": "Evaluation Types"
+      },
+      {
+        "id": "human-evals",
+        "nodeId": "QIx5nT75l2Cn2q75-TxfD",
+        "title": "Human Evals",
+        "subsection": "Evaluation Types"
+      },
+      {
+        "id": "evaluation-metrics",
+        "nodeId": "Z8MBleL51wJuV9BkS1djI",
+        "title": "Evaluation Metrics",
+        "subsection": "Evaluation Types"
+      },
+      {
+        "id": "regression-testing",
+        "nodeId": "Bkzi3QyzKyHxcHE7sodRZ",
+        "title": "Regression Testing",
+        "subsection": "Evaluation Types"
+      },
+      {
+        "id": "deepeval",
+        "nodeId": "hyN5v8dg1lHJLpdZZdtJE",
+        "title": "DeepEval",
+        "subsection": "Evaluation Tools"
+      },
+      {
+        "id": "ragas",
+        "nodeId": "CZ_-PSDzzSrSon5XdzLen",
+        "title": "RAGAS",
+        "subsection": "Evaluation Tools"
+      }
+    ]
+  },
+  {
+    "index": 14,
+    "id": "multimodal",
+    "title": "Multimodal AI",
+    "description": "Models that work across text, images, audio, and video \u2014 tasks and APIs.",
+    "topics": [
+      {
+        "id": "what-is-multimodal-ai",
+        "nodeId": "W7cKPt_UxcUgwp8J6hS4p",
+        "title": "What is Multimodal AI?",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "multimodal-use-cases",
+        "nodeId": "sGR9qcro68KrzM8qWxcH8",
+        "title": "Multimodal Use Cases",
+        "subsection": "Fundamentals"
+      },
+      {
+        "id": "image-understanding",
+        "nodeId": "fzVq4hGoa2gdbIzoyY1Zp",
+        "title": "Image Understanding",
+        "subsection": "Multimodal Tasks"
+      },
+      {
+        "id": "image-generation",
+        "nodeId": "49BWxYVFpIgZCCqsikH7l",
+        "title": "Image Generation",
+        "subsection": "Multimodal Tasks"
+      },
+      {
+        "id": "video-understanding",
+        "nodeId": "TxaZCtTCTUfwCxAJ2pmND",
+        "title": "Video Understanding",
+        "subsection": "Multimodal Tasks"
+      },
+      {
+        "id": "audio-processing",
+        "nodeId": "mxQYB820447DC6kogyZIL",
+        "title": "Audio Processing",
+        "subsection": "Multimodal Tasks"
+      },
+      {
+        "id": "text-to-speech",
+        "nodeId": "GCERpLz5BcRtWPpv-asUz",
+        "title": "Text-to-Speech",
+        "subsection": "Multimodal Tasks"
+      },
+      {
+        "id": "speech-to-text",
+        "nodeId": "jQX10XKd_QM5wdQweEkVJ",
+        "title": "Speech-to-Text",
+        "subsection": "Multimodal Tasks"
+      },
+      {
+        "id": "openai-vision-api",
+        "nodeId": "CRrqa-dBw1LlOwVbrZhjK",
+        "title": "OpenAI Vision API",
+        "subsection": "Implementing Multimodal AI"
+      },
+      {
+        "id": "dall-e-api",
+        "nodeId": "LKFwwjtcawJ4Z12X102Cb",
+        "title": "DALL-E API",
+        "subsection": "Implementing Multimodal AI"
+      },
+      {
+        "id": "nanobanana-gemini-image-api",
+        "nodeId": "6y73FLjshnqxV8BTGUeiu",
+        "title": "NanoBanana (Gemini Image) API",
+        "subsection": "Implementing Multimodal AI"
+      },
+      {
+        "id": "whisper-api",
+        "nodeId": "OTBd6cPUayKaAM-fLWdSt",
+        "title": "Whisper API",
+        "subsection": "Implementing Multimodal AI"
+      },
+      {
+        "id": "hugging-face-multimodal-models",
+        "nodeId": "EIDbwbdolR_qsNKVDla6V",
+        "title": "Hugging Face Multimodal Models",
+        "subsection": "Implementing Multimodal AI"
+      },
+      {
+        "id": "langchain-for-multimodal-apps",
+        "nodeId": "j9zD3pHysB1CBhLfLjhpD",
+        "title": "LangChain for Multimodal Apps",
+        "subsection": "Implementing Multimodal AI"
+      },
+      {
+        "id": "llamaindex-for-multimodal-apps",
+        "nodeId": "akQTCKuPRRelj2GORqvsh",
+        "title": "LlamaIndex for Multimodal Apps",
+        "subsection": "Implementing Multimodal AI"
+      }
+    ]
+  },
+  {
+    "index": 15,
+    "id": "dev-tools",
+    "title": "AI-Assisted Coding Tools",
+    "description": "The agentic coding tools that are changing how software gets built.",
+    "topics": [
+      {
+        "id": "development-tools-overview",
+        "nodeId": "NYge7PNtfI-y6QWefXJ4d",
+        "title": "Development Tools Overview",
+        "subsection": null
+      },
+      {
+        "id": "claude-code",
+        "nodeId": "wr5ddjutC-fX_ixysTHaT",
+        "title": "Claude Code",
+        "subsection": null
+      },
+      {
+        "id": "gemini-cli",
+        "nodeId": "hzeEo8COf2l07iu5EdlFo",
+        "title": "Gemini CLI",
+        "subsection": null
+      },
+      {
+        "id": "codex",
+        "nodeId": "XY2l96sry3WyLzzo3KUeU",
+        "title": "Codex",
+        "subsection": null
+      },
+      {
+        "id": "cursor",
+        "nodeId": "MWhoqhNnBaoeCdN_8i15k",
+        "title": "Cursor",
+        "subsection": null
+      },
+      {
+        "id": "windsurf",
+        "nodeId": "Xsl8mx6J182TxPPtNP471",
+        "title": "Windsurf",
+        "subsection": null
+      },
+      {
+        "id": "replit",
+        "nodeId": "Ubk4GN0Z4XlDJ3EbRXdxg",
+        "title": "Replit",
+        "subsection": null
+      }
+    ]
+  }
+]
