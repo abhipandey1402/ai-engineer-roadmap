@@ -37,9 +37,3 @@ export const courseTopicCount = (c: Course) =>
 
 export const courseMinutes = (c: Course) =>
   c.sections.reduce((n, s) => n + s.topics.reduce((m, t) => m + t.minutes, 0), 0)
-
-// --- Temporary back-compat exports (removed in Task 5 once components take a course) ---
-const aiEngineer = getCourse('ai-engineer')
-export const sections: Section[] = aiEngineer?.sections ?? []
-export const totalTopics = aiEngineer ? courseTopicCount(aiEngineer) : 0
-export const totalMinutes = aiEngineer ? courseMinutes(aiEngineer) : 0
