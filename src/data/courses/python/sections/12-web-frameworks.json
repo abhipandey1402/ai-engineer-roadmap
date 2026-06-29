@@ -1,0 +1,668 @@
+{
+  "id": "web-frameworks",
+  "title": "Web Frameworks",
+  "description": "The major Python web frameworks and data validation.",
+  "topics": [
+    {
+      "id": "learn-a-framework",
+      "title": "Learn a Framework",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "A web framework gives you a ready-made structure for handling HTTP requests, routing, and responses so you can focus on application logic instead of plumbing.",
+      "summary": [
+        "A web framework is a library (or set of libraries) that automates the common, repetitive parts of building a web application: parsing incoming HTTP requests, mapping URLs to your functions (routing), rendering responses, handling sessions and forms, and talking to a database. Instead of wiring sockets and parsing raw HTTP by hand, you write handlers and the framework calls them at the right time. This gives you a reliable, maintainable structure and lets you concentrate on what your app actually does.",
+        "Python frameworks split along two axes. The first is full-stack versus micro: a full-stack framework like Django ships with an ORM, templating, an admin, auth, and forms out of the box (\"batteries included\"), while a microframework like Flask gives you routing and little else, leaving you to pick your own database layer and extensions. The second axis is synchronous (WSGI) versus asynchronous (ASGI): traditional frameworks handle one request per worker thread, while async frameworks like FastAPI, Sanic, Tornado, and aiohttp use `async`/`await` to handle thousands of concurrent connections on a single thread, which matters for I/O-bound workloads like proxies, websockets, and high-fan-out API gateways.",
+        "There is no single \"best\" framework; the right choice depends on the job. Reach for Django when you want a complete, opinionated platform with an admin and ORM; Flask when you want a small, flexible core you assemble yourself; FastAPI when you are building a typed JSON API with automatic docs; and an async framework like Sanic or aiohttp when raw concurrency is the priority. The rest of this section tours each one so you can recognize the trade-offs and read their code."
+      ],
+      "keyPoints": [
+        "A framework handles routing, request/response, sessions, and often templating and ORM so you write only application logic.",
+        "Full-stack (Django) ships batteries included; micro (Flask) gives a minimal core you extend yourself.",
+        "WSGI frameworks are synchronous (one request per worker); ASGI frameworks (FastAPI, Sanic, Tornado, aiohttp) use async/await for high concurrency.",
+        "Async shines for I/O-bound, high-concurrency work (websockets, proxies, fan-out APIs); sync is simpler for typical CRUD apps.",
+        "Pick by job: Django for full platforms, Flask for flexibility, FastAPI for typed APIs, Sanic/aiohttp for raw async throughput.",
+        "All of these implement the same fundamentals — learning one transfers most concepts to the others."
+      ],
+      "code": [
+        {
+          "title": "The same 'hello world' across four frameworks",
+          "language": "python",
+          "code": "# Flask (WSGI, sync) ---------------------------------\nfrom flask import Flask\napp = Flask(__name__)\n\n@app.get(\"/\")\ndef hello():\n    return \"Hello from Flask\"\n\n# FastAPI (ASGI, async, typed) -----------------------\nfrom fastapi import FastAPI\napi = FastAPI()\n\n@api.get(\"/\")\nasync def hello():\n    return {\"msg\": \"Hello from FastAPI\"}\n\n# Notice the shared shape: an app object, a route decorator,\n# and a handler function that returns the response."
+        }
+      ],
+      "resources": [
+        { "title": "Full Stack Python — Web Frameworks overview", "url": "https://www.fullstackpython.com/web-frameworks.html", "type": "article" },
+        { "title": "WSGI vs ASGI explained (Python docs / ASGI spec)", "url": "https://asgi.readthedocs.io/en/latest/introduction.html", "type": "official" },
+        { "title": "Explore top posts about Python", "url": "https://app.daily.dev/tags/python?ref=roadmapsh", "type": "article" }
+      ]
+    },
+    {
+      "id": "pydantic",
+      "title": "Pydantic",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Pydantic validates and parses data at runtime using ordinary Python type hints, turning untrusted input into typed, validated objects with clear error messages.",
+      "summary": [
+        "Pydantic is the de facto data-validation library for modern Python. You declare a model by subclassing `BaseModel` and annotating fields with regular type hints, and Pydantic enforces those types at runtime: it coerces compatible values (the string `\"30\"` becomes the int `30`), rejects invalid ones with precise, structured error messages, and serializes models back to dicts or JSON. Because it is built on type hints, your editor and type checker understand your models too. It is the validation engine inside FastAPI (request bodies, query params, responses) and powers configuration via `pydantic-settings`.",
+        "Pydantic v2 (the current major version, with its core rewritten in Rust for a large speed boost) is what you should learn today. Key APIs: `BaseModel` for models, `Field(...)` for constraints and metadata (`min_length`, `gt`, `default`, aliases), and the `@field_validator` / `@model_validator` decorators for custom logic — `@field_validator` for one field, `@model_validator(mode=\"after\")` for cross-field checks (which must `return self`). Construct models with `Model(**data)` or `Model.model_validate(data)`, and serialize with `model_dump()` / `model_dump_json()`. Note the v2 renames: `.dict()` became `model_dump()`, `.json()` became `model_dump_json()`, and `class Config` became `model_config = ConfigDict(...)`.",
+        "The payoff is that validation lives in one declarative place at the boundary of your system, so the rest of your code can trust that a `User` object always has a valid email and a positive age. This \"parse, don't validate\" discipline eliminates a whole class of defensive `if`-checks scattered through a codebase. For settings management, `BaseSettings` (from `pydantic-settings`) reads and type-validates values from environment variables and `.env` files, giving you typed config with the same guarantees."
+      ],
+      "keyPoints": [
+        "Subclass `BaseModel` and annotate fields with type hints; Pydantic coerces, validates, and serializes automatically.",
+        "Use `Field(...)` for constraints/metadata (`gt`, `min_length`, `default`, `alias`) and crisp validation errors.",
+        "`@field_validator` validates a single field; `@model_validator(mode=\"after\")` does cross-field checks and must `return self`.",
+        "Pydantic v2 is Rust-backed and much faster; learn v2 APIs (`model_dump`, `model_validate`, `model_config = ConfigDict(...)`).",
+        "Invalid data raises a `ValidationError` carrying a structured list of every problem, ideal for API error responses.",
+        "`pydantic-settings`' `BaseSettings` reads typed config from env vars and `.env` files; it is the engine behind FastAPI validation."
+      ],
+      "code": [
+        {
+          "title": "A validated model with constraints and a custom validator",
+          "language": "python",
+          "code": "# pip install pydantic\nfrom pydantic import BaseModel, Field, EmailStr, field_validator, ValidationError\n\nclass User(BaseModel):\n    name: str = Field(min_length=1)\n    age: int = Field(gt=0, lt=150)\n    email: EmailStr           # requires: pip install pydantic[email]\n    tags: list[str] = []      # mutable default is safe in Pydantic\n\n    @field_validator(\"name\")\n    @classmethod\n    def title_case(cls, v: str) -> str:\n        return v.strip().title()\n\n# coercion: the string \"30\" is parsed into an int\nu = User(name=\"  ada lovelace\", age=\"30\", email=\"ada@example.com\")\nprint(u.name, u.age)            # Ada Lovelace 30\nprint(u.model_dump())          # plain dict, ready to store or return\n\ntry:\n    User(name=\"\", age=-5, email=\"not-an-email\")\nexcept ValidationError as e:\n    print(e.error_count(), \"errors\")  # one structured error per problem"
+        },
+        {
+          "title": "Typed app config from environment variables",
+          "language": "python",
+          "code": "# pip install pydantic-settings\nfrom pydantic_settings import BaseSettings, SettingsConfigDict\n\nclass Settings(BaseSettings):\n    model_config = SettingsConfigDict(env_file=\".env\", env_prefix=\"APP_\")\n\n    debug: bool = False\n    database_url: str\n    max_connections: int = 10\n\n# reads APP_DEBUG, APP_DATABASE_URL, APP_MAX_CONNECTIONS from env/.env,\n# validating types as it goes\nsettings = Settings()\nprint(settings.debug, settings.max_connections)"
+        }
+      ],
+      "resources": [
+        { "title": "Pydantic Documentation (official)", "url": "https://docs.pydantic.dev/latest/", "type": "official" },
+        { "title": "Pydantic V2 Migration Guide", "url": "https://docs.pydantic.dev/latest/migration/", "type": "official" },
+        { "title": "FastAPI — Request Body with Pydantic", "url": "https://fastapi.tiangolo.com/tutorial/body/", "type": "official" },
+        { "title": "Pydantic: Simplifying Data Validation in Python — Real Python", "url": "https://realpython.com/python-pydantic/", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Model a real-world 'order' payload with Pydantic, validate good and bad input, add a cross-field rule, and serialize the result to JSON.",
+        "steps": [
+          {
+            "title": "Install Pydantic",
+            "explanation": "Pydantic v2 is a single dependency. We will work entirely in one file — no server, no API key. Confirm you are on v2.",
+            "python": "pip install \"pydantic>=2\"\npython3 -c \"import pydantic; print(pydantic.VERSION)\"  # 2.x",
+            "javascript": null
+          },
+          {
+            "title": "Define nested models with constraints",
+            "explanation": "Model an order containing line items. `Field` constraints (`gt`, `min_length`) reject bad values; nested `BaseModel`s validate recursively. Type hints alone drive most of the validation.",
+            "python": "# orders.py\nfrom pydantic import BaseModel, Field\n\nclass LineItem(BaseModel):\n    sku: str = Field(min_length=3)\n    quantity: int = Field(gt=0)\n    unit_price: float = Field(gt=0)\n\nclass Order(BaseModel):\n    order_id: int\n    customer_email: str\n    items: list[LineItem] = Field(min_length=1)  # at least one item\n\norder = Order.model_validate({\n    \"order_id\": 1001,\n    \"customer_email\": \"sam@example.com\",\n    \"items\": [{\"sku\": \"ABC\", \"quantity\": \"2\", \"unit_price\": 9.99}],\n})\nprint(order.items[0].quantity)  # 2 (coerced from \"2\")",
+            "javascript": null
+          },
+          {
+            "title": "Add a computed total with a model validator",
+            "explanation": "`@model_validator(mode=\"after\")` runs once all fields are validated and can derive new state. Here we compute and stash the order total. After-mode validators must return `self`.",
+            "python": "from pydantic import model_validator\n\nclass Order(BaseModel):\n    order_id: int\n    customer_email: str\n    items: list[LineItem] = Field(min_length=1)\n    total: float = 0.0\n\n    @model_validator(mode=\"after\")\n    def compute_total(self):\n        self.total = round(\n            sum(i.quantity * i.unit_price for i in self.items), 2)\n        return self\n\norder = Order.model_validate({\n    \"order_id\": 1001, \"customer_email\": \"sam@example.com\",\n    \"items\": [{\"sku\": \"ABC\", \"quantity\": 2, \"unit_price\": 9.99}],\n})\nprint(order.total)  # 19.98",
+            "javascript": null
+          },
+          {
+            "title": "Catch validation errors cleanly",
+            "explanation": "Invalid input raises a single `ValidationError` describing every problem at once. `.errors()` returns a list of dicts you can turn into an API error response — exactly what FastAPI does for you.",
+            "python": "from pydantic import ValidationError\n\nbad = {\"order_id\": \"oops\", \"customer_email\": \"x\", \"items\": []}\ntry:\n    Order.model_validate(bad)\nexcept ValidationError as e:\n    for err in e.errors():\n        print(err[\"loc\"], \"->\", err[\"msg\"])",
+            "javascript": null
+          },
+          {
+            "title": "Serialize to JSON",
+            "explanation": "`model_dump()` returns a dict and `model_dump_json()` returns a JSON string, both honoring field types. This is how a validated object leaves your system as an API response or a stored record.",
+            "python": "print(order.model_dump())            # python dict\nprint(order.model_dump_json(indent=2))  # JSON string",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `@field_validator(\"customer_email\")` that lowercases the email and rejects values without an `@`.",
+          "Switch `customer_email` to `EmailStr` (install `pydantic[email]`) and observe the stricter validation message.",
+          "Add an `OrderStatus` enum field (`pending`/`shipped`/`delivered`) and pass an invalid status to see the error.",
+          "Use `Field(alias=\"orderId\")` so the model accepts camelCase input but exposes snake_case attributes.",
+          "Build a `Settings` model with `pydantic-settings` that reads `APP_DEBUG` and `APP_DB_URL` from a `.env` file."
+        ]
+      }
+    },
+    {
+      "id": "django",
+      "title": "Django",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Django is the batteries-included, full-stack Python web framework: ORM, admin, auth, templating, and forms in one cohesive package.",
+      "summary": [
+        "Django is a high-level, full-stack web framework that follows a Model–View–Template (MVT) pattern, maintained by the non-profit Django Software Foundation. Its philosophy is \"batteries included\": out of the box you get a powerful ORM (define models as Python classes and Django generates and migrates the database schema), an auto-generated admin interface, a robust authentication system, form handling, a templating engine, security middleware, and an internationalization framework. This makes it the fastest way to build a complete, database-backed web application with a real back office.",
+        "A Django project is organized into one or more apps, each a reusable module with its own models, views, URLs, and templates. The request cycle is: a URL pattern (`urls.py`) maps an incoming path to a view function or class; the view queries models via the ORM and renders a template (or returns JSON); middleware wraps the whole cycle for cross-cutting concerns like auth and CSRF. The killer feature for many teams is the admin: register a model and you immediately get a fully functional CRUD UI for it. Django also has a vast ecosystem — Django REST Framework for APIs, Celery for background jobs, and thousands of reusable apps.",
+        "Django is traditionally synchronous (WSGI), but modern versions added first-class async support: you can write `async def` views, use async ORM query methods (`afilter`, `aget`, `acreate`), and run under an ASGI server like Uvicorn or Daphne for websockets and concurrent I/O. The current long-term-support release (Django 5.2 LTS, supported through 2028) continues expanding async coverage across auth and the ORM. Choose Django when you want a complete, opinionated platform with conventions for everything and don't want to assemble a stack from scratch."
+      ],
+      "keyPoints": [
+        "Django is full-stack and opinionated: ORM, auto-admin, auth, forms, templating, and security all included.",
+        "It uses the Model–View–Template (MVT) pattern; projects are split into reusable apps.",
+        "The ORM lets you define tables as Python classes and manage schema with migrations (`makemigrations`/`migrate`).",
+        "The auto-generated admin gives an instant CRUD back office for any registered model.",
+        "Modern Django supports async views and async ORM methods (`aget`, `afilter`) under ASGI servers; Django 5.2 is the current LTS.",
+        "Django REST Framework is the standard add-on for building JSON APIs on top of Django."
+      ],
+      "code": [
+        {
+          "title": "A model, a view, and a URL",
+          "language": "python",
+          "code": "# models.py — Django generates the SQL table from this class\nfrom django.db import models\n\nclass Article(models.Model):\n    title = models.CharField(max_length=200)\n    body = models.TextField()\n    published = models.DateTimeField(auto_now_add=True)\n\n    def __str__(self):\n        return self.title\n\n# views.py\nfrom django.shortcuts import render\nfrom .models import Article\n\ndef article_list(request):\n    articles = Article.objects.order_by(\"-published\")  # ORM query\n    return render(request, \"articles/list.html\", {\"articles\": articles})\n\n# urls.py\nfrom django.urls import path\nfrom . import views\n\nurlpatterns = [\n    path(\"articles/\", views.article_list, name=\"article-list\"),\n]"
+        },
+        {
+          "title": "An async view with the async ORM",
+          "language": "python",
+          "code": "# views.py — Django supports async def views and async query methods\nfrom django.http import JsonResponse\nfrom .models import Article\n\nasync def latest_article(request):\n    # aget / afilter are the async ORM counterparts\n    article = await Article.objects.order_by(\"-published\").afirst()\n    return JsonResponse({\"title\": article.title if article else None})"
+        }
+      ],
+      "resources": [
+        { "title": "Django Website (official)", "url": "https://www.djangoproject.com/", "type": "official" },
+        { "title": "Django — Getting Started", "url": "https://www.djangoproject.com/start/", "type": "official" },
+        { "title": "Django 5.2 Release Notes (LTS)", "url": "https://docs.djangoproject.com/en/5.2/releases/5.2/", "type": "official" },
+        { "title": "Python Django Tutorial for Beginners", "url": "https://www.youtube.com/watch?v=rHux0gMZ3Eg", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "Scaffold a Django project, define a model, run migrations, and explore your data through the auto-generated admin.",
+        "steps": [
+          {
+            "title": "Install Django and create a project",
+            "explanation": "Django ships as a single package with a `django-admin` command-line tool. `startproject` scaffolds the project; `startapp` creates a reusable app inside it. Use a virtual environment.",
+            "python": "python3 -m venv .venv && source .venv/bin/activate\npip install \"django>=5.2,<6\"\ndjango-admin startproject mysite\ncd mysite\npython manage.py startapp blog",
+            "javascript": null
+          },
+          {
+            "title": "Register the app and define a model",
+            "explanation": "Add `blog` to `INSTALLED_APPS` in `mysite/settings.py`, then declare a model. Each model class becomes a database table; each field becomes a column.",
+            "python": "# blog/models.py\nfrom django.db import models\n\nclass Post(models.Model):\n    title = models.CharField(max_length=200)\n    body = models.TextField()\n    created = models.DateTimeField(auto_now_add=True)\n\n    def __str__(self):\n        return self.title\n\n# mysite/settings.py -> INSTALLED_APPS = [..., \"blog\"]",
+            "javascript": null
+          },
+          {
+            "title": "Create and apply migrations",
+            "explanation": "`makemigrations` turns model changes into a migration file; `migrate` applies it (and Django's built-in tables) to the database — SQLite by default, so no DB server is needed.",
+            "python": "python manage.py makemigrations\npython manage.py migrate",
+            "javascript": null
+          },
+          {
+            "title": "Register the model in the admin",
+            "explanation": "Registering a model with the admin instantly gives you a full CRUD web UI for it. First create a superuser to log in with.",
+            "python": "# blog/admin.py\nfrom django.contrib import admin\nfrom .models import Post\n\nadmin.site.register(Post)\n\n# then in the terminal:\n#   python manage.py createsuperuser",
+            "javascript": null
+          },
+          {
+            "title": "Run the server and open the admin",
+            "explanation": "Start the development server and visit the admin at /admin/. Log in with your superuser and add a few Post rows — no HTML or SQL required.",
+            "python": "python manage.py runserver\n# open http://127.0.0.1:8000/admin/  and add some Posts",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add an `author = models.CharField(max_length=100)` field, then re-run makemigrations and migrate.",
+          "Open the Django shell with `python manage.py shell` and create a Post with `Post.objects.create(title=\"Hi\", body=\"...\")`.",
+          "Query your data: `Post.objects.filter(title__icontains=\"hi\")` and `Post.objects.count()`.",
+          "Customize the admin with a `class PostAdmin(admin.ModelAdmin)` that sets `list_display = (\"title\", \"created\")`.",
+          "Add a view and URL that renders all posts in a template, and visit it in the browser."
+        ]
+      }
+    },
+    {
+      "id": "flask",
+      "title": "Flask",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Flask is a minimal, flexible microframework: it gives you routing and request handling, and lets you choose every other piece yourself.",
+      "summary": [
+        "Flask is a microframework — \"micro\" not because it is limited, but because it keeps its core small and unopinionated. It provides URL routing, request/response objects, a development server, and the Jinja2 templating engine, but deliberately omits a database layer, form validation, and authentication. Instead you choose and integrate the libraries that fit your project (Flask-SQLAlchemy for the ORM, Flask-Login for auth, Marshmallow or Pydantic for validation). This flexibility makes Flask ideal for small services, prototypes, and apps where you want full control over your stack.",
+        "The mental model is tiny: create an app with `Flask(__name__)`, attach handlers with route decorators (`@app.get(\"/\")`), and return a string, a dict (auto-serialized to JSON), or a rendered template. Flask uses context-locals — `request` and `session` are importable globals that magically refer to the current request — which keeps handler signatures clean. As apps grow, you split routes into Blueprints (modular groups of routes registered onto the app) and adopt the application-factory pattern: a `create_app()` function that builds and configures the app, which keeps configuration flexible and makes testing easy.",
+        "Flask is a synchronous WSGI framework, though it supports `async def` view functions when you install `flask[async]` (each async view runs in its own event loop, so it does not give true asyncio concurrency the way an ASGI framework does). The current major version is Flask 3.x, requiring modern Python. For production you run Flask behind a WSGI server like Gunicorn or uWSGI, never the built-in development server. Reach for Flask when you want a lightweight, transparent core and prefer assembling your own components over accepting a framework's defaults."
+      ],
+      "keyPoints": [
+        "Flask is a microframework: routing, requests, Jinja2 templating, and a dev server — you add the database/auth/validation yourself.",
+        "Create the app with `Flask(__name__)` and attach handlers with route decorators (`@app.get`, `@app.post`).",
+        "Returning a `dict` auto-serializes to JSON; returning a string or `render_template(...)` returns HTML.",
+        "`request` and `session` are context-local globals scoped to the current request, keeping handlers clean.",
+        "Scale structure with Blueprints (modular route groups) and the `create_app()` application-factory pattern.",
+        "Flask is WSGI/synchronous (async views supported via `flask[async]`); deploy behind Gunicorn/uWSGI, never the dev server."
+      ],
+      "code": [
+        {
+          "title": "A minimal Flask app with routes and JSON",
+          "language": "python",
+          "code": "# pip install flask  — run with: flask --app app run --debug\nfrom flask import Flask, request, jsonify\n\napp = Flask(__name__)\n\n@app.get(\"/\")\ndef home():\n    return \"Hello from Flask\"\n\n@app.get(\"/users/<int:user_id>\")\ndef get_user(user_id: int):\n    # path converters parse and type the URL segment\n    return {\"id\": user_id, \"name\": \"Ada\"}  # dict -> JSON automatically\n\n@app.post(\"/echo\")\ndef echo():\n    data = request.get_json()           # parse JSON request body\n    return jsonify(received=data), 201   # body + status code"
+        },
+        {
+          "title": "Blueprints + the application-factory pattern",
+          "language": "python",
+          "code": "# blog/routes.py — a Blueprint groups related routes\nfrom flask import Blueprint\n\nbp = Blueprint(\"blog\", __name__, url_prefix=\"/blog\")\n\n@bp.get(\"/posts\")\ndef list_posts():\n    return {\"posts\": [\"first\", \"second\"]}\n\n# app.py — create_app() builds and configures the app\nfrom flask import Flask\n\ndef create_app():\n    app = Flask(__name__)\n    app.config[\"SECRET_KEY\"] = \"change-me\"\n    from blog.routes import bp\n    app.register_blueprint(bp)   # /blog/posts is now live\n    return app"
+        }
+      ],
+      "resources": [
+        { "title": "Flask Website (official)", "url": "https://flask.palletsprojects.com/", "type": "official" },
+        { "title": "Flask Tutorial (official, 3.1.x)", "url": "https://flask.palletsprojects.com/en/stable/tutorial/", "type": "official" },
+        { "title": "Application Factories — Flask Docs", "url": "https://flask.palletsprojects.com/en/stable/patterns/appfactories/", "type": "official" },
+        { "title": "The Flask Mega-Tutorial — Miguel Grinberg", "url": "https://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-i-hello-world-legacy", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Build a small Flask JSON API with multiple routes, a request body, dynamic URLs, and an in-memory data store.",
+        "steps": [
+          {
+            "title": "Install Flask and create the app file",
+            "explanation": "Flask is one dependency. We will keep an in-memory list of tasks so there is no database to set up. The `flask --app app run` command finds the `app` object in `app.py`.",
+            "python": "python3 -m venv .venv && source .venv/bin/activate\npip install flask\n# create app.py (next step), then run:\n#   flask --app app run --debug",
+            "javascript": null
+          },
+          {
+            "title": "Define the app and a list endpoint",
+            "explanation": "Create the Flask app and a GET route that returns all tasks. Returning a dict makes Flask serialize it to a JSON response automatically.",
+            "python": "# app.py\nfrom flask import Flask, request, abort\n\napp = Flask(__name__)\ntasks = [{\"id\": 1, \"title\": \"Learn Flask\", \"done\": False}]\n\n@app.get(\"/tasks\")\ndef list_tasks():\n    return {\"tasks\": tasks}",
+            "javascript": null
+          },
+          {
+            "title": "Add a dynamic route with a path converter",
+            "explanation": "`<int:task_id>` captures and converts the URL segment to an int. Use `abort(404)` to return a proper Not Found response when the task does not exist.",
+            "python": "@app.get(\"/tasks/<int:task_id>\")\ndef get_task(task_id: int):\n    for t in tasks:\n        if t[\"id\"] == task_id:\n            return t\n    abort(404, description=\"Task not found\")",
+            "javascript": null
+          },
+          {
+            "title": "Accept a JSON body on POST",
+            "explanation": "Read the parsed JSON body with `request.get_json()`, append a new task, and return it with a 201 Created status by returning a (body, status) tuple.",
+            "python": "@app.post(\"/tasks\")\ndef create_task():\n    data = request.get_json()\n    new = {\"id\": len(tasks) + 1, \"title\": data[\"title\"], \"done\": False}\n    tasks.append(new)\n    return new, 201",
+            "javascript": null
+          },
+          {
+            "title": "Run and test it",
+            "explanation": "Start the dev server and hit the endpoints with curl. The --debug flag enables auto-reload and the interactive debugger.",
+            "python": "# terminal 1:\n#   flask --app app run --debug\n# terminal 2:\n#   curl localhost:5000/tasks\n#   curl -X POST localhost:5000/tasks \\\n#        -H 'Content-Type: application/json' \\\n#        -d '{\"title\": \"Ship it\"}'\n#   curl localhost:5000/tasks/2",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `DELETE /tasks/<int:task_id>` route that removes a task and returns an empty 204 response.",
+          "Add a `PATCH /tasks/<int:task_id>` route that toggles the `done` flag.",
+          "Validate the POST body: return a 400 with a helpful message if `title` is missing.",
+          "Move the routes into a Blueprint (`tasks_bp`) and register it from a `create_app()` factory function.",
+          "Add a `GET /tasks?done=true` filter that reads the query string via `request.args.get(\"done\")`."
+        ]
+      }
+    },
+    {
+      "id": "fastapi",
+      "title": "FastAPI",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "FastAPI is a modern, async, type-hint-driven framework for building APIs with automatic validation, serialization, and interactive docs.",
+      "summary": [
+        "FastAPI is the go-to framework for building Python APIs today. Its defining idea is that your Python type hints are the single source of truth: you annotate handler parameters and Pydantic models, and FastAPI uses those annotations to validate incoming requests, serialize responses, power editor autocomplete, and generate an OpenAPI schema — all automatically. The result is fast development, fewer bugs, and interactive API documentation (Swagger UI and ReDoc) that is always in sync with your code, available at `/docs` the moment you run the app.",
+        "FastAPI is built on Starlette (the ASGI toolkit) and Pydantic, so it is async-first: define handlers with `async def` and run thousands of concurrent I/O-bound requests on one worker via an ASGI server like Uvicorn. Routing uses decorators (`@app.get`, `@app.post`); a Pydantic model as a parameter is read from the JSON body and validated; `Path`, `Query`, and `Header` declare and validate other inputs. Its dependency-injection system (`Depends`) is a standout feature: you declare reusable dependencies (database sessions, auth, pagination) as functions and FastAPI wires them in, with the modern idiom being `Annotated[Type, Depends(...)]` for cleaner, reusable signatures. Startup/shutdown logic goes in an async `lifespan` context manager.",
+        "Because validation and docs are free, FastAPI is the default choice for microservices, internal APIs, and especially serving machine-learning models, where a typed request/response contract and automatic docs matter. It is genuinely fast (on par with Node and Go for I/O-bound work) thanks to its async core and Pydantic v2's Rust-based validation. Reach for FastAPI whenever you are building a JSON/HTTP API and want type safety and documentation without writing either by hand."
+      ],
+      "keyPoints": [
+        "Type hints drive everything: FastAPI uses them for request validation, response serialization, and OpenAPI docs.",
+        "It is async-first (built on Starlette + Pydantic); run it with an ASGI server like Uvicorn.",
+        "Interactive Swagger UI docs are auto-generated at `/docs` and always match your code.",
+        "A Pydantic model parameter is parsed and validated from the JSON body; `Query`/`Path`/`Header` declare other inputs.",
+        "Dependency injection via `Depends` (modern idiom: `Annotated[T, Depends(fn)]`) supplies DB sessions, auth, and pagination.",
+        "Startup/shutdown resources are managed with an async `lifespan` context manager; it excels at serving ML models and microservices."
+      ],
+      "code": [
+        {
+          "title": "A typed API with a Pydantic body and auto-docs",
+          "language": "python",
+          "code": "# pip install \"fastapi[standard]\"  — run: fastapi dev main.py\nfrom fastapi import FastAPI\nfrom pydantic import BaseModel, Field\n\napp = FastAPI()\n\nclass Item(BaseModel):\n    name: str\n    price: float = Field(gt=0)\n    in_stock: bool = True\n\n@app.get(\"/items/{item_id}\")\nasync def read_item(item_id: int, q: str | None = None):\n    # item_id from the path, q from the query string — both validated\n    return {\"item_id\": item_id, \"q\": q}\n\n@app.post(\"/items\")\nasync def create_item(item: Item):\n    # request body parsed & validated into the Pydantic model\n    return {\"created\": item.name, \"price\": item.price}\n\n# Visit http://127.0.0.1:8000/docs for interactive Swagger UI"
+        },
+        {
+          "title": "Dependency injection with Annotated + Depends",
+          "language": "python",
+          "code": "from typing import Annotated\nfrom fastapi import Depends, FastAPI\n\napp = FastAPI()\n\n# a reusable dependency: shared pagination params\ndef pagination(skip: int = 0, limit: int = 20) -> dict:\n    return {\"skip\": skip, \"limit\": min(limit, 100)}\n\n# name the dependency once, reuse the type everywhere\nPage = Annotated[dict, Depends(pagination)]\n\n@app.get(\"/users\")\nasync def list_users(page: Page):\n    return {\"page\": page}\n\n@app.get(\"/orders\")\nasync def list_orders(page: Page):\n    return {\"page\": page}"
+        }
+      ],
+      "resources": [
+        { "title": "FastAPI Documentation (official)", "url": "https://fastapi.tiangolo.com/", "type": "official" },
+        { "title": "FastAPI — Dependencies tutorial", "url": "https://fastapi.tiangolo.com/tutorial/dependencies/", "type": "official" },
+        { "title": "FastAPI — Lifespan Events", "url": "https://fastapi.tiangolo.com/advanced/events/", "type": "official" },
+        { "title": "Create an API with FastAPI (Full Course)", "url": "https://www.youtube.com/watch?v=0sOvCWFmrtA", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "Build a small typed FastAPI service with validated request bodies, path/query parameters, a dependency, and a lifespan, then explore the auto-generated docs.",
+        "steps": [
+          {
+            "title": "Install FastAPI and run the dev server",
+            "explanation": "The `[standard]` extra pulls in Uvicorn and the `fastapi dev` CLI. The dev server auto-reloads and serves interactive docs at /docs.",
+            "python": "pip install \"fastapi[standard]\"\n# after writing main.py:\n#   fastapi dev main.py   # serves on http://127.0.0.1:8000",
+            "javascript": null
+          },
+          {
+            "title": "Create the app with a lifespan",
+            "explanation": "The async `lifespan` context manager runs startup code before `yield` and shutdown code after. Here we use it to populate an in-memory store — in real apps this is where you open DB pools.",
+            "python": "# main.py\nfrom contextlib import asynccontextmanager\nfrom fastapi import FastAPI\n\nbooks: dict[int, dict] = {}\n\n@asynccontextmanager\nasync def lifespan(app: FastAPI):\n    books[1] = {\"id\": 1, \"title\": \"Dune\", \"year\": 1965}  # startup\n    yield\n    books.clear()                                          # shutdown\n\napp = FastAPI(lifespan=lifespan)",
+            "javascript": null
+          },
+          {
+            "title": "Add a validated request body",
+            "explanation": "A Pydantic model as a parameter is parsed from the JSON body and validated. Constraints like `Field(gt=0)` reject bad input with an automatic 422 response.",
+            "python": "from pydantic import BaseModel, Field\n\nclass Book(BaseModel):\n    title: str = Field(min_length=1)\n    year: int = Field(gt=0)\n\n@app.post(\"/books\", status_code=201)\nasync def create_book(book: Book):\n    new_id = max(books) + 1 if books else 1\n    books[new_id] = {\"id\": new_id, **book.model_dump()}\n    return books[new_id]",
+            "javascript": null
+          },
+          {
+            "title": "Add path and query parameters",
+            "explanation": "Type-hinted parameters not in the body come from the path (`{book_id}`) or the query string (`limit`). FastAPI validates and converts them; raise `HTTPException` for clean error responses.",
+            "python": "from fastapi import HTTPException\n\n@app.get(\"/books/{book_id}\")\nasync def get_book(book_id: int):\n    if book_id not in books:\n        raise HTTPException(status_code=404, detail=\"Book not found\")\n    return books[book_id]\n\n@app.get(\"/books\")\nasync def list_books(limit: int = 10):\n    return list(books.values())[:limit]",
+            "javascript": null
+          },
+          {
+            "title": "Add a reusable dependency and explore the docs",
+            "explanation": "Declare a dependency with `Annotated[T, Depends(...)]` to share logic (here, a fake API-key check) across routes. Then open /docs to try every endpoint interactively.",
+            "python": "from typing import Annotated\nfrom fastapi import Depends, Header, HTTPException\n\ndef require_key(x_api_key: Annotated[str | None, Header()] = None):\n    if x_api_key != \"secret\":\n        raise HTTPException(status_code=401, detail=\"Bad API key\")\n    return x_api_key\n\n@app.delete(\"/books/{book_id}\", status_code=204)\nasync def delete_book(book_id: int, _: Annotated[str, Depends(require_key)]):\n    books.pop(book_id, None)\n\n# open http://127.0.0.1:8000/docs and try the endpoints",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "POST a book with `year: -5` and confirm FastAPI returns a 422 with a clear validation error.",
+          "Add a `response_model=Book` to an endpoint and observe how the output is filtered/validated on the way out.",
+          "Add a `PUT /books/{book_id}` endpoint that replaces an existing book, returning 404 if it is missing.",
+          "Make `require_key` a router-wide dependency using `APIRouter(dependencies=[Depends(require_key)])`.",
+          "Add a `GET /books?year_after=1960` query filter and verify it in the Swagger UI at /docs."
+        ]
+      }
+    },
+    {
+      "id": "pyramid",
+      "title": "Pyramid",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "Pyramid is a flexible, 'start small, finish big' framework that scales from a single-file app to a large project without forcing early architectural decisions.",
+      "summary": [
+        "Pyramid is a general-purpose Python web framework from the Pylons Project, designed around the philosophy of \"pay only for what you use.\" Where Django is opinionated and Flask is minimal, Pyramid aims for the middle: it starts as small as a single file but provides first-class, well-documented paths to grow into a large, structured application. You are free to choose your own database layer, templating engine, and project structure, and Pyramid does not force any of them on you.",
+        "Configuration is explicit and centered on the `Configurator` object: you create one, call `add_route()` to map URL patterns to route names and `add_view()` to bind those routes to view callables, then build a WSGI app with `make_wsgi_app()`. Views are plain functions (or classes) that receive a `request` and return a `Response` (or a dict rendered by a configured renderer like JSON or a template). Two distinctive features are its support for both URL-dispatch and traversal-based routing (useful for hierarchical, CMS-like data), and a fine-grained declarative authorization system based on resources and ACLs.",
+        "The current major version is Pyramid 2.x. Pyramid's strengths are flexibility, thorough documentation, and a clean separation of configuration from application code, which makes large codebases easy to reason about. It is less trendy than FastAPI or Django but remains a solid, mature choice for teams that want explicit control and a framework that won't dictate their architecture. It is a synchronous WSGI framework."
+      ],
+      "keyPoints": [
+        "Pyramid sits between Flask and Django: \"start small, finish big\" with no forced structure.",
+        "Configuration is explicit via the `Configurator`: `add_route()` maps URLs, `add_view()` binds views, `make_wsgi_app()` builds the app.",
+        "Views are callables that take a `request` and return a `Response` or a dict handled by a renderer (JSON, templates).",
+        "It uniquely supports both URL dispatch and traversal-based routing for hierarchical/CMS-style data.",
+        "A declarative resource + ACL authorization system gives fine-grained access control.",
+        "Pyramid 2.x is the current major version; it is a mature synchronous WSGI framework you assemble to taste."
+      ],
+      "code": [
+        {
+          "title": "A minimal single-file Pyramid app",
+          "language": "python",
+          "code": "# pip install pyramid waitress\nfrom wsgiref.simple_server import make_server\nfrom pyramid.config import Configurator\nfrom pyramid.response import Response\n\ndef hello(request):\n    name = request.matchdict[\"name\"]   # captured from the route\n    return Response(f\"Hello, {name}!\")\n\nwith Configurator() as config:\n    config.add_route(\"hello\", \"/hello/{name}\")  # URL pattern -> route name\n    config.add_view(hello, route_name=\"hello\")  # bind the view\n    app = config.make_wsgi_app()\n\nif __name__ == \"__main__\":\n    server = make_server(\"0.0.0.0\", 6543, app)\n    print(\"serving on http://localhost:6543\")\n    server.serve_forever()"
+        },
+        {
+          "title": "Returning JSON with a renderer",
+          "language": "python",
+          "code": "from pyramid.config import Configurator\nfrom pyramid.view import view_config\n\n# the 'json' renderer serializes the returned dict automatically\n@view_config(route_name=\"api\", renderer=\"json\")\ndef api(request):\n    return {\"status\": \"ok\", \"items\": [1, 2, 3]}\n\nwith Configurator() as config:\n    config.add_route(\"api\", \"/api\")\n    config.scan()              # discovers @view_config decorators\n    app = config.make_wsgi_app()"
+        }
+      ],
+      "resources": [
+        { "title": "Pyramid Website (official)", "url": "https://trypyramid.com/", "type": "official" },
+        { "title": "The Pyramid Web Framework — Documentation (v2.x)", "url": "https://docs.pylonsproject.org/projects/pyramid/en/latest/", "type": "official" },
+        { "title": "Pyramid on GitHub", "url": "https://github.com/Pylons/pyramid", "type": "opensource" }
+      ]
+    },
+    {
+      "id": "sanic",
+      "title": "Sanic",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Sanic is an async-first Python web framework built for raw speed, using async/await and uvloop to handle huge numbers of concurrent connections.",
+      "summary": [
+        "Sanic is a web server and framework whose entire reason for being is speed. It was async-first from the start, fully embracing Python's `async`/`await` syntax so every request handler is non-blocking, and it pairs that with `uvloop` (a fast libuv-based event loop) and its own high-performance HTTP server to handle thousands of concurrent connections on a single process. Unlike frameworks that bolt async on later, Sanic was designed around it, which makes it one of the fastest pure-Python options for I/O-bound APIs and real-time services.",
+        "The programming model is familiar and lightweight: create an app with `Sanic(\"name\")`, attach `async def` handlers with route decorators (`@app.get`, `@app.post`), and return responses with helpers from `sanic.response` (`json(...)`, `text(...)`, `html(...)`). Sanic includes Blueprints for grouping and prefixing routes, middleware hooks, streaming responses, websockets, and a built-in static-file server, so you can build a substantial app without many extra dependencies. Recent versions follow a calendar-based release scheme (e.g. 25.x) and require a modern Python (3.10+); Sanic is also ASGI-compatible, so you can run it under another ASGI server if you prefer.",
+        "Run a Sanic app with the `sanic` CLI (`sanic app:app`) or `app.run(...)`, and it can spin up multiple worker processes to use all your CPU cores. Choose Sanic when throughput and concurrency are the priority — high-traffic APIs, websocket servers, proxies — and you want a focused, fast framework rather than a batteries-included platform. It overlaps in spirit with FastAPI and Starlette; the practical differences come down to ecosystem, built-in features, and the specific performance profile you measure for your workload."
+      ],
+      "keyPoints": [
+        "Sanic is async-first and built for speed, using `async`/`await` plus `uvloop` for high concurrency.",
+        "Create an app with `Sanic(\"name\")`; handlers are `async def` and use route decorators (`@app.get`, `@app.post`).",
+        "Return responses with `sanic.response` helpers: `json(...)`, `text(...)`, `html(...)`.",
+        "Built-ins include Blueprints, middleware, websockets, streaming, and a static-file server.",
+        "It requires Python 3.10+, uses calendar versioning (e.g. 25.x), and is ASGI-compatible.",
+        "Run with the `sanic` CLI or `app.run()`; it can fork multiple workers to use all CPU cores."
+      ],
+      "code": [
+        {
+          "title": "An async Sanic app with routes and JSON",
+          "language": "python",
+          "code": "# pip install sanic  — run with: sanic app:app --dev\nfrom sanic import Sanic\nfrom sanic.response import json, text\n\napp = Sanic(\"MyApp\")\n\n@app.get(\"/\")\nasync def home(request):\n    return text(\"Hello from Sanic\")\n\n@app.get(\"/users/<user_id:int>\")\nasync def get_user(request, user_id: int):\n    # path params are typed and passed as keyword args\n    return json({\"id\": user_id, \"name\": \"Ada\"})\n\n@app.post(\"/echo\")\nasync def echo(request):\n    return json({\"received\": request.json}, status=201)\n\nif __name__ == \"__main__\":\n    app.run(host=\"0.0.0.0\", port=8000)"
+        },
+        {
+          "title": "Grouping routes with a Blueprint",
+          "language": "python",
+          "code": "from sanic import Blueprint, Sanic\nfrom sanic.response import json\n\nbp = Blueprint(\"api\", url_prefix=\"/api\")\n\n@bp.get(\"/health\")\nasync def health(request):\n    return json({\"status\": \"ok\"})\n\napp = Sanic(\"MyApp\")\napp.blueprint(bp)   # /api/health is now registered"
+        }
+      ],
+      "resources": [
+        { "title": "Sanic Official Website & User Guide", "url": "https://sanic.dev/en/", "type": "official" },
+        { "title": "Sanic — Getting Started", "url": "https://sanic.dev/en/guide/getting-started.html", "type": "official" },
+        { "title": "Sanic on GitHub", "url": "https://github.com/sanic-org/sanic", "type": "opensource" },
+        { "title": "Alternatives, Inspiration and Comparisons (FastAPI) — Sanic, Starlette, Flask & more", "url": "https://fastapi.tiangolo.com/alternatives/", "type": "official" }
+      ],
+      "handsOn": {
+        "goal": "Build and run an async Sanic API with typed path parameters, a JSON body, and a Blueprint, then hit it with curl.",
+        "steps": [
+          {
+            "title": "Install Sanic",
+            "explanation": "Sanic bundles its own server, so there is nothing else to install. The `sanic` CLI runs an app object found at `module:variable`.",
+            "python": "pip install sanic\n# after writing app.py:\n#   sanic app:app --dev   # --dev enables auto-reload",
+            "javascript": null
+          },
+          {
+            "title": "Create the app and an async handler",
+            "explanation": "Create the `Sanic` app and an `async def` route. Responses are built with helpers from `sanic.response`; `text()` returns plain text.",
+            "python": "# app.py\nfrom sanic import Sanic\nfrom sanic.response import json, text\n\napp = Sanic(\"TodoApp\")\ntodos = [{\"id\": 1, \"task\": \"Learn Sanic\", \"done\": False}]\n\n@app.get(\"/\")\nasync def home(request):\n    return text(\"Sanic is running\")",
+            "javascript": null
+          },
+          {
+            "title": "Add typed path parameters",
+            "explanation": "Sanic parses path converters like `<todo_id:int>` and passes them as keyword arguments to the handler. Return a 404 status when the item is missing.",
+            "python": "@app.get(\"/todos\")\nasync def list_todos(request):\n    return json({\"todos\": todos})\n\n@app.get(\"/todos/<todo_id:int>\")\nasync def get_todo(request, todo_id: int):\n    for t in todos:\n        if t[\"id\"] == todo_id:\n            return json(t)\n    return json({\"error\": \"not found\"}, status=404)",
+            "javascript": null
+          },
+          {
+            "title": "Read a JSON body on POST",
+            "explanation": "`request.json` holds the parsed JSON body. Append a new todo and return it with a 201 Created status.",
+            "python": "@app.post(\"/todos\")\nasync def create_todo(request):\n    data = request.json\n    new = {\"id\": len(todos) + 1, \"task\": data[\"task\"], \"done\": False}\n    todos.append(new)\n    return json(new, status=201)",
+            "javascript": null
+          },
+          {
+            "title": "Run the server and test it",
+            "explanation": "Start the server with the CLI and exercise the routes with curl. The async handlers can serve many concurrent requests on one process.",
+            "python": "# terminal 1:\n#   sanic app:app --dev\n# terminal 2:\n#   curl localhost:8000/todos\n#   curl -X POST localhost:8000/todos \\\n#        -H 'Content-Type: application/json' \\\n#        -d '{\"task\": \"Ship it\"}'\n#   curl localhost:8000/todos/2",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `DELETE /todos/<todo_id:int>` handler that removes a todo and returns status 204.",
+          "Group the todo routes into a `Blueprint(url_prefix=\"/api\")` and register it with `app.blueprint(bp)`.",
+          "Add a `before_request` middleware that logs the method and path of every request.",
+          "Add a websocket route with `@app.websocket(\"/ws\")` that echoes back any message it receives.",
+          "Run with `sanic app:app --workers 4` and confirm multiple worker processes start."
+        ]
+      }
+    },
+    {
+      "id": "tornado",
+      "title": "Tornado",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "Tornado is a mature, non-blocking web framework and networking library built for long-lived connections like websockets and long polling.",
+      "summary": [
+        "Tornado is one of the original asynchronous Python web frameworks, created at FriendFeed (acquired by Facebook in 2009) and open-sourced soon after. It is both a web framework and an asynchronous networking library, and its design goal has always been to scale to a very large number of simultaneous open connections. That makes it a natural fit for applications that need long-lived connections — websockets, long polling, and server-sent events — where each user holds a connection open and a thread-per-request model would collapse.",
+        "The programming model is class-based: you subclass `tornado.web.RequestHandler` and implement methods named after HTTP verbs (`get`, `post`, etc.), writing output with `self.write(...)`. You map URL patterns to handler classes in a `tornado.web.Application`, then call `app.listen(port)` to start serving. Handlers can be asynchronous using `async def` and `await`, and since Tornado 5.0 the framework runs on the standard library's `asyncio` event loop, so it interoperates cleanly with the broader async ecosystem. The current major version is Tornado 6.x.",
+        "Compared with newer frameworks, Tornado is lower-level and less batteries-included — there is no built-in ORM or dependency-injection system — but it remains rock-solid for its core use case of high-concurrency, connection-heavy servers. Many teams reach for Tornado specifically for its websocket support and its proven ability to hold tens of thousands of open connections. If you are building a typed JSON API you would likely pick FastAPI; if you are building a long-polling or websocket server and want a mature, focused tool, Tornado is a strong choice."
+      ],
+      "keyPoints": [
+        "Tornado is both an async web framework and a networking library, built to hold huge numbers of open connections.",
+        "It shines for long-lived connections: websockets, long polling, and server-sent events.",
+        "Handlers subclass `RequestHandler` and implement verb methods (`get`, `post`); output goes through `self.write(...)`.",
+        "Routes are registered in a `tornado.web.Application`, started with `app.listen(port)`.",
+        "Since Tornado 5.0 it runs on the standard `asyncio` event loop; handlers can be `async def`. Current major version is 6.x.",
+        "It is lower-level and not batteries-included — no built-in ORM — but mature and reliable for connection-heavy servers."
+      ],
+      "code": [
+        {
+          "title": "An async Tornado server with a RequestHandler",
+          "language": "python",
+          "code": "# pip install tornado\nimport asyncio\nimport tornado.web\n\nclass MainHandler(tornado.web.RequestHandler):\n    async def get(self):\n        self.write({\"message\": \"Hello from Tornado\"})  # dict -> JSON\n\nclass GreetHandler(tornado.web.RequestHandler):\n    async def get(self, name):\n        self.write(f\"Hello, {name}!\")  # captured group from the URL\n\ndef make_app():\n    return tornado.web.Application([\n        (r\"/\", MainHandler),\n        (r\"/greet/([^/]+)\", GreetHandler),\n    ])\n\nasync def main():\n    app = make_app()\n    app.listen(8888)\n    print(\"serving on http://localhost:8888\")\n    await asyncio.Event().wait()   # run forever\n\nif __name__ == \"__main__\":\n    asyncio.run(main())"
+        },
+        {
+          "title": "A websocket handler",
+          "language": "python",
+          "code": "import tornado.websocket\n\nclass EchoSocket(tornado.websocket.WebSocketHandler):\n    def open(self):\n        print(\"client connected\")\n\n    def on_message(self, message):\n        self.write_message(f\"echo: {message}\")   # send back to client\n\n    def on_close(self):\n        print(\"client disconnected\")\n\n# add (r\"/ws\", EchoSocket) to your Application's route list"
+        }
+      ],
+      "resources": [
+        { "title": "Tornado Website & Documentation (official)", "url": "https://www.tornadoweb.org/", "type": "official" },
+        { "title": "Tornado User's Guide (official)", "url": "https://www.tornadoweb.org/en/stable/guide.html", "type": "official" },
+        { "title": "Tornado on GitHub", "url": "https://github.com/tornadoweb/tornado", "type": "opensource" }
+      ]
+    },
+    {
+      "id": "aiohttp",
+      "title": "aiohttp",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "aiohttp is an asyncio library providing both an async HTTP client and an async web server, ideal for non-blocking I/O at scale.",
+      "summary": [
+        "aiohttp is a foundational asyncio library that delivers two things in one package: a powerful asynchronous HTTP client (for making many concurrent outbound requests) and an asynchronous web server framework (for handling many concurrent inbound requests). Both are built directly on Python's `asyncio`, so everything is `async`/`await` from top to bottom. It sits at a lower level than FastAPI or Sanic — it gives you routing, requests, responses, middleware, and websockets without a lot of higher-level conveniences — which makes it a clean, transparent base for async services and a popular building block underneath other tools.",
+        "On the server side you create a `web.Application`, register handlers, and start it with `web.run_app(app)`. Handlers are `async def` functions that take a `request` and return a `web.Response` (or `web.json_response(...)` for JSON). Routes can be added imperatively (`app.add_routes([web.get('/', handler)])`) or declaratively with a `web.RouteTableDef()` and decorators (`@routes.get('/')`), Flask-style. The current major version is aiohttp 3.x. On the client side, an `aiohttp.ClientSession` lets you fire off hundreds of requests concurrently with `asyncio.gather`, which is dramatically faster than synchronous `requests` for I/O-bound fan-out work like scraping or calling many APIs.",
+        "Reach for aiohttp when you want a no-magic async foundation: a high-concurrency proxy or gateway, a websocket server, or a client that hammers many endpoints in parallel. Because it is close to `asyncio` itself, the concepts you learn here (event loop, coroutines, `ClientSession`, `gather`) transfer directly to the rest of the async Python ecosystem. The trade-off versus FastAPI is fewer batteries (no automatic validation or docs), which is exactly the point when you want full control."
+      ],
+      "keyPoints": [
+        "aiohttp provides both an async HTTP client and an async web server, all built on `asyncio`.",
+        "Server: create a `web.Application`, add handlers, run with `web.run_app(app)`; handlers are `async def` returning a `web.Response`.",
+        "Register routes imperatively (`app.add_routes`) or declaratively with `web.RouteTableDef()` and decorators.",
+        "Return JSON easily with `web.json_response({...})`; read the body with `await request.json()`.",
+        "Client: an `aiohttp.ClientSession` plus `asyncio.gather` fetches many URLs concurrently, far faster than sync `requests`.",
+        "It is lower-level than FastAPI/Sanic (no auto-validation or docs) — choose it for transparent, high-concurrency I/O. Current version is 3.x."
+      ],
+      "code": [
+        {
+          "title": "An async web server with RouteTableDef",
+          "language": "python",
+          "code": "# pip install aiohttp\nfrom aiohttp import web\n\nroutes = web.RouteTableDef()\n\n@routes.get(\"/\")\nasync def home(request):\n    return web.Response(text=\"Hello from aiohttp\")\n\n@routes.get(\"/users/{user_id}\")\nasync def get_user(request):\n    user_id = request.match_info[\"user_id\"]\n    return web.json_response({\"id\": user_id, \"name\": \"Ada\"})\n\n@routes.post(\"/echo\")\nasync def echo(request):\n    data = await request.json()           # parse JSON body\n    return web.json_response({\"received\": data}, status=201)\n\napp = web.Application()\napp.add_routes(routes)\n\nif __name__ == \"__main__\":\n    web.run_app(app, port=8080)"
+        },
+        {
+          "title": "An async client fetching many URLs concurrently",
+          "language": "python",
+          "code": "import asyncio\nimport aiohttp\n\nasync def fetch(session, url):\n    async with session.get(url) as resp:\n        return url, resp.status\n\nasync def main():\n    urls = [f\"https://httpbin.org/status/{c}\" for c in (200, 404, 500)]\n    async with aiohttp.ClientSession() as session:\n        # fire all requests concurrently and await them together\n        results = await asyncio.gather(*(fetch(session, u) for u in urls))\n    for url, status in results:\n        print(status, url)\n\nasyncio.run(main())"
+        }
+      ],
+      "resources": [
+        { "title": "aiohttp Documentation (official)", "url": "https://docs.aiohttp.org/en/stable/", "type": "official" },
+        { "title": "aiohttp — Web Server Quickstart", "url": "https://docs.aiohttp.org/en/stable/web_quickstart.html", "type": "official" },
+        { "title": "aiohttp — Client Quickstart", "url": "https://docs.aiohttp.org/en/stable/client_quickstart.html", "type": "official" },
+        { "title": "aiohttp on GitHub", "url": "https://github.com/aio-libs/aiohttp", "type": "opensource" }
+      ],
+      "handsOn": {
+        "goal": "Use aiohttp on both sides: build a tiny async web server, then write a client that fetches many URLs concurrently and times the speedup.",
+        "steps": [
+          {
+            "title": "Install aiohttp",
+            "explanation": "A single dependency provides both the server and the client. We will build the server first, then point a concurrent client at it.",
+            "python": "pip install aiohttp",
+            "javascript": null
+          },
+          {
+            "title": "Build an async server",
+            "explanation": "Define routes with a `RouteTableDef`, return JSON with `web.json_response`, and start the server with `web.run_app`. Each handler is a non-blocking coroutine.",
+            "python": "# server.py\nimport asyncio\nfrom aiohttp import web\n\nroutes = web.RouteTableDef()\n\n@routes.get(\"/slow/{n}\")\nasync def slow(request):\n    n = int(request.match_info[\"n\"])\n    await asyncio.sleep(1)   # simulate slow I/O\n    return web.json_response({\"n\": n, \"done\": True})\n\napp = web.Application()\napp.add_routes(routes)\n\nif __name__ == \"__main__\":\n    web.run_app(app, port=8080)\n# run with: python server.py",
+            "javascript": null
+          },
+          {
+            "title": "Write a concurrent client",
+            "explanation": "An `aiohttp.ClientSession` reuses connections. `asyncio.gather` launches all requests at once and waits for them together — so five 1-second requests finish in about 1 second, not 5.",
+            "python": "# client.py\nimport asyncio, time\nimport aiohttp\n\nasync def fetch(session, n):\n    async with session.get(f\"http://localhost:8080/slow/{n}\") as r:\n        return await r.json()\n\nasync def main():\n    start = time.perf_counter()\n    async with aiohttp.ClientSession() as session:\n        results = await asyncio.gather(*(fetch(session, n) for n in range(5)))\n    print(results)\n    print(f\"took {time.perf_counter() - start:.2f}s for 5 requests\")\n\nasyncio.run(main())",
+            "javascript": null
+          },
+          {
+            "title": "Run both and observe concurrency",
+            "explanation": "Start the server in one terminal and the client in another. Five requests that each sleep one second complete in roughly one second total because they run concurrently on the event loop.",
+            "python": "# terminal 1:\n#   python server.py\n# terminal 2:\n#   python client.py\n# -> prints ~1.0s, not ~5.0s",
+            "javascript": null
+          },
+          {
+            "title": "Add a POST endpoint with a JSON body",
+            "explanation": "Read the request body with `await request.json()` and echo it back. The `await` is what lets the server interleave other requests while parsing or doing I/O.",
+            "python": "# add to server.py\n@routes.post(\"/echo\")\nasync def echo(request):\n    data = await request.json()\n    return web.json_response({\"you_sent\": data}, status=201)\n\n# test:\n#   curl -X POST localhost:8080/echo \\\n#        -H 'Content-Type: application/json' -d '{\"hi\": 1}'",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Change the client to fetch 50 requests and confirm total time stays near 1 second.",
+          "Replace `asyncio.gather` with a sequential `for` loop and `await` each call — measure how much slower it gets.",
+          "Add a `web.middleware` that logs the method, path, and response status of every request.",
+          "Add a websocket endpoint with `web.WebSocketResponse()` that echoes messages back to the client.",
+          "Point the client at three real public URLs and print each response's status code."
+        ]
+      }
+    },
+    {
+      "id": "plotly-dash",
+      "title": "Plotly Dash",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Dash lets you build interactive, web-based analytical dashboards entirely in Python — no JavaScript, HTML, or CSS required.",
+      "summary": [
+        "Dash, built by Plotly, is a Python framework for building interactive analytical web applications without writing front-end code. It is the fastest way to turn a data script into a shareable, interactive dashboard: you describe the page layout as a tree of Python components and wire up interactivity with callback functions, and Dash handles all the underlying HTML, CSS, and JavaScript. Under the hood it runs on Flask (so it deploys like any WSGI app) and renders charts with Plotly.js, giving you rich, zoomable, hover-able visualizations for free.",
+        "An app has two parts. First, the layout: a tree of components from `dash.html` (HTML elements like `Div`, `H1`) and `dash.dcc` (Dash Core Components like `Graph`, `Dropdown`, `Slider`, `Input`). Second, callbacks: functions decorated with `@callback` that declare `Output`s and `Input`s by component `id` and property. When a user changes an input (say, selects a value in a dropdown), Dash automatically calls the matching function and updates the output component (say, a graph's `figure`) with whatever the function returns. This reactive model means you never manually manipulate the DOM — you just write Python functions that map inputs to outputs.",
+        "The current major version is Dash 3.x, and the modern import style is `from dash import Dash, html, dcc, callback, Input, Output`. Dash apps are ideal for internal analytics tools, ML model dashboards, and data-exploration UIs where your team lives in Python and does not want to build a separate JavaScript front end. It scales from a 30-line prototype to production dashboards, and Plotly offers Dash Enterprise for deployment, auth, and scaling on top of the open-source core."
+      ],
+      "keyPoints": [
+        "Dash builds interactive web dashboards in pure Python — no JS/HTML/CSS — on top of Flask and Plotly.js.",
+        "An app is a `layout` (a tree of `html` and `dcc` components) plus `@callback` functions for interactivity.",
+        "Callbacks declare `Output`(s) and `Input`(s) by component `id` and property; Dash re-runs them reactively when inputs change.",
+        "`dcc` provides interactive controls (`Graph`, `Dropdown`, `Slider`, `Input`); `html` provides structural elements.",
+        "You return new values from callbacks (e.g. a Plotly `figure`); Dash updates the DOM — you never touch it directly.",
+        "Modern imports: `from dash import Dash, html, dcc, callback, Input, Output`; current major version is Dash 3.x."
+      ],
+      "code": [
+        {
+          "title": "An interactive Dash app with a callback",
+          "language": "python",
+          "code": "# pip install dash  — run: python app.py  (serves on http://127.0.0.1:8050)\nfrom dash import Dash, html, dcc, callback, Input, Output\nimport plotly.express as px\n\napp = Dash(__name__)\ndf = px.data.gapminder()\n\napp.layout = html.Div([\n    html.H1(\"Life Expectancy by Continent\"),\n    dcc.Dropdown(\n        id=\"continent\",\n        options=sorted(df[\"continent\"].unique()),\n        value=\"Asia\",\n    ),\n    dcc.Graph(id=\"chart\"),\n])\n\n@callback(\n    Output(\"chart\", \"figure\"),     # update the graph's figure...\n    Input(\"continent\", \"value\"),   # ...whenever the dropdown changes\n)\ndef update_chart(continent):\n    filtered = df[df[\"continent\"] == continent]\n    return px.line(filtered, x=\"year\", y=\"lifeExp\", color=\"country\")\n\nif __name__ == \"__main__\":\n    app.run(debug=True)"
+        }
+      ],
+      "resources": [
+        { "title": "Plotly Dash Documentation (official)", "url": "https://dash.plotly.com/", "type": "official" },
+        { "title": "Dash in 20 Minutes — Tutorial (official)", "url": "https://dash.plotly.com/tutorial", "type": "official" },
+        { "title": "Dash Basic Callbacks (official)", "url": "https://dash.plotly.com/basic-callbacks", "type": "official" },
+        { "title": "Dash on GitHub", "url": "https://github.com/plotly/dash", "type": "opensource" }
+      ],
+      "handsOn": {
+        "goal": "Build an interactive Dash dashboard from scratch: a layout with a control, a chart, and a callback that updates the chart when the control changes.",
+        "steps": [
+          {
+            "title": "Install Dash",
+            "explanation": "Installing `dash` pulls in Plotly and Flask. We will use a built-in sample dataset so there is nothing to download.",
+            "python": "pip install dash\n# after writing app.py:\n#   python app.py   # serves on http://127.0.0.1:8050",
+            "javascript": null
+          },
+          {
+            "title": "Create the app and a layout",
+            "explanation": "The layout is a tree of components. Use `html` for structure and `dcc` for interactive widgets. Give every component an `id` you will reference in callbacks.",
+            "python": "# app.py\nfrom dash import Dash, html, dcc, callback, Input, Output\nimport plotly.express as px\n\ndf = px.data.iris()\napp = Dash(__name__)\n\napp.layout = html.Div([\n    html.H1(\"Iris Explorer\"),\n    dcc.Dropdown(\n        id=\"x-axis\",\n        options=[\"sepal_width\", \"sepal_length\", \"petal_width\"],\n        value=\"sepal_width\",\n    ),\n    dcc.Graph(id=\"scatter\"),\n])",
+            "javascript": null
+          },
+          {
+            "title": "Wire up a callback",
+            "explanation": "`@callback` connects an `Output` (the graph's `figure`) to an `Input` (the dropdown's `value`). Dash runs this function on load and again every time the dropdown changes.",
+            "python": "@callback(\n    Output(\"scatter\", \"figure\"),\n    Input(\"x-axis\", \"value\"),\n)\ndef update(x_col):\n    return px.scatter(df, x=x_col, y=\"petal_length\", color=\"species\")",
+            "javascript": null
+          },
+          {
+            "title": "Run the app",
+            "explanation": "`app.run(debug=True)` starts the dev server with hot-reload. Open the URL and change the dropdown — the chart updates instantly with no page reload.",
+            "python": "if __name__ == \"__main__\":\n    app.run(debug=True)\n# open http://127.0.0.1:8050 and change the dropdown",
+            "javascript": null
+          },
+          {
+            "title": "Add a second input",
+            "explanation": "Add a slider and feed it into the same callback as a second `Input`. A callback can depend on many inputs; Dash passes them as positional arguments in declaration order.",
+            "python": "# add to the layout, inside the Div children list:\n#   dcc.Slider(id=\"size\", min=4, max=20, step=2, value=10)\n\n@callback(\n    Output(\"scatter\", \"figure\"),\n    Input(\"x-axis\", \"value\"),\n    Input(\"size\", \"value\"),\n)\ndef update(x_col, marker_size):\n    fig = px.scatter(df, x=x_col, y=\"petal_length\", color=\"species\")\n    fig.update_traces(marker={\"size\": marker_size})\n    return fig",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a second dropdown to choose the y-axis column and feed it into the callback as another Input.",
+          "Add an `html.Div(id=\"count\")` and a callback that displays how many rows the current species selection has.",
+          "Use `dcc.RadioItems` instead of a dropdown for the x-axis and confirm the chart still updates.",
+          "Swap the dataset to `px.data.gapminder()` and plot life expectancy over time, colored by country.",
+          "Add `prevent_initial_call=True` to a callback and observe that it no longer fires on page load."
+        ]
+      }
+    }
+  ]
+}

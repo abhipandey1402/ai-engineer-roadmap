@@ -1,0 +1,332 @@
+{
+  "id": "concurrency-async",
+  "title": "Concurrency & Async",
+  "description": "Threads, processes, the GIL, and asynchronous Python.",
+  "topics": [
+    {
+      "id": "concurrency",
+      "title": "Concurrency in Python",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Python gives you three concurrency models — threads, processes, and async/await — and choosing the right one comes down to whether your work is I/O-bound or CPU-bound.",
+      "summary": [
+        "Concurrency means structuring a program so that multiple tasks make progress in overlapping time periods; parallelism means they literally run at the same instant on different CPU cores. Python distinguishes these because of the Global Interpreter Lock (GIL): in standard CPython only one thread executes Python bytecode at a time, so threads give you concurrency but not true parallelism. This single fact drives almost every concurrency decision you will make in Python, so the first question to ask about any slow task is whether it is I/O-bound (waiting on the network, disk, or a database) or CPU-bound (crunching numbers in pure Python).",
+        "Python ships three standard approaches. Threading (the `threading` module and `concurrent.futures.ThreadPoolExecutor`) runs multiple threads in one process; because a thread releases the GIL while it waits on I/O, threads excel at overlapping many slow I/O calls. Multiprocessing (the `multiprocessing` module and `ProcessPoolExecutor`) spawns separate processes, each with its own interpreter and its own GIL, so it achieves real parallelism across cores and is the answer for CPU-bound work. Asyncio (`async`/`await`) runs thousands of cooperative tasks on a single thread using an event loop, giving threading-style I/O concurrency with far less memory and no thread-switching overhead — at the cost of needing async-aware libraries.",
+        "The practical rule of thumb: use `asyncio` for high-volume I/O (thousands of network connections), threads for simpler I/O concurrency or when you must call blocking libraries, and processes for CPU-bound parallelism. These are not mutually exclusive — a real service might run an async web server, offload CPU-heavy work to a process pool, and use threads to wrap a blocking third-party SDK. Note too that Python 3.13+ introduced an experimental free-threaded build that removes the GIL; it is opt-in and not yet the default, so for now design as if the GIL is present."
+      ],
+      "keyPoints": [
+        "Concurrency = tasks overlapping in time; parallelism = tasks running literally at once on multiple cores.",
+        "The GIL lets only one thread run Python bytecode at a time, so threads give concurrency but not CPU parallelism.",
+        "Diagnose the bottleneck first: I/O-bound (waiting) vs CPU-bound (computing) decides which model to use.",
+        "Threads and asyncio both shine for I/O-bound work; multiprocessing is the tool for CPU-bound parallelism.",
+        "asyncio scales to thousands of connections on one thread but requires async-aware libraries throughout.",
+        "Python 3.13+ has an experimental no-GIL (free-threaded) build, but it is opt-in and not yet the default."
+      ],
+      "code": [
+        {
+          "title": "Same workload, three models",
+          "language": "python",
+          "code": "import time, threading, asyncio\nfrom concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor\n\n# An I/O-bound task: it mostly waits.\ndef io_task(n):\n    time.sleep(0.5)   # stands in for a network/disk call\n    return n * n\n\n# A CPU-bound task: it mostly computes.\ndef cpu_task(n):\n    return sum(i * i for i in range(n))\n\nif __name__ == \"__main__\":\n    # Threads overlap the waiting in io_task -> ~0.5s instead of ~2s\n    with ThreadPoolExecutor() as pool:\n        print(list(pool.map(io_task, [10, 20, 30, 40])))\n\n    # Processes run cpu_task in parallel across cores\n    with ProcessPoolExecutor() as pool:\n        print(list(pool.map(cpu_task, [10_000_00] * 4)))"
+        }
+      ],
+      "resources": [
+        { "title": "Concurrent Execution (official docs)", "url": "https://docs.python.org/3/library/concurrency.html", "type": "official" },
+        { "title": "Speed Up Your Python Program With Concurrency (Real Python)", "url": "https://realpython.com/python-concurrency/", "type": "article" },
+        { "title": "concurrent.futures — Launching parallel tasks (official docs)", "url": "https://docs.python.org/3/library/concurrent.futures.html", "type": "official" }
+      ]
+    },
+    {
+      "id": "threading",
+      "title": "Threading",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Threads run concurrently inside one process and are perfect for overlapping many I/O-bound calls — but the GIL means they never give you CPU parallelism.",
+      "summary": [
+        "A thread is an independent flow of execution inside a single process; all threads in a process share the same memory, which makes communication cheap but data races possible. In Python you can create threads directly with the `threading` module, but the modern, idiomatic way to use a pool of threads is `concurrent.futures.ThreadPoolExecutor`, which manages worker threads for you and returns `Future` objects. Threads are ideal for I/O-bound work — HTTP requests, file reads, database queries — because while one thread blocks waiting for the operating system, the GIL is released and another thread runs, so the waits overlap and total wall-clock time drops dramatically.",
+        "Because the GIL serializes Python bytecode execution, threading does not speed up CPU-bound code; in fact it can be slightly slower due to lock contention and context-switching overhead. The other hazard of shared memory is the race condition: when two threads read-modify-write the same variable, updates can be lost. The fix is synchronization — a `threading.Lock` (often used as `with lock:`) guarantees only one thread enters a critical section at a time. Other primitives include `RLock`, `Event`, `Semaphore`, and thread-safe `queue.Queue` for handing work between threads without manual locking.",
+        "Prefer the executor API: `with ThreadPoolExecutor() as pool:` ensures workers are cleaned up, `pool.submit(fn, *args)` returns a `Future` whose `.result()` re-raises any exception the task threw (a common source of silently-swallowed errors), and `concurrent.futures.as_completed` lets you process results as they finish rather than in submission order. Set `max_workers` deliberately — too many threads waste memory and increase contention. Always retrieve results so exceptions surface, and keep shared mutable state behind a lock or, better, avoid it by passing data through a queue."
+      ],
+      "keyPoints": [
+        "Threads share process memory; use `ThreadPoolExecutor` rather than hand-managing `Thread` objects for pools of work.",
+        "Threading helps I/O-bound tasks because the GIL is released during blocking I/O, letting waits overlap.",
+        "Threading does not speed up CPU-bound code — the GIL serializes Python bytecode regardless of thread count.",
+        "Protect shared mutable state with `threading.Lock` (use `with lock:`) to prevent race conditions and lost updates.",
+        "`future.result()` re-raises exceptions from the worker thread; always read results so errors are not swallowed.",
+        "Hand work between threads with a thread-safe `queue.Queue` instead of sharing raw variables when you can."
+      ],
+      "code": [
+        {
+          "title": "ThreadPoolExecutor for I/O-bound work",
+          "language": "python",
+          "code": "import time\nfrom concurrent.futures import ThreadPoolExecutor, as_completed\n\ndef fetch(url):\n    time.sleep(0.5)            # pretend this is a network request\n    return url, len(url)\n\nurls = [f\"https://example.com/page/{i}\" for i in range(8)]\n\nstart = time.perf_counter()\nwith ThreadPoolExecutor(max_workers=8) as pool:\n    futures = [pool.submit(fetch, u) for u in urls]\n    for fut in as_completed(futures):\n        url, size = fut.result()   # .result() re-raises any worker exception\n        print(f\"{size:>3}  {url}\")\nprint(f\"done in {time.perf_counter() - start:.2f}s\")  # ~0.5s, not ~4s"
+        },
+        {
+          "title": "Guarding shared state with a Lock",
+          "language": "python",
+          "code": "import threading\nfrom concurrent.futures import ThreadPoolExecutor\n\ncounter = 0\nlock = threading.Lock()\n\ndef increment(_):\n    global counter\n    for _ in range(100_000):\n        with lock:            # only one thread in this block at a time\n            counter += 1\n\nwith ThreadPoolExecutor(max_workers=4) as pool:\n    list(pool.map(increment, range(4)))\n\nprint(counter)  # 400000 exactly; without the lock it would be less"
+        }
+      ],
+      "resources": [
+        { "title": "threading — Thread-based parallelism (official docs)", "url": "https://docs.python.org/3/library/threading.html", "type": "official" },
+        { "title": "An Intro to Threading in Python (Real Python)", "url": "https://realpython.com/intro-to-python-threading/", "type": "article" },
+        { "title": "concurrent.futures.ThreadPoolExecutor (official docs)", "url": "https://docs.python.org/3/library/concurrent.futures.html#threadpoolexecutor", "type": "official" }
+      ],
+      "handsOn": {
+        "goal": "Speed up a batch of I/O-bound tasks with a ThreadPoolExecutor, then expose and fix a race condition with a Lock.",
+        "steps": [
+          {
+            "title": "Measure the serial baseline",
+            "explanation": "Write a function that simulates a slow I/O call with `time.sleep`, then run several sequentially and time them. This is your 'before' number — the wall-clock time threads will collapse.",
+            "python": "# baseline.py\nimport time\n\ndef slow_io(n):\n    time.sleep(0.5)      # stands in for a network/disk call\n    return n * n\n\nstart = time.perf_counter()\nresults = [slow_io(n) for n in range(8)]\nprint(results)\nprint(f\"serial: {time.perf_counter() - start:.2f}s\")  # ~4s",
+            "javascript": null
+          },
+          {
+            "title": "Parallelize the waiting with a thread pool",
+            "explanation": "Submit the same work to a `ThreadPoolExecutor`. Because each thread releases the GIL while sleeping, the eight half-second waits overlap and total time drops to roughly one wait. `pool.map` returns results in input order.",
+            "python": "# threaded.py\nimport time\nfrom concurrent.futures import ThreadPoolExecutor\n\ndef slow_io(n):\n    time.sleep(0.5)\n    return n * n\n\nstart = time.perf_counter()\nwith ThreadPoolExecutor(max_workers=8) as pool:\n    results = list(pool.map(slow_io, range(8)))\nprint(results)\nprint(f\"threaded: {time.perf_counter() - start:.2f}s\")  # ~0.5s",
+            "javascript": null
+          },
+          {
+            "title": "Handle results and exceptions as they finish",
+            "explanation": "Use `submit` + `as_completed` to process whichever task finishes first. Calling `.result()` re-raises any exception the worker threw, so wrap it in try/except to keep one failure from killing the batch.",
+            "python": "# as_completed.py\nfrom concurrent.futures import ThreadPoolExecutor, as_completed\nimport time, random\n\ndef work(n):\n    time.sleep(random.uniform(0.1, 0.5))\n    if n == 3:\n        raise ValueError(\"task 3 failed\")\n    return n * n\n\nwith ThreadPoolExecutor(max_workers=4) as pool:\n    futures = {pool.submit(work, n): n for n in range(6)}\n    for fut in as_completed(futures):\n        n = futures[fut]\n        try:\n            print(f\"task {n} -> {fut.result()}\")\n        except ValueError as e:\n            print(f\"task {n} errored: {e}\")",
+            "javascript": null
+          },
+          {
+            "title": "Trigger a race condition, then fix it with a Lock",
+            "explanation": "Increment a shared counter from four threads with no protection — `counter += 1` is not atomic, so updates are lost and the total comes out short. Wrapping the update in `with lock:` serializes the critical section and makes the result exact.",
+            "python": "# race.py\nimport threading\nfrom concurrent.futures import ThreadPoolExecutor\n\nN = 100_000\n\ndef run(use_lock):\n    counter = 0\n    lock = threading.Lock()\n    def bump(_):\n        nonlocal counter\n        for _ in range(N):\n            if use_lock:\n                with lock:\n                    counter += 1\n            else:\n                counter += 1\n    with ThreadPoolExecutor(max_workers=4) as pool:\n        list(pool.map(bump, range(4)))\n    return counter\n\nprint(\"no lock:\", run(False), \"(expected\", 4 * N, \")\")\nprint(\"with lock:\", run(True), \"(expected\", 4 * N, \")\")",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Vary `max_workers` from 1 to 16 on the I/O lab and chart how wall-clock time changes — find the point where adding threads stops helping.",
+          "Replace the simulated `slow_io` with real `urllib.request.urlopen` calls to a handful of URLs and confirm threads still help.",
+          "Run the `race.py` no-lock case several times and observe that the wrong total is different each run — proving the nondeterminism of races.",
+          "Rewrite the counter example to use a `queue.Queue`: workers push partial counts and the main thread sums them, avoiding a shared mutable counter entirely.",
+          "Apply the thread pool to a CPU-bound task (summing squares of large ranges) and confirm it does NOT speed up — the GIL is the reason why."
+        ]
+      }
+    },
+    {
+      "id": "multiprocessing",
+      "title": "Multiprocessing",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Multiprocessing sidesteps the GIL by running each task in its own process with its own interpreter, delivering true parallelism for CPU-bound work.",
+      "summary": [
+        "When work is CPU-bound — number crunching, image processing, parsing, simulation — threads cannot help because the GIL allows only one thread to run Python bytecode at a time. Multiprocessing solves this by spawning multiple operating-system processes, each with its own Python interpreter and its own GIL. The OS scheduler can then run those processes on different CPU cores simultaneously, giving genuine parallelism. The standard library exposes this through the `multiprocessing` module and, more conveniently, through `concurrent.futures.ProcessPoolExecutor`, which mirrors the thread-pool API so you can switch between the two with a one-line change.",
+        "The trade-off is that processes do not share memory. Arguments, return values, and any objects passed between processes are serialized with `pickle`, sent over a pipe, and reconstructed on the other side. This has three consequences: there is real overhead in starting processes and moving data, so multiprocessing only pays off when each task does enough work to dwarf that cost; objects you pass must be picklable (lambdas, local functions, and open file handles are not); and on macOS and Windows the default start method is `spawn`, which re-imports your module in each child — so process-creating code must be guarded by `if __name__ == \"__main__\":` or you get an infinite spawn loop.",
+        "For sharing data deliberately, `multiprocessing` provides `Queue` and `Pipe` for message passing, and `Value`/`Array` plus `Manager` objects for shared state, but the cleanest designs avoid shared mutable state and instead pass inputs in and collect results out through a pool. A practical pattern: keep tasks coarse-grained (chunk the work so each call is substantial), set `max_workers` to roughly the number of physical cores (`os.cpu_count()`), and remember that the optimal tool by task type is processes for CPU-bound, threads or asyncio for I/O-bound."
+      ],
+      "keyPoints": [
+        "Each process has its own interpreter and GIL, so processes achieve true parallelism across CPU cores.",
+        "Use multiprocessing for CPU-bound work; for I/O-bound work, threads or asyncio are lighter and usually better.",
+        "`ProcessPoolExecutor` shares the executor API with threads — often a one-word change to switch models.",
+        "Data crosses process boundaries via `pickle`; arguments/returns must be picklable (no lambdas or local functions).",
+        "Guard process-spawning code with `if __name__ == \"__main__\":` because the default `spawn` start method re-imports your module.",
+        "Keep tasks coarse and set workers near `os.cpu_count()`; startup and serialization overhead can erase gains on tiny tasks."
+      ],
+      "code": [
+        {
+          "title": "ProcessPoolExecutor for CPU-bound work",
+          "language": "python",
+          "code": "import time, os\nfrom concurrent.futures import ProcessPoolExecutor\n\ndef heavy(n):\n    # pure-Python CPU work that the GIL would serialize across threads\n    return sum(i * i for i in range(n))\n\nif __name__ == \"__main__\":          # required for the spawn start method\n    work = [5_000_000] * 8\n\n    start = time.perf_counter()\n    serial = [heavy(n) for n in work]\n    print(f\"serial:   {time.perf_counter() - start:.2f}s\")\n\n    start = time.perf_counter()\n    with ProcessPoolExecutor(max_workers=os.cpu_count()) as pool:\n        parallel = list(pool.map(heavy, work))\n    print(f\"parallel: {time.perf_counter() - start:.2f}s\")\n    assert serial == parallel"
+        },
+        {
+          "title": "Passing work and results through a Queue",
+          "language": "python",
+          "code": "import multiprocessing as mp\n\ndef worker(in_q, out_q):\n    for n in iter(in_q.get, None):   # stop when we receive the sentinel None\n        out_q.put((n, n * n))\n\nif __name__ == \"__main__\":\n    in_q, out_q = mp.Queue(), mp.Queue()\n    procs = [mp.Process(target=worker, args=(in_q, out_q)) for _ in range(3)]\n    for p in procs:\n        p.start()\n\n    for n in range(10):\n        in_q.put(n)\n    for _ in procs:\n        in_q.put(None)              # one sentinel per worker\n\n    results = [out_q.get() for _ in range(10)]\n    for p in procs:\n        p.join()\n    print(sorted(results))"
+        }
+      ],
+      "resources": [
+        { "title": "multiprocessing — Process-based parallelism (official docs)", "url": "https://docs.python.org/3/library/multiprocessing.html", "type": "official" },
+        { "title": "Multiprocessing in Python (Real Python)", "url": "https://realpython.com/python-multiprocessing/", "type": "article" },
+        { "title": "concurrent.futures.ProcessPoolExecutor (official docs)", "url": "https://docs.python.org/3/library/concurrent.futures.html#processpoolexecutor", "type": "official" }
+      ],
+      "handsOn": {
+        "goal": "Prove that processes beat threads on CPU-bound work, learn why the __main__ guard matters, and pass data between processes through a pool.",
+        "steps": [
+          {
+            "title": "Write a CPU-bound task and time it serially",
+            "explanation": "Use a pure-Python computation heavy enough to take a noticeable fraction of a second per call. Time several calls in a plain loop to establish the serial baseline.",
+            "python": "# cpu_serial.py\nimport time\n\ndef heavy(n):\n    return sum(i * i for i in range(n))\n\nif __name__ == \"__main__\":\n    work = [5_000_000] * 8\n    start = time.perf_counter()\n    results = [heavy(n) for n in work]\n    print(\"serial:\", round(time.perf_counter() - start, 2), \"s\")",
+            "javascript": null
+          },
+          {
+            "title": "Confirm threads do NOT help CPU-bound work",
+            "explanation": "Run the identical workload through a `ThreadPoolExecutor`. Because the GIL serializes bytecode, the time stays about the same as serial (sometimes worse) — this is the motivation for reaching for processes.",
+            "python": "# cpu_threads.py\nimport time\nfrom concurrent.futures import ThreadPoolExecutor\n\ndef heavy(n):\n    return sum(i * i for i in range(n))\n\nif __name__ == \"__main__\":\n    work = [5_000_000] * 8\n    start = time.perf_counter()\n    with ThreadPoolExecutor(max_workers=8) as pool:\n        list(pool.map(heavy, work))\n    print(\"threads:\", round(time.perf_counter() - start, 2), \"s\")  # ~ same as serial",
+            "javascript": null
+          },
+          {
+            "title": "Parallelize with a process pool",
+            "explanation": "Swap in `ProcessPoolExecutor` and set `max_workers` to your core count. Each process has its own GIL, so the work spreads across cores. Note the mandatory `if __name__ == \"__main__\":` guard — without it the spawn start method would re-run this code in every child.",
+            "python": "# cpu_processes.py\nimport time, os\nfrom concurrent.futures import ProcessPoolExecutor\n\ndef heavy(n):\n    return sum(i * i for i in range(n))\n\nif __name__ == \"__main__\":\n    work = [5_000_000] * 8\n    start = time.perf_counter()\n    with ProcessPoolExecutor(max_workers=os.cpu_count()) as pool:\n        list(pool.map(heavy, work))\n    print(\"processes:\", round(time.perf_counter() - start, 2), \"s\")  # much faster",
+            "javascript": null
+          },
+          {
+            "title": "Hit (and understand) a pickling error",
+            "explanation": "Try submitting a `lambda` to the pool. It fails because the argument must be pickled to cross the process boundary and lambdas are not picklable. Replacing it with a module-level function fixes it — a constraint unique to multiprocessing.",
+            "python": "# pickling.py\nfrom concurrent.futures import ProcessPoolExecutor\n\ndef apply(fn, x):\n    return fn(x)\n\nif __name__ == \"__main__\":\n    with ProcessPoolExecutor() as pool:\n        try:\n            print(list(pool.map(lambda x: x * 2, range(4))))\n        except Exception as e:\n            print(\"failed:\", type(e).__name__, \"- lambdas are not picklable\")",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Reduce the per-task size to `range(1000)` and re-run the process pool — confirm overhead now makes it SLOWER than serial, and explain why.",
+          "Set `max_workers` to 1, 2, 4, and your full core count; chart the speedup and find the point of diminishing returns.",
+          "Switch the start method with `multiprocessing.set_start_method('fork')` (Linux/macOS) and compare startup time against `spawn`.",
+          "Use `ProcessPoolExecutor().submit` + `as_completed` to print results as each chunk finishes instead of waiting for all of them.",
+          "Rewrite the lambda example to pass a named top-level function and verify it now succeeds across processes."
+        ]
+      }
+    },
+    {
+      "id": "the-gil",
+      "title": "The GIL",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "The Global Interpreter Lock is the mutex that lets only one thread run Python bytecode at a time — the single most important fact behind every Python concurrency decision.",
+      "summary": [
+        "The Global Interpreter Lock (GIL) is a mutex inside CPython, the reference implementation, that ensures only one thread executes Python bytecode at any given moment. It exists because CPython manages memory with reference counting: every object tracks how many references point to it, and those counters are updated constantly. Without a lock, two threads incrementing or decrementing the same counter simultaneously could corrupt it and crash the interpreter. The GIL is the simple, fast solution — it makes single-threaded code (the common case) fast and keeps C extensions easy to write — at the cost of preventing CPU-bound multithreaded parallelism.",
+        "The consequence is precise and worth memorizing: threads cannot run Python bytecode in parallel, so multithreading does not speed up CPU-bound code. It does help I/O-bound code, because the GIL is released whenever a thread blocks on I/O (and many C extensions like NumPy release it during heavy computation), letting other threads run during the wait. This is exactly why the standard advice is threads/asyncio for I/O and processes for CPU: each process has its own interpreter and therefore its own GIL, so multiprocessing achieves the parallelism threads cannot.",
+        "The GIL is not part of the Python language — it is an implementation detail of CPython, and alternatives like Jython and (historically) IronPython never had it. The big recent development is PEP 703: starting with Python 3.13 there is an experimental free-threaded build (`python3.13t`) that removes the GIL, and as of Python 3.14 that build is officially supported (though still not the default and with some single-threaded overhead and ecosystem catch-up still in progress). For the foreseeable future you should still design as though the GIL is present, while watching the free-threading effort mature."
+      ],
+      "keyPoints": [
+        "The GIL is a CPython mutex allowing only one thread to execute Python bytecode at a time.",
+        "It exists to protect CPython's reference-counting memory management from concurrent corruption.",
+        "It is released during blocking I/O (and by some C extensions), which is why threads help I/O-bound work.",
+        "It prevents CPU-bound multithreaded parallelism — use multiprocessing (one GIL per process) for that.",
+        "The GIL is a CPython implementation detail, not a feature of the Python language itself.",
+        "Python 3.13+ ships an experimental free-threaded (no-GIL) build via PEP 703; supported in 3.14 but not yet default."
+      ],
+      "code": [
+        {
+          "title": "Inspect and detect the GIL at runtime",
+          "language": "python",
+          "code": "import sys, sysconfig\n\n# On a standard build this is True; on a free-threaded (3.13t+) build it can be False.\n# sys._is_gil_enabled() exists on Python 3.13+.\nif hasattr(sys, \"_is_gil_enabled\"):\n    print(\"GIL enabled:\", sys._is_gil_enabled())\nelse:\n    print(\"GIL enabled: True (no free-threading support in this build)\")\n\n# Was this interpreter built with the GIL disabled at compile time?\nprint(\"Py_GIL_DISABLED:\", sysconfig.get_config_var(\"Py_GIL_DISABLED\"))\nprint(sys.version)"
+        },
+        {
+          "title": "Why threads don't speed up CPU-bound code",
+          "language": "python",
+          "code": "import time\nfrom concurrent.futures import ThreadPoolExecutor\n\ndef burn(n):\n    return sum(i * i for i in range(n))\n\nN = 10_000_000\n\nstart = time.perf_counter()\nburn(N); burn(N)\nprint(f\"serial:  {time.perf_counter() - start:.2f}s\")\n\nstart = time.perf_counter()\nwith ThreadPoolExecutor(max_workers=2) as pool:\n    list(pool.map(burn, [N, N]))\nprint(f\"threads: {time.perf_counter() - start:.2f}s\")  # ~no improvement: the GIL"
+        }
+      ],
+      "resources": [
+        { "title": "What Is the Python Global Interpreter Lock (GIL)? (Real Python)", "url": "https://realpython.com/python-gil/", "type": "article" },
+        { "title": "Python support for free threading (official HOWTO)", "url": "https://docs.python.org/3/howto/free-threading-python.html", "type": "official" },
+        { "title": "PEP 703 — Making the Global Interpreter Lock Optional in CPython", "url": "https://peps.python.org/pep-0703/", "type": "official" }
+      ]
+    },
+    {
+      "id": "asynchrony-asyncio",
+      "title": "Asynchrony (asyncio)",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "asyncio runs thousands of cooperative tasks on a single thread with `async`/`await`, delivering massive I/O concurrency without threads or the GIL fight.",
+      "summary": [
+        "Asynchronous programming with `asyncio` is cooperative single-threaded concurrency: one event loop runs many tasks, and each task voluntarily yields control with `await` whenever it would otherwise block on I/O. While one task waits for a network response, the loop runs another, so a single thread can juggle thousands of in-flight connections with tiny memory overhead and no GIL contention. You define an asynchronous function with `async def` (a coroutine), and inside it you `await` other coroutines or awaitables. Critically, `await` only suspends at genuine I/O points — there is no preemption, so a long CPU-bound computation inside a coroutine will freeze the entire loop.",
+        "The modern entry point is `asyncio.run(main())`, which creates the event loop, runs your top-level coroutine to completion, and cleans up. To run things concurrently you schedule coroutines as Tasks. Since Python 3.11 the recommended way is `asyncio.TaskGroup`: an `async with asyncio.TaskGroup() as tg:` block where you call `tg.create_task(coro())`, and the block does not exit until every task finishes. TaskGroup implements structured concurrency — if any task raises, the group cancels the siblings and re-raises an `ExceptionGroup`, so you never leak orphaned background tasks. The older `asyncio.gather(*coros)` still works and returns results in order, but it does not auto-cancel siblings on failure, which is why TaskGroup is now the default.",
+        "The golden rule of asyncio is never block the event loop. Use async-native libraries for I/O — `aiohttp` or `httpx` for HTTP, `asyncpg` for Postgres — and `await asyncio.sleep()` instead of `time.sleep()`. When you must call a blocking, synchronous function (a legacy SDK, a CPU-heavy routine), offload it with `await asyncio.to_thread(fn, *args)` so it runs in a thread pool and the loop keeps spinning. Use `asyncio.timeout()` (3.11+) to bound how long an awaited operation may take. asyncio is the right tool when you have a high volume of concurrent I/O; for CPU work you still want multiprocessing."
+      ],
+      "keyPoints": [
+        "`asyncio` is cooperative single-threaded concurrency: tasks yield at `await` points so one loop serves many at once.",
+        "`async def` defines a coroutine; `await` suspends only at real I/O — CPU-heavy code inside a coroutine blocks everything.",
+        "`asyncio.run(main())` is the standard entry point; it owns the event loop's lifecycle.",
+        "Prefer `asyncio.TaskGroup` (3.11+) for concurrency: structured, auto-cancels siblings on error, raises an `ExceptionGroup`.",
+        "Never block the loop — use async libraries (`httpx`, `aiohttp`, `asyncpg`) and `asyncio.to_thread()` for blocking calls.",
+        "Use `await asyncio.sleep()` not `time.sleep()`, and `asyncio.timeout()` to bound long-running awaits."
+      ],
+      "code": [
+        {
+          "title": "Concurrent tasks with TaskGroup",
+          "language": "python",
+          "code": "import asyncio, time\n\nasync def fetch(name, delay):\n    await asyncio.sleep(delay)        # non-blocking 'I/O'\n    return f\"{name} done after {delay}s\"\n\nasync def main():\n    start = time.perf_counter()\n    results = []\n    async with asyncio.TaskGroup() as tg:   # Python 3.11+\n        t1 = tg.create_task(fetch(\"A\", 1))\n        t2 = tg.create_task(fetch(\"B\", 2))\n        t3 = tg.create_task(fetch(\"C\", 1))\n    # block exits only once every task is finished\n    for t in (t1, t2, t3):\n        results.append(t.result())\n    print(results)\n    print(f\"elapsed: {time.perf_counter() - start:.2f}s\")  # ~2s, not 4s\n\nasyncio.run(main())"
+        },
+        {
+          "title": "Offloading blocking work and bounding time",
+          "language": "python",
+          "code": "import asyncio, time\n\ndef blocking_call(n):\n    time.sleep(1)            # a synchronous library that would freeze the loop\n    return n * n\n\nasync def main():\n    # Run the blocking function in a worker thread so the loop stays responsive.\n    result = await asyncio.to_thread(blocking_call, 9)\n    print(\"to_thread result:\", result)\n\n    # Bound how long an await may take (Python 3.11+).\n    try:\n        async with asyncio.timeout(0.5):\n            await asyncio.sleep(5)\n    except TimeoutError:\n        print(\"operation timed out, as expected\")\n\nasyncio.run(main())"
+        }
+      ],
+      "resources": [
+        { "title": "asyncio — Asynchronous I/O (official docs)", "url": "https://docs.python.org/3/library/asyncio.html", "type": "official" },
+        { "title": "Coroutines and Tasks — TaskGroup, gather, create_task (official docs)", "url": "https://docs.python.org/3/library/asyncio-task.html", "type": "official" },
+        { "title": "Async IO in Python: A Complete Walkthrough (Real Python)", "url": "https://realpython.com/async-io-python/", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Build up an asyncio program from a single coroutine to concurrent TaskGroup execution, then handle blocking work and timeouts the right way.",
+        "steps": [
+          {
+            "title": "Run your first coroutine",
+            "explanation": "Define an `async def` coroutine and run it with `asyncio.run`. Inside, `await asyncio.sleep` yields control to the loop instead of blocking the thread. Calling a coroutine without awaiting it does nothing — it just returns a coroutine object.",
+            "python": "# first.py\nimport asyncio\n\nasync def greet(name):\n    await asyncio.sleep(1)         # non-blocking pause\n    return f\"hello, {name}\"\n\nasync def main():\n    msg = await greet(\"world\")\n    print(msg)\n\nasyncio.run(main())",
+            "javascript": null
+          },
+          {
+            "title": "See sequential awaits are slow",
+            "explanation": "Awaiting coroutines one after another runs them in series — the delays add up. This is the trap that makes people think asyncio is slow; the fix is to schedule them concurrently.",
+            "python": "# sequential.py\nimport asyncio, time\n\nasync def task(name, delay):\n    await asyncio.sleep(delay)\n    return name\n\nasync def main():\n    start = time.perf_counter()\n    a = await task(\"A\", 1)\n    b = await task(\"B\", 2)\n    c = await task(\"C\", 1)\n    print([a, b, c], f\"in {time.perf_counter() - start:.2f}s\")  # ~4s\n\nasyncio.run(main())",
+            "javascript": null
+          },
+          {
+            "title": "Run them concurrently with TaskGroup",
+            "explanation": "Schedule all three with `tg.create_task` inside an `async with asyncio.TaskGroup()` block. The tasks overlap, so total time is the longest single task (~2s). The block waits for all of them, and a failure in one cancels the others.",
+            "python": "# concurrent.py\nimport asyncio, time\n\nasync def task(name, delay):\n    await asyncio.sleep(delay)\n    return name\n\nasync def main():\n    start = time.perf_counter()\n    async with asyncio.TaskGroup() as tg:\n        t = [tg.create_task(task(n, d))\n             for n, d in [(\"A\", 1), (\"B\", 2), (\"C\", 1)]]\n    print([x.result() for x in t], f\"in {time.perf_counter() - start:.2f}s\")  # ~2s\n\nasyncio.run(main())",
+            "javascript": null
+          },
+          {
+            "title": "Offload blocking work and add a timeout",
+            "explanation": "A synchronous `time.sleep` inside a coroutine would freeze the whole loop. Wrap it with `asyncio.to_thread` so it runs in a worker thread. Then use `asyncio.timeout` to cap how long an await may run, catching `TimeoutError` when it is exceeded.",
+            "python": "# blocking.py\nimport asyncio, time\n\ndef slow_sync(n):\n    time.sleep(1)        # blocking: must NOT be called directly in a coroutine\n    return n * n\n\nasync def main():\n    result = await asyncio.to_thread(slow_sync, 7)\n    print(\"offloaded result:\", result)\n\n    try:\n        async with asyncio.timeout(0.3):\n            await asyncio.sleep(2)\n    except TimeoutError:\n        print(\"timed out as expected\")\n\nasyncio.run(main())",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Make one task in the TaskGroup raise an exception and observe that the siblings are cancelled and an `ExceptionGroup` is raised.",
+          "Rewrite the concurrent example with `asyncio.gather` and compare its failure behavior to TaskGroup's.",
+          "Install `httpx` and fetch several real URLs concurrently with `httpx.AsyncClient` inside a TaskGroup; time it against sequential requests.",
+          "Replace `asyncio.to_thread` work with a CPU-bound loop and confirm it still blocks unless offloaded — then move it to a ProcessPoolExecutor via `loop.run_in_executor`.",
+          "Use `asyncio.as_completed` to print task results in the order they finish rather than the order they were created."
+        ]
+      }
+    },
+    {
+      "id": "gevent",
+      "title": "gevent",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "gevent brings async-style I/O concurrency to ordinary synchronous-looking code by using lightweight greenlets and monkey-patching the standard library.",
+      "summary": [
+        "gevent is a third-party coroutine-based networking library that predates `asyncio` and takes a fundamentally different approach to the same problem. Instead of requiring you to write `async`/`await` everywhere, gevent lets you keep writing normal blocking-style code while it transparently makes that code cooperative. It is built on two pieces: greenlets, extremely lightweight pseudo-threads scheduled in user space (you can run tens of thousands of them), and a fast event loop (libev/libuv) that drives non-blocking I/O underneath. When a greenlet performs I/O, gevent quietly suspends it and runs another, so blocking-looking code achieves async concurrency.",
+        "The magic that makes existing code cooperative is monkey patching: calling `gevent.monkey.patch_all()` at the very top of your program replaces blocking standard-library functions (in `socket`, `ssl`, `time`, `threading`, etc.) with gevent-aware versions. After patching, an ordinary `requests.get()` or `socket.recv()` no longer blocks the whole process — it yields to other greenlets. This is gevent's biggest selling point and its biggest footgun: it must happen before the patched modules are imported, it can interact badly with libraries that cache references or rely on real threads, and it makes control flow harder to reason about than explicit `await`.",
+        "In modern Python, `asyncio` is the standard-library answer and the default choice for new projects, so gevent is mostly something you will encounter in existing codebases — notably as a worker class for the Gunicorn WSGI server and in older networking services. It remains actively maintained (releases through 2025, supporting recent Python 3.x). Reach for it when you need to add I/O concurrency to a large synchronous code base without rewriting everything as `async`; choose `asyncio` when starting fresh and you want explicit, standard, well-supported async semantics."
+      ],
+      "keyPoints": [
+        "gevent provides cooperative I/O concurrency using greenlets (lightweight user-space pseudo-threads) plus a libev/libuv event loop.",
+        "You write ordinary synchronous-looking code; gevent yields at I/O instead of requiring explicit `async`/`await`.",
+        "`monkey.patch_all()` rewrites blocking stdlib calls to be cooperative — it must run before those modules are imported.",
+        "Monkey patching is powerful but a footgun: it complicates debugging and can break libraries that cache sockets or use real threads.",
+        "Common in the wild as a Gunicorn worker class and in legacy networking code; still actively maintained.",
+        "For new projects prefer `asyncio` (standard, explicit); choose gevent to add concurrency to large existing sync code."
+      ],
+      "code": [
+        {
+          "title": "Concurrent greenlets",
+          "language": "python",
+          "code": "# pip install gevent\nimport gevent\nfrom gevent import sleep\n\ndef worker(name, delay):\n    sleep(delay)              # gevent's cooperative sleep yields the greenlet\n    return f\"{name} finished after {delay}s\"\n\n# Spawn greenlets that run concurrently on one OS thread\njobs = [gevent.spawn(worker, n, d) for n, d in [(\"A\", 1), (\"B\", 2), (\"C\", 1)]]\ngevent.joinall(jobs)         # wait for all of them (~2s total, not 4s)\nfor job in jobs:\n    print(job.value)"
+        },
+        {
+          "title": "Monkey-patching the standard library",
+          "language": "python",
+          "code": "# patch FIRST, before importing anything that does I/O\nfrom gevent import monkey\nmonkey.patch_all()\n\nimport time\nimport gevent\n\ndef task(name):\n    time.sleep(1)            # now cooperative thanks to patch_all(): yields\n    print(f\"{name} done\")\n\n# These run concurrently even though task() uses plain time.sleep\ngevent.joinall([gevent.spawn(task, n) for n in (\"A\", \"B\", \"C\")])\n# total elapsed ~1s instead of ~3s"
+        }
+      ],
+      "resources": [
+        { "title": "gevent — official website", "url": "https://www.gevent.org/", "type": "official" },
+        { "title": "gevent/gevent on GitHub", "url": "https://github.com/gevent/gevent", "type": "opensource" },
+        { "title": "gevent For the Working Python Developer (tutorial)", "url": "https://sdiehl.github.io/gevent-tutorial/", "type": "article" }
+      ]
+    }
+  ]
+}

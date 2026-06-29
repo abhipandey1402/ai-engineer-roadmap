@@ -1,0 +1,244 @@
+{
+  "id": "advanced-python",
+  "title": "Advanced Python",
+  "description": "Decorators, iterators, and modules.",
+  "topics": [
+    {
+      "id": "decorators",
+      "title": "Decorators",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "A decorator is a function that wraps another function to add behavior — logging, timing, caching, access checks — without touching the original code.",
+      "summary": [
+        "A decorator is just a callable that takes a function and returns a replacement function, usually a closure that calls the original. The `@decorator` syntax above a `def` is pure sugar: `@my_decorator` followed by `def f(): ...` means exactly `f = my_decorator(f)`. Because functions are first-class objects in Python, you can pass them around, nest them, and return them — and that is all a decorator relies on. The classic shape is an outer function that defines an inner `wrapper(*args, **kwargs)`, does something before and/or after calling the wrapped function, and returns `wrapper`. Using `*args, **kwargs` lets one decorator wrap functions of any signature.",
+        "There is one near-mandatory detail: apply `@functools.wraps(func)` to your wrapper. Without it the decorated function reports the wrapper's `__name__`, loses its docstring and type annotations, and confuses debuggers, `help()`, and introspection tools. `functools.wraps` copies `__name__`, `__qualname__`, `__doc__`, `__annotations__`, `__module__`, and the `__dict__` across, and sets `__wrapped__` so you can still reach the original. Two more shapes round out the pattern: a *parameterized* decorator (like `@retry(times=3)`) is a function that returns a decorator — one extra layer of nesting — and a *stacked* set of decorators applies bottom-up, so the one nearest the `def` runs innermost.",
+        "The standard library ships decorators you should reach for before writing your own: `functools.cache` and `functools.lru_cache` memoize expensive pure functions, `functools.wraps` (above), `functools.singledispatch` for type-based dispatch, `property` for computed attributes, and `staticmethod`/`classmethod` on classes. Decorators can also be classes (any object with `__call__`), which is handy when the wrapper needs to hold state. The whole pattern is about cross-cutting concerns: when several functions need the same wrapping logic, a decorator factors it into one reusable, declarative place."
+      ],
+      "keyPoints": [
+        "`@deco` above `def f` is sugar for `f = deco(f)`; a decorator takes a function and returns a (usually wrapping) function.",
+        "Write the wrapper as `def wrapper(*args, **kwargs)` so one decorator works on any function signature.",
+        "Always apply `@functools.wraps(func)` to the wrapper so name, docstring, and annotations survive — and `__wrapped__` reaches the original.",
+        "A decorator that takes arguments is a function that returns a decorator: it needs three nested levels.",
+        "Stacked decorators apply bottom-up — the one closest to `def` wraps first and runs innermost.",
+        "Prefer stdlib decorators when they fit: `functools.cache`/`lru_cache` for memoization, `property`, `classmethod`, `staticmethod`, `functools.singledispatch`."
+      ],
+      "code": [
+        {
+          "title": "A basic decorator with functools.wraps",
+          "language": "python",
+          "code": "import functools\n\ndef log_calls(func):\n    @functools.wraps(func)          # preserve name, docstring, annotations\n    def wrapper(*args, **kwargs):\n        print(f\"calling {func.__name__}({args}, {kwargs})\")\n        result = func(*args, **kwargs)\n        print(f\"{func.__name__} returned {result!r}\")\n        return result\n    return wrapper\n\n@log_calls                          # add = log_calls(add)\ndef add(a, b):\n    \"\"\"Return the sum of a and b.\"\"\"\n    return a + b\n\nadd(2, 3)\nprint(add.__name__)   # 'add'  (not 'wrapper', thanks to wraps)\nprint(add.__doc__)    # 'Return the sum of a and b.'"
+        },
+        {
+          "title": "A decorator that takes arguments (three layers)",
+          "language": "python",
+          "code": "import functools, time\n\ndef retry(times=3, delay=0.0):\n    def decorator(func):\n        @functools.wraps(func)\n        def wrapper(*args, **kwargs):\n            for attempt in range(1, times + 1):\n                try:\n                    return func(*args, **kwargs)\n                except Exception as exc:\n                    print(f\"attempt {attempt} failed: {exc}\")\n                    if attempt == times:\n                        raise\n                    time.sleep(delay)\n        return wrapper\n    return decorator\n\n@retry(times=3, delay=0.1)\ndef flaky(n):\n    if n < 3:\n        raise ValueError(\"not ready\")\n    return \"ok\"\n\n# retry(times=3, delay=0.1) returns 'decorator', which wraps flaky"
+        },
+        {
+          "title": "Memoization with the stdlib (don't write your own cache)",
+          "language": "python",
+          "code": "import functools\n\n@functools.cache                 # unbounded memoization (Python 3.9+)\ndef fib(n):\n    return n if n < 2 else fib(n - 1) + fib(n - 2)\n\nprint(fib(50))                   # fast: each n computed once\n\n@functools.lru_cache(maxsize=128)  # bounded variant + stats\ndef slow_square(n):\n    return n * n\n\nslow_square(4); slow_square(4)\nprint(slow_square.cache_info())   # CacheInfo(hits=1, misses=1, ...)"
+        }
+      ],
+      "resources": [
+        { "title": "functools — higher-order functions (official docs)", "url": "https://docs.python.org/3/library/functools.html", "type": "official" },
+        { "title": "PEP 318 — Decorators for Functions and Methods", "url": "https://peps.python.org/pep-0318/", "type": "official" },
+        { "title": "Primer on Python Decorators (Real Python)", "url": "https://realpython.com/primer-on-python-decorators/", "type": "article" },
+        { "title": "Decorators in Python (video)", "url": "https://www.youtube.com/watch?v=FXUUSfJO_J4", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "Build decorators from the ground up: a simple timing decorator, then a parameterized one, then stack them and confirm metadata is preserved.",
+        "steps": [
+          {
+            "title": "Write a timing decorator",
+            "explanation": "Start with the canonical shape: an outer function that takes `func`, an inner `wrapper(*args, **kwargs)` that measures wall-clock time around the call, and `return wrapper`. Apply `@functools.wraps(func)` from the very first version so introspection stays correct.",
+            "python": "import functools, time\n\ndef timed(func):\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start = time.perf_counter()\n        result = func(*args, **kwargs)\n        elapsed = (time.perf_counter() - start) * 1000\n        print(f\"{func.__name__} took {elapsed:.2f} ms\")\n        return result\n    return wrapper\n\n@timed\ndef work(n):\n    \"\"\"Sum 0..n-1.\"\"\"\n    return sum(range(n))\n\nwork(1_000_000)\nprint(work.__name__, \"-\", work.__doc__)  # work - Sum 0..n-1.",
+            "javascript": null
+          },
+          {
+            "title": "Prove why functools.wraps matters",
+            "explanation": "Temporarily remove `@functools.wraps(func)` and re-check `work.__name__` and `work.__doc__`. You'll see `'wrapper'` and `None` — the original identity is gone. Put `@functools.wraps` back; this is why it's non-negotiable in real code.",
+            "python": "def timed_no_wraps(func):\n    def wrapper(*args, **kwargs):\n        return func(*args, **kwargs)\n    return wrapper\n\n@timed_no_wraps\ndef work(n):\n    \"\"\"Sum 0..n-1.\"\"\"\n    return sum(range(n))\n\nprint(work.__name__)  # 'wrapper'  <- identity lost\nprint(work.__doc__)   # None",
+            "javascript": null
+          },
+          {
+            "title": "Build a parameterized decorator",
+            "explanation": "Add a third layer so the decorator accepts its own arguments. `count_calls(label)` returns a decorator; that decorator wraps the function and uses a closure variable to count invocations across calls.",
+            "python": "import functools\n\ndef count_calls(label):\n    def decorator(func):\n        calls = 0\n        @functools.wraps(func)\n        def wrapper(*args, **kwargs):\n            nonlocal calls\n            calls += 1\n            print(f\"[{label}] call #{calls}\")\n            return func(*args, **kwargs)\n        return wrapper\n    return decorator\n\n@count_calls(label=\"greet\")\ndef greet(name):\n    return f\"hi {name}\"\n\ngreet(\"Ada\"); greet(\"Bob\")  # [greet] call #1, then #2",
+            "javascript": null
+          },
+          {
+            "title": "Stack decorators and read the order",
+            "explanation": "Apply both decorators to one function. Decorators apply bottom-up: the one nearest the `def` (`timed`) wraps first and runs innermost, while `count_calls` wraps that and runs outermost. Run it and trace the print order to confirm.",
+            "python": "@count_calls(label=\"task\")   # outermost: runs first on each call\n@timed                        # innermost: nearest the def\ndef task(n):\n    return sum(range(n))\n\ntask(500_000)\n# prints: [task] call #1   then   task took ... ms",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Write a `@debug` decorator that prints the call signature and the return value, reusing `functools.wraps`.",
+          "Add a `@cache_result` decorator using `functools.lru_cache` on an expensive recursive function and inspect `cache_info()`.",
+          "Make `retry` (from the snippet) configurable to retry only on a specific exception type passed as an argument.",
+          "Convert the timing decorator into a class with `__call__` that stores the total time across all calls in an attribute.",
+          "Stack `@timed` under `@count_calls` and then swap the order — explain the difference in what gets timed and counted."
+        ]
+      }
+    },
+    {
+      "id": "iterators",
+      "title": "Iterators",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "An iterator is any object that knows how to produce its values one at a time — it's the protocol every `for` loop, comprehension, and unpacking quietly relies on.",
+      "summary": [
+        "Python draws a sharp line between an *iterable* and an *iterator*. An iterable is anything you can loop over — lists, strings, dicts, files — and it implements `__iter__()`, which returns a fresh iterator. An iterator is the thing that actually produces values: it implements `__next__()` (return the next value, or raise `StopIteration` when exhausted) and an `__iter__()` that returns `self`. A `for` loop is just sugar: it calls `iter(obj)` once to get an iterator, then calls `next()` on it repeatedly until `StopIteration` is raised. The same protocol powers comprehensions, `in` tests, tuple unpacking, and `*args` splatting.",
+        "Iterators are *lazy* and *single-pass*. Lazy means values are computed on demand, not all up front, so an iterator can represent an infinite or huge sequence (a multi-gigabyte file, the natural numbers) while using almost no memory. Single-pass means once an iterator is exhausted it stays exhausted — calling `next()` again just raises `StopIteration`. That is why you can iterate a list twice (each `for` asks the list for a new iterator) but iterating the same `zip`, `map`, or file object twice yields nothing the second time. Knowing which objects are iterators versus iterables prevents a whole class of \"my data disappeared\" bugs.",
+        "You rarely write the full class-based protocol by hand because *generators* do it for you: any function with a `yield` returns an iterator automatically, with `__iter__`/`__next__` and state-saving generated for free. The standard `itertools` module is the other half of the toolkit — `count`, `cycle`, `islice`, `chain`, `groupby`, `accumulate`, and friends compose lazy iterators into efficient pipelines without building intermediate lists. Build manual iterator classes only when you genuinely need a stateful object with methods beyond iteration; reach for a generator or `itertools` first."
+      ],
+      "keyPoints": [
+        "Iterable = has `__iter__()` returning an iterator (lists, strings, dicts); iterator = has `__next__()` and returns `self` from `__iter__()`.",
+        "`for x in obj` calls `iter(obj)` once, then `next()` repeatedly until `StopIteration` is raised — that's the entire protocol.",
+        "Iterators are lazy (values produced on demand) so they can model infinite or huge sequences with tiny memory.",
+        "Iterators are single-pass: once exhausted they stay exhausted, which is why re-looping a `zip`/`map`/file yields nothing.",
+        "Generator functions (`yield`) are the easy way to make iterators — `__iter__`/`__next__` and state are created automatically.",
+        "Use `itertools` (`count`, `cycle`, `islice`, `chain`, `groupby`) to compose lazy iterator pipelines instead of building lists."
+      ],
+      "code": [
+        {
+          "title": "The iterator protocol by hand",
+          "language": "python",
+          "code": "iterable = [10, 20, 30]\n\nit = iter(iterable)          # iterable -> iterator\nprint(next(it))              # 10\nprint(next(it))              # 20\nprint(next(it))              # 30\ntry:\n    next(it)                 # nothing left\nexcept StopIteration:\n    print(\"exhausted\")\n\n# a for loop is exactly this, with the StopIteration handled for you\nfor x in iterable:\n    print(x)"
+        },
+        {
+          "title": "A custom iterator class",
+          "language": "python",
+          "code": "class Countdown:\n    \"\"\"Iterate from n down to 1.\"\"\"\n    def __init__(self, n):\n        self.n = n\n\n    def __iter__(self):\n        return self            # an iterator returns itself\n\n    def __next__(self):\n        if self.n <= 0:\n            raise StopIteration\n        self.n -= 1\n        return self.n + 1\n\nfor value in Countdown(3):\n    print(value)               # 3, 2, 1\n\n# The same thing as a generator — far less code:\ndef countdown(n):\n    while n > 0:\n        yield n\n        n -= 1"
+        },
+        {
+          "title": "Lazy infinite sequences with itertools",
+          "language": "python",
+          "code": "from itertools import count, islice, cycle, chain\n\n# count() is an infinite iterator — only take what you need\nfirst_five_evens = list(islice(count(0, 2), 5))\nprint(first_five_evens)              # [0, 2, 4, 6, 8]\n\n# cycle() repeats forever; chain() glues iterables end to end\ncolors = cycle([\"red\", \"green\", \"blue\"])\nprint([next(colors) for _ in range(4)])  # ['red','green','blue','red']\n\nprint(list(chain([1, 2], [3, 4])))   # [1, 2, 3, 4]\n\n# single-pass gotcha: a zip object is itself an iterator\nz = zip([1, 2], [\"a\", \"b\"])\nprint(list(z))   # [(1, 'a'), (2, 'b')]\nprint(list(z))   # []  <- already exhausted"
+        }
+      ],
+      "resources": [
+        { "title": "Iterators — The Python Tutorial (official docs)", "url": "https://docs.python.org/3/tutorial/classes.html#iterators", "type": "official" },
+        { "title": "itertools — functions creating iterators (official docs)", "url": "https://docs.python.org/3/library/itertools.html", "type": "official" },
+        { "title": "Iterators and Iterables in Python (Real Python)", "url": "https://realpython.com/python-iterators-iterables/", "type": "article" },
+        { "title": "Python Iterators (Programiz)", "url": "https://www.programiz.com/python-programming/iterator", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Internalize the iterator protocol by driving it manually, building a custom iterator class, then replacing it with a generator and an itertools pipeline.",
+        "steps": [
+          {
+            "title": "Drive an iterator by hand",
+            "explanation": "Use `iter()` and `next()` directly so you can see what every `for` loop does under the hood. Notice that the iterable (the list) is reusable, but the iterator you pulled from it is single-pass.",
+            "python": "nums = [1, 2, 3]\nit = iter(nums)\nprint(next(it), next(it), next(it))   # 1 2 3\ntry:\n    next(it)\nexcept StopIteration:\n    print(\"iterator exhausted\")\n\n# the list itself still yields a brand-new iterator each time\nprint(sum(nums), sum(nums))           # 6 6",
+            "javascript": null
+          },
+          {
+            "title": "Write a custom iterator class",
+            "explanation": "Implement the full protocol: `__iter__` returns `self`, `__next__` returns the next value or raises `StopIteration`. This makes `Squares(4)` usable anywhere an iterable is expected — `for`, `list()`, comprehensions.",
+            "python": "class Squares:\n    def __init__(self, n):\n        self.n = n\n        self.i = 0\n    def __iter__(self):\n        return self\n    def __next__(self):\n        if self.i >= self.n:\n            raise StopIteration\n        self.i += 1\n        return self.i * self.i\n\nprint(list(Squares(4)))   # [1, 4, 9, 16]\nprint([s for s in Squares(3)])  # [1, 4, 9]",
+            "javascript": null
+          },
+          {
+            "title": "Replace the class with a generator",
+            "explanation": "A generator function does everything the class did in three lines. The `yield` makes Python generate `__iter__`/`__next__` and save state between values automatically — this is the idiomatic way to make iterators.",
+            "python": "def squares(n):\n    for i in range(1, n + 1):\n        yield i * i\n\nprint(list(squares(4)))   # [1, 4, 9, 16]\n\n# it really is an iterator:\ng = squares(2)\nprint(next(g), next(g))   # 1 4",
+            "javascript": null
+          },
+          {
+            "title": "Compose lazy pipelines with itertools",
+            "explanation": "Combine lazy iterators without ever materializing a big list. `count` is infinite, `islice` bounds it, and a generator expression transforms it — memory stays tiny no matter how many values flow through.",
+            "python": "from itertools import count, islice\n\n# squares of the first 1000 odd numbers, computed lazily\nodds = count(1, 2)\nsquared = (n * n for n in odds)\nfirst_ten = list(islice(squared, 10))\nprint(first_ten)   # [1, 9, 25, 49, 81, 121, 169, 225, 289, 361]",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `Fibonacci` iterator class that yields the first `n` Fibonacci numbers, then rewrite it as a generator.",
+          "Demonstrate the single-pass gotcha: build a `map(...)` object, loop it once, loop it again, and explain why the second loop is empty.",
+          "Use `itertools.islice` to read just the first 5 lines of a large text file without loading the whole file.",
+          "Write a generator `take(iterable, n)` that yields at most `n` items from any iterable, then compare it to `itertools.islice`.",
+          "Use `itertools.cycle` to assign one of three labels round-robin to a list of items."
+        ]
+      }
+    },
+    {
+      "id": "modules",
+      "title": "Modules",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "A module is just a `.py` file you can import, and packages group modules into directories — together they're how Python code is organized, reused, and shared.",
+      "summary": [
+        "Every `.py` file is a module, and its name (without the extension) is how you import it. `import fibo` runs the file once, binds the name `fibo`, and you reach its contents through the namespace: `fibo.fib(100)`. `from fibo import fib` pulls specific names into your own namespace, and `import fibo as f` aliases it. Avoid `from fibo import *`: it dumps unknown names into your namespace and hurts readability — modules can restrict what `*` exports via an `__all__` list, but explicit imports are still clearer. Imports are cached in `sys.modules`, so importing the same module from ten places runs its top-level code only once.",
+        "The `if __name__ == \"__main__\":` guard is the idiom that lets one file be both an importable library and a runnable script. When you run `python fibo.py`, Python sets that module's `__name__` to `\"__main__\"`, so the guarded block executes; when another file does `import fibo`, `__name__` is `\"fibo\"` and the block is skipped. Put your script's entry point (argument parsing, the `main()` call) inside the guard so importing the module never triggers side effects. Python finds modules by searching `sys.path` in order: the script's own directory, then `PYTHONPATH` entries, then the interpreter's installed `site-packages`.",
+        "A *package* is a directory of modules, addressed with dotted names like `sound.effects.echo`. Historically a package needed an `__init__.py` (which runs when the package is first imported and can expose a curated public API or set `__all__`); modern Python also supports namespace packages without it, but a regular package with `__init__.py` remains the norm for application code. Inside a package, use explicit relative imports (`from . import echo`, `from ..formats import wav`) to reference sibling modules. For introspection, `dir(module)` lists its names and the `importlib` module provides the programmatic import machinery when you need to import by string or reload code."
+      ],
+      "keyPoints": [
+        "Any `.py` file is a module; `import name` runs it once, caches it in `sys.modules`, and exposes its contents under `name.`.",
+        "Prefer explicit imports (`import x`, `from x import y`, `import x as z`) over `from x import *`, which pollutes the namespace.",
+        "`if __name__ == \"__main__\":` runs only when the file is executed directly, not when imported — put your entry point there.",
+        "Python searches for modules along `sys.path`: script directory first, then `PYTHONPATH`, then installed `site-packages`.",
+        "A package is a directory of modules; `__init__.py` marks a regular package and can define its public API or `__all__`.",
+        "Use explicit relative imports (`from . import sibling`) inside packages, and `importlib` to import or reload modules by name at runtime."
+      ],
+      "code": [
+        {
+          "title": "Importing modules three ways",
+          "language": "python",
+          "code": "# whole module — access via the namespace\nimport math\nprint(math.sqrt(16))        # 4.0\n\n# specific names into the current namespace\nfrom math import pi, cos\nprint(pi, cos(0))           # 3.141592653589793 1.0\n\n# alias a long name\nimport datetime as dt\nprint(dt.date.today())\n\n# dir() lists what a module provides\nprint(\"sqrt\" in dir(math))  # True"
+        },
+        {
+          "title": "A dual-purpose module with the main guard",
+          "language": "python",
+          "code": "# fibo.py — works as both a library and a script\nimport sys\n\ndef fib(n):\n    \"\"\"Print the Fibonacci series up to n.\"\"\"\n    a, b = 0, 1\n    while a < n:\n        print(a, end=\" \")\n        a, b = b, a + b\n    print()\n\ndef main():\n    n = int(sys.argv[1]) if len(sys.argv) > 1 else 1000\n    fib(n)\n\nif __name__ == \"__main__\":   # only runs via `python fibo.py 500`\n    main()\n# `import fibo` skips main() — no side effects on import"
+        },
+        {
+          "title": "Inspecting the import system",
+          "language": "python",
+          "code": "import sys\nimport importlib\n\n# where Python looks for modules, in order\nfor entry in sys.path[:4]:\n    print(repr(entry))\n\n# imported modules are cached here\nprint(\"math\" in sys.modules)            # True after `import math`\n\n# import a module whose name is only known as a string\njson_mod = importlib.import_module(\"json\")\nprint(json_mod.dumps({\"ok\": True}))     # {\"ok\": true}"
+        }
+      ],
+      "resources": [
+        { "title": "Modules — The Python Tutorial (official docs)", "url": "https://docs.python.org/3/tutorial/modules.html", "type": "official" },
+        { "title": "importlib — the implementation of import (official docs)", "url": "https://docs.python.org/3/library/importlib.html", "type": "official" },
+        { "title": "Python Modules and Packages — An Introduction (Real Python)", "url": "https://realpython.com/python-modules-packages/", "type": "article" },
+        { "title": "Modules in Python (Programiz)", "url": "https://www.programiz.com/python-programming/modules", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Create your own module and package, import them three different ways, and use the `__main__` guard so one file works as both a library and a CLI.",
+        "steps": [
+          {
+            "title": "Write a reusable module",
+            "explanation": "Create `geometry.py` with a couple of functions. This file is now an importable module named `geometry` — its top-level code runs once on first import.",
+            "python": "# geometry.py\nimport math\n\ndef circle_area(r):\n    \"\"\"Area of a circle with radius r.\"\"\"\n    return math.pi * r * r\n\ndef rectangle_area(w, h):\n    \"\"\"Area of a w x h rectangle.\"\"\"\n    return w * h\n\nprint(\"geometry module loaded\")  # proves top-level runs once",
+            "javascript": null
+          },
+          {
+            "title": "Import it three ways from another file",
+            "explanation": "From a sibling `app.py`, import the module and call into it. Note that the 'geometry module loaded' line prints exactly once even though you reference it multiple times — imports are cached in `sys.modules`.",
+            "python": "# app.py (same directory as geometry.py)\nimport geometry\nprint(geometry.circle_area(2))          # 12.566...\n\nfrom geometry import rectangle_area\nprint(rectangle_area(3, 4))             # 12\n\nimport geometry as geo\nprint(geo.circle_area(1))               # 3.14159...\n# run with:  python app.py",
+            "javascript": null
+          },
+          {
+            "title": "Add a __main__ guard so geometry.py is also a CLI",
+            "explanation": "Append an entry point guarded by `if __name__ == \"__main__\":`. Run the file directly and it acts like a script; import it and the guarded block is skipped, so `app.py` sees no side effects beyond the load message.",
+            "python": "# add to the bottom of geometry.py\nif __name__ == \"__main__\":\n    import sys\n    radius = float(sys.argv[1]) if len(sys.argv) > 1 else 1.0\n    print(f\"area of circle r={radius}: {circle_area(radius):.4f}\")\n\n# python geometry.py 5   ->  area of circle r=5.0: 78.5398\n# import geometry        ->  guarded block does NOT run",
+            "javascript": null
+          },
+          {
+            "title": "Group modules into a package",
+            "explanation": "Make a directory `shapes/` with an `__init__.py` that curates the public API, plus a `volumes.py` module inside it. Now `from shapes import sphere_volume` works, and the package controls what callers see.",
+            "python": "# shapes/__init__.py\nfrom .volumes import sphere_volume\n__all__ = [\"sphere_volume\"]\n\n# shapes/volumes.py\nimport math\ndef sphere_volume(r):\n    return 4 / 3 * math.pi * r ** 3\n\n# usage from outside the package:\n# from shapes import sphere_volume\n# print(sphere_volume(2))   # 33.510...",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `triangle_area(base, height)` function to `geometry.py` and import just that name into `app.py`.",
+          "Run `python geometry.py 10` and confirm the CLI output, then `import geometry` and confirm the guarded block did not run.",
+          "Print `geometry.__name__` from inside the module both when run directly and when imported — observe `'__main__'` versus `'geometry'`.",
+          "Add a second module `areas.py` to the `shapes` package and re-export one of its functions from `shapes/__init__.py`.",
+          "Use `importlib.import_module(\"shapes\")` to import the package by string and call `sphere_volume` through the returned object."
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,472 @@
+{
+  "id": "errors-files-text",
+  "title": "Errors, Files & Text",
+  "description": "Exceptions, file handling, context managers, and regular expressions.",
+  "topics": [
+    {
+      "id": "exceptions",
+      "title": "Exceptions",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Exceptions are Python's way of signalling and recovering from runtime errors without crashing the whole program.",
+      "summary": [
+        "When something goes wrong at runtime — a missing file, bad user input, a network timeout, dividing by zero — Python raises an exception. If nothing handles it, the exception propagates up the call stack, prints a traceback, and the program exits. The `try`/`except` statement lets you intercept that exception and decide what to do instead: retry, fall back to a default, log it, or re-raise it with more context. Putting only the risky line inside `try` and catching the *specific* exception type (`FileNotFoundError`, `ValueError`, `KeyError`) — never a bare `except:` — keeps you from accidentally swallowing bugs like typos and `KeyboardInterrupt`.",
+        "A full handler has four clauses. `try` holds the code that might fail; one or more `except` clauses match exception types (you can bind the instance with `as e` to inspect it); the optional `else` runs only when no exception was raised, which is the clean place to put the \"success\" code so it is not accidentally guarded by the same `try`; and `finally` always runs, exception or not, making it the right place for cleanup that must happen no matter what. You raise your own errors with `raise ValueError(\"message\")`, and you preserve the original cause when wrapping an error using `raise NewError(...) from err`, which produces a readable chained traceback.",
+        "Modern Python (3.11+) adds two features worth knowing. Exception groups (`ExceptionGroup`) bundle multiple unrelated errors raised together — common in concurrent code — and the `except*` syntax handles them selectively. And `exc.add_note(\"extra context\")` attaches human-readable notes to an exception that show up in the traceback, which is handy for debugging. Define custom exceptions by subclassing `Exception` (not `BaseException`) so callers can catch your domain errors precisely, and prefer raising a specific built-in when one already fits."
+      ],
+      "keyPoints": [
+        "Catch specific exception types (`ValueError`, `FileNotFoundError`), never a bare `except:` — it hides bugs and swallows Ctrl-C.",
+        "`try`/`except`/`else`/`finally`: `else` runs on success only, `finally` always runs (use it for cleanup).",
+        "Bind the exception with `except SomeError as e:` to inspect its message, args, or attributes.",
+        "Raise errors with `raise ValueError(...)`; preserve the cause when re-wrapping with `raise NewError(...) from err`.",
+        "Subclass `Exception` (not `BaseException`) for custom domain errors so callers can catch them precisely.",
+        "Python 3.11+ adds `ExceptionGroup`/`except*` for multiple errors and `exc.add_note()` for richer tracebacks."
+      ],
+      "code": [
+        {
+          "title": "try / except / else / finally",
+          "language": "python",
+          "code": "def read_int(text):\n    try:\n        value = int(text)          # may raise ValueError\n    except ValueError as e:\n        print(f\"not a number: {e}\")\n        return None\n    else:\n        # runs only if no exception was raised\n        print(f\"parsed {value!r}\")\n        return value\n    finally:\n        # always runs, success or failure\n        print(\"done parsing\")\n\nread_int(\"42\")    # parsed 42 / done parsing\nread_int(\"oops\")  # not a number / done parsing"
+        },
+        {
+          "title": "Custom exceptions and chaining",
+          "language": "python",
+          "code": "class ConfigError(Exception):\n    \"\"\"Raised when configuration is invalid.\"\"\"\n\ndef load_port(raw):\n    try:\n        return int(raw)\n    except ValueError as err:\n        # wrap the low-level error with a domain-specific one,\n        # keeping the original cause in the traceback\n        raise ConfigError(f\"invalid port: {raw!r}\") from err\n\ntry:\n    load_port(\"abc\")\nexcept ConfigError as e:\n    print(e)              # invalid port: 'abc'\n    print(e.__cause__)    # invalid literal for int() with base 10: 'abc'"
+        },
+        {
+          "title": "Catching multiple types and adding notes",
+          "language": "python",
+          "code": "def fetch(item, db):\n    try:\n        return db[item]\n    except (KeyError, TypeError) as e:   # one handler, several types\n        e.add_note(f\"while fetching {item!r}\")  # 3.11+: richer traceback\n        raise\n\nfetch(\"missing\", {\"a\": 1})  # KeyError: 'missing'  + note in traceback"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Errors and Exceptions (official tutorial)",
+          "url": "https://docs.python.org/3/tutorial/errors.html",
+          "type": "official"
+        },
+        {
+          "title": "Built-in Exceptions (official reference)",
+          "url": "https://docs.python.org/3/library/exceptions.html",
+          "type": "official"
+        },
+        {
+          "title": "Python Exceptions: An Introduction (Real Python)",
+          "url": "https://realpython.com/python-exceptions/",
+          "type": "article"
+        },
+        {
+          "title": "Exception Handling in Python",
+          "url": "https://www.youtube.com/watch?v=V_NXT2-QIlE",
+          "type": "video"
+        }
+      ],
+      "handsOn": {
+        "goal": "Build a small resilient parser that validates input, raises a custom exception with chaining, and always cleans up — exercising every clause of try/except/else/finally.",
+        "steps": [
+          {
+            "title": "Catch the specific error, not everything",
+            "explanation": "Wrap only the risky call in `try` and catch the exact exception type. Returning a sensible default instead of crashing is the whole point of exception handling.",
+            "python": "# parse.py\ndef to_float(text):\n    try:\n        return float(text)\n    except ValueError:\n        return None   # caller can detect the failure\n\nprint(to_float(\"3.14\"))  # 3.14\nprint(to_float(\"oops\"))  # None",
+            "javascript": null
+          },
+          {
+            "title": "Use else and finally correctly",
+            "explanation": "`else` runs only when the `try` block succeeded, so success logic lives there and is not accidentally protected by the same handler. `finally` runs no matter what — the right home for cleanup.",
+            "python": "def divide(a, b):\n    try:\n        result = a / b           # may raise ZeroDivisionError\n    except ZeroDivisionError:\n        print(\"cannot divide by zero\")\n        return None\n    else:\n        print(\"division succeeded\")\n        return result\n    finally:\n        print(\"-- divide() finished --\")\n\ndivide(10, 2)\ndivide(10, 0)",
+            "javascript": null
+          },
+          {
+            "title": "Define a custom exception and chain the cause",
+            "explanation": "Subclass `Exception` for a domain-specific error, then wrap the low-level error with `raise ... from err` so the original cause stays visible in the traceback.",
+            "python": "class TemperatureError(Exception):\n    pass\n\ndef parse_celsius(raw):\n    try:\n        value = float(raw)\n    except ValueError as err:\n        raise TemperatureError(f\"not a temperature: {raw!r}\") from err\n    if value < -273.15:\n        raise TemperatureError(f\"{value} is below absolute zero\")\n    return value\n\ntry:\n    parse_celsius(\"hot\")\nexcept TemperatureError as e:\n    print(\"handled:\", e)\n    print(\"caused by:\", repr(e.__cause__))",
+            "javascript": null
+          },
+          {
+            "title": "Re-raise with an added note",
+            "explanation": "Sometimes you want to catch, attach context, and let the error keep propagating. A bare `raise` re-raises the current exception, and `add_note()` (3.11+) enriches the traceback without changing the type.",
+            "python": "def load_setting(config, key):\n    try:\n        return config[key]\n    except KeyError as e:\n        e.add_note(f\"available keys: {list(config)}\")\n        raise   # re-raise the same exception, now with a note\n\nload_setting({\"host\": \"localhost\"}, \"port\")  # KeyError + note",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Make `to_float` accept a `default` argument and return it (instead of `None`) when parsing fails.",
+          "Add an `except OverflowError` branch to `divide` and trigger it with `divide(1e308, 1e-308)`.",
+          "Raise `TemperatureError` from `parse_celsius` for values above 1000 with a clear message, then catch and print it.",
+          "Wrap a `json.loads(...)` call so a `json.JSONDecodeError` is re-raised as a custom `ConfigError` using `from`.",
+          "Write a `retry(fn, attempts=3)` helper that calls `fn()`, catches exceptions, retries up to `attempts` times, and re-raises the last error if all attempts fail."
+        ]
+      }
+    },
+    {
+      "id": "file-handling",
+      "title": "File Handling",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Reading and writing files is how programs persist data — and `with open(...)` plus `pathlib` make it safe and idiomatic in modern Python.",
+      "summary": [
+        "You read and write files in Python with the built-in `open(path, mode, encoding=...)`, which returns a file object. The mode string controls intent: `\"r\"` read (default), `\"w\"` write (truncates), `\"a\"` append, `\"x\"` exclusive create (fails if the file exists), and a trailing `\"b\"` for binary (`\"rb\"`, `\"wb\"`) versus text mode. Always pass `encoding=\"utf-8\"` for text files — relying on the platform default is a classic source of cross-machine bugs. The cardinal rule is to use `open` as a context manager: `with open(...) as f:` guarantees the file is closed even if an exception is raised inside the block, so you never leak file handles.",
+        "Once open, a text file is iterable line by line — `for line in f:` streams one line at a time and is memory-efficient for huge files, whereas `f.read()` slurps the whole file into a string and `f.readlines()` returns a list of lines. To write, use `f.write(text)` (no implicit newline) or `f.writelines(list_of_strings)`. For structured data, the standard library's `json` module pairs `json.dump(obj, f)` / `json.load(f)` to work directly with file objects and `json.dumps` / `json.loads` for strings; pass `indent=2` to pretty-print and remember `json.load` raises `json.JSONDecodeError` on malformed input, which you should handle.",
+        "Modern Python favors `pathlib.Path` over string paths and the older `os.path` functions. A `Path` object joins segments with the `/` operator (`Path(\"data\") / \"in.txt\"`), and offers convenience methods like `path.read_text(encoding=\"utf-8\")`, `path.write_text(...)`, `path.exists()`, `path.glob(...)`, and `path.mkdir(parents=True, exist_ok=True)`. For the common case of reading or writing an entire small file, `Path.read_text` / `write_text` are one-liners that open, transfer, and close for you. Reach for `with open(...)` when you need streaming, append mode, or fine control over the file object."
+      ],
+      "keyPoints": [
+        "Always use `with open(...) as f:` — the context manager closes the file automatically, even on error.",
+        "Pass `encoding=\"utf-8\"` explicitly for text files; never depend on the platform's default encoding.",
+        "Modes: `r` read, `w` write (truncates!), `a` append, `x` exclusive create; add `b` for binary.",
+        "Iterate `for line in f:` to stream large files; `f.read()` loads everything into memory at once.",
+        "Use `json.dump`/`json.load` for file objects and `json.dumps`/`json.loads` for strings; `indent=2` pretty-prints.",
+        "Prefer `pathlib.Path` (`/` join, `read_text`, `write_text`, `exists`, `mkdir`) over `os.path` string juggling."
+      ],
+      "code": [
+        {
+          "title": "Read and write text safely",
+          "language": "python",
+          "code": "# write (truncates the file if it exists)\nwith open(\"notes.txt\", \"w\", encoding=\"utf-8\") as f:\n    f.write(\"first line\\n\")\n    f.writelines([\"second\\n\", \"third\\n\"])\n\n# read line by line (memory-efficient for big files)\nwith open(\"notes.txt\", \"r\", encoding=\"utf-8\") as f:\n    for n, line in enumerate(f, start=1):\n        print(n, line.rstrip())\n\n# append a line without erasing the file\nwith open(\"notes.txt\", \"a\", encoding=\"utf-8\") as f:\n    f.write(\"appended\\n\")"
+        },
+        {
+          "title": "Read and write JSON",
+          "language": "python",
+          "code": "import json\n\nconfig = {\"name\": \"pathwise\", \"version\": 2, \"tags\": [\"py\", \"learn\"]}\n\n# serialize to a file (indent=2 pretty-prints)\nwith open(\"config.json\", \"w\", encoding=\"utf-8\") as f:\n    json.dump(config, f, indent=2)\n\n# load it back, handling malformed input\ntry:\n    with open(\"config.json\", \"r\", encoding=\"utf-8\") as f:\n        loaded = json.load(f)\nexcept json.JSONDecodeError as e:\n    print(\"bad JSON:\", e)\nelse:\n    print(loaded[\"name\"], loaded[\"version\"])  # pathwise 2"
+        },
+        {
+          "title": "Modern paths with pathlib",
+          "language": "python",
+          "code": "from pathlib import Path\n\ndata_dir = Path(\"data\")\ndata_dir.mkdir(parents=True, exist_ok=True)  # like mkdir -p\n\nout = data_dir / \"hello.txt\"   # join with /\nout.write_text(\"hi there\\n\", encoding=\"utf-8\")  # open+write+close in one call\n\nprint(out.exists())            # True\nprint(out.read_text(encoding=\"utf-8\").strip())  # hi there\nprint(out.suffix, out.stem, out.name)  # .txt hello hello.txt"
+        }
+      ],
+      "resources": [
+        {
+          "title": "Reading and Writing Files (official tutorial)",
+          "url": "https://docs.python.org/3/tutorial/inputoutput.html#reading-and-writing-files",
+          "type": "official"
+        },
+        {
+          "title": "json — JSON encoder and decoder (official docs)",
+          "url": "https://docs.python.org/3/library/json.html",
+          "type": "official"
+        },
+        {
+          "title": "Working With Files in Python (Real Python)",
+          "url": "https://realpython.com/working-with-files-in-python/",
+          "type": "article"
+        },
+        {
+          "title": "Working With JSON Data in Python (Real Python)",
+          "url": "https://realpython.com/python-json/",
+          "type": "article"
+        }
+      ],
+      "handsOn": {
+        "goal": "Build a tiny persistent note-taker that appends lines to a text file and stores structured records as JSON, using `with open`, the `json` module, and `pathlib`.",
+        "steps": [
+          {
+            "title": "Write and read a text file with the context manager",
+            "explanation": "`with open(...)` opens the file, runs the block, and closes the handle automatically. Writing in `\"w\"` mode truncates; reading streams the file line by line.",
+            "python": "# notes.py\nLINES = [\"buy milk\", \"call Ada\", \"ship release\"]\n\nwith open(\"todo.txt\", \"w\", encoding=\"utf-8\") as f:\n    for line in LINES:\n        f.write(line + \"\\n\")\n\nwith open(\"todo.txt\", \"r\", encoding=\"utf-8\") as f:\n    for i, line in enumerate(f, start=1):\n        print(f\"{i}. {line.rstrip()}\")",
+            "javascript": null
+          },
+          {
+            "title": "Append without overwriting",
+            "explanation": "Mode `\"a\"` opens for appending, so existing content survives and new writes go to the end. This is how logs and growing lists are kept.",
+            "python": "def add_todo(item):\n    with open(\"todo.txt\", \"a\", encoding=\"utf-8\") as f:\n        f.write(item + \"\\n\")\n\nadd_todo(\"water plants\")\nadd_todo(\"read docs\")\n\nwith open(\"todo.txt\", encoding=\"utf-8\") as f:\n    print(f.read())",
+            "javascript": null
+          },
+          {
+            "title": "Persist structured records as JSON",
+            "explanation": "Text files are fine for lines, but structured data wants JSON. `json.dump` writes a Python object to a file; `json.load` reads it back into Python types.",
+            "python": "import json\n\nnotes = [\n    {\"id\": 1, \"text\": \"buy milk\", \"done\": False},\n    {\"id\": 2, \"text\": \"call Ada\", \"done\": True},\n]\n\nwith open(\"notes.json\", \"w\", encoding=\"utf-8\") as f:\n    json.dump(notes, f, indent=2)\n\nwith open(\"notes.json\", \"r\", encoding=\"utf-8\") as f:\n    loaded = json.load(f)\n\ndone = [n[\"text\"] for n in loaded if n[\"done\"]]\nprint(\"completed:\", done)",
+            "javascript": null
+          },
+          {
+            "title": "Switch to pathlib one-liners",
+            "explanation": "For whole-file reads and writes, `pathlib.Path` removes the boilerplate: `write_text`/`read_text` open, transfer, and close in a single call, and `/` joins path segments cleanly.",
+            "python": "from pathlib import Path\nimport json\n\npath = Path(\"data\") / \"notes.json\"\npath.parent.mkdir(parents=True, exist_ok=True)\n\npath.write_text(json.dumps(notes, indent=2), encoding=\"utf-8\")\nrestored = json.loads(path.read_text(encoding=\"utf-8\"))\nprint(len(restored), \"notes loaded from\", path)",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `count_lines(path)` function that opens a file and returns the number of non-empty lines.",
+          "Make `add_todo` create the file with mode `\"x\"` the first time and fall back to `\"a\"` if it already exists (catch `FileExistsError`).",
+          "Add a `mark_done(notes, note_id)` function that flips `done` to True for a matching id, then save the list back to `notes.json`.",
+          "Read `notes.json`, but wrap `json.load` in a try/except so a corrupted file prints a friendly message instead of crashing.",
+          "Use `Path(\"data\").glob(\"*.json\")` to list every JSON file you have written and print each filename with its size in bytes (`p.stat().st_size`)."
+        ]
+      }
+    },
+    {
+      "id": "context-managers",
+      "title": "Context Managers",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Context managers automate setup-and-teardown around a block of code, so resources like files, locks, and connections are always released.",
+      "summary": [
+        "A context manager is any object usable with the `with` statement. When you write `with cm as value:`, Python calls the object's `__enter__()` method on the way in (its return value is bound to `value`) and guarantees a call to `__exit__()` on the way out — whether the block finishes normally, returns early, or raises an exception. That guarantee is the whole point: it replaces fragile `try`/`finally` cleanup with a single readable line and makes resource leaks (unclosed files, held locks, open sockets) far harder to write. `open()`, `threading.Lock`, and database connections are all context managers for exactly this reason.",
+        "You can write your own in two ways. The class form implements `__enter__(self)` and `__exit__(self, exc_type, exc_value, traceback)`; returning a truthy value from `__exit__` suppresses an exception, while returning falsy (the default) lets it propagate. The far more common form uses the `@contextmanager` decorator from `contextlib`: write a generator that does setup, `yield`s the resource, and does cleanup after the `yield` — typically inside a `try`/`finally` so cleanup runs even on error. The code before `yield` is the `__enter__`; the code after is the `__exit__`.",
+        "The `contextlib` module ships several ready-made helpers worth reaching for: `suppress(Exception)` swallows specific exceptions in a block (cleaner than an empty `except`), `closing(thing)` calls `.close()` on exit for objects that lack context-manager support, `redirect_stdout`/`redirect_stderr` temporarily reroute output, `nullcontext()` is a do-nothing stand-in when a context manager is optional, and `ExitStack` manages a dynamic number of context managers (and async variants exist via `AsyncExitStack`). You can also enter several managers in one statement: `with open(a) as f, open(b) as g:`."
+      ],
+      "keyPoints": [
+        "`with cm as x:` guarantees `__exit__` (cleanup) runs even if the block raises — no leaked files, locks, or connections.",
+        "Class form implements `__enter__`/`__exit__`; `__exit__` returning truthy suppresses the exception, falsy re-raises it.",
+        "The `@contextlib.contextmanager` decorator turns a generator into a context manager: setup, `yield`, then cleanup in `finally`.",
+        "Open several at once: `with open(a) as f, open(b) as g:` — each is entered and exited correctly.",
+        "`contextlib` helpers: `suppress`, `closing`, `redirect_stdout`, `nullcontext`, and `ExitStack` for a dynamic number of managers.",
+        "Put cleanup after `yield` inside a `try`/`finally` so it still runs when the body raises."
+      ],
+      "code": [
+        {
+          "title": "Generator-based context manager",
+          "language": "python",
+          "code": "import time\nfrom contextlib import contextmanager\n\n@contextmanager\ndef timer(label):\n    start = time.perf_counter()   # setup == __enter__\n    try:\n        yield                     # the value bound by `as`\n    finally:\n        elapsed = time.perf_counter() - start  # cleanup == __exit__\n        print(f\"{label}: {elapsed:.4f}s\")\n\nwith timer(\"work\"):\n    total = sum(i * i for i in range(1_000_000))\n# prints: work: 0.0XXXs  (even if the block had raised)"
+        },
+        {
+          "title": "Class-based context manager",
+          "language": "python",
+          "code": "class Resource:\n    def __enter__(self):\n        print(\"acquire\")\n        return self                 # bound to `as r`\n\n    def __exit__(self, exc_type, exc_value, tb):\n        print(\"release\")\n        # return True to swallow the exception; False/None re-raises it\n        return False\n\nwith Resource() as r:\n    print(\"using\", r)\n# acquire / using / release  (release runs even on exception)"
+        },
+        {
+          "title": "Handy contextlib helpers",
+          "language": "python",
+          "code": "from contextlib import suppress, ExitStack\n\n# suppress: ignore a specific error in a block\nwith suppress(FileNotFoundError):\n    open(\"maybe-missing.txt\")  # no crash if absent\n\n# ExitStack: manage a dynamic number of files\nfilenames = [\"a.txt\", \"b.txt\", \"c.txt\"]\nwith ExitStack() as stack:\n    files = [stack.enter_context(open(n, \"w\", encoding=\"utf-8\"))\n             for n in filenames]\n    for f in files:\n        f.write(\"hello\\n\")\n# every file is closed here, in reverse order"
+        }
+      ],
+      "resources": [
+        {
+          "title": "contextlib — utilities for with-statement contexts (official docs)",
+          "url": "https://docs.python.org/3/library/contextlib.html",
+          "type": "official"
+        },
+        {
+          "title": "The with statement (language reference)",
+          "url": "https://docs.python.org/3/reference/compound_stmts.html#the-with-statement",
+          "type": "official"
+        },
+        {
+          "title": "Context Managers in Python (freeCodeCamp)",
+          "url": "https://www.freecodecamp.org/news/context-managers-in-python/",
+          "type": "article"
+        },
+        {
+          "title": "Context Managers (Python Tips)",
+          "url": "https://book.pythontips.com/en/latest/context_managers.html",
+          "type": "article"
+        }
+      ],
+      "handsOn": {
+        "goal": "Write your own context managers both ways — as a class and with the `@contextmanager` decorator — and use `contextlib` helpers to manage cleanup automatically.",
+        "steps": [
+          {
+            "title": "Build a class-based context manager",
+            "explanation": "Implement `__enter__` (setup, returns the value bound by `as`) and `__exit__` (cleanup, runs no matter what). Watch that `__exit__` fires even when the block raises.",
+            "python": "# ctx.py\nclass Section:\n    def __init__(self, name):\n        self.name = name\n\n    def __enter__(self):\n        print(f\"-- enter {self.name} --\")\n        return self\n\n    def __exit__(self, exc_type, exc_value, tb):\n        print(f\"-- exit {self.name} --\")\n        return False   # don't suppress exceptions\n\nwith Section(\"demo\"):\n    print(\"inside the block\")",
+            "javascript": null
+          },
+          {
+            "title": "Do the same with @contextmanager",
+            "explanation": "The decorator form is shorter: everything before `yield` is setup, everything after is cleanup. Wrapping the `yield` in `try`/`finally` guarantees cleanup even on error.",
+            "python": "from contextlib import contextmanager\n\n@contextmanager\ndef section(name):\n    print(f\"-- enter {name} --\")\n    try:\n        yield name\n    finally:\n        print(f\"-- exit {name} --\")\n\nwith section(\"demo\") as n:\n    print(f\"inside {n}\")",
+            "javascript": null
+          },
+          {
+            "title": "Prove cleanup runs on exceptions",
+            "explanation": "Raise an error inside the block. Because cleanup lives in `finally` (decorator) or `__exit__` (class), it still runs before the exception propagates out.",
+            "python": "@contextmanager\ndef managed_file(path):\n    f = open(path, \"w\", encoding=\"utf-8\")\n    print(\"opened\", path)\n    try:\n        yield f\n    finally:\n        f.close()\n        print(\"closed\", path)\n\ntry:\n    with managed_file(\"out.txt\") as f:\n        f.write(\"partial\")\n        raise ValueError(\"boom\")   # cleanup still runs\nexcept ValueError as e:\n    print(\"caught:\", e)",
+            "javascript": null
+          },
+          {
+            "title": "Use suppress and ExitStack",
+            "explanation": "`suppress` replaces an empty `except` block, and `ExitStack` enters a variable number of context managers, closing them all in reverse on exit.",
+            "python": "from contextlib import suppress, ExitStack\n\nwith suppress(ZeroDivisionError):\n    print(1 / 0)        # silently ignored\nprint(\"kept going\")\n\nnames = [\"x.txt\", \"y.txt\"]\nwith ExitStack() as stack:\n    files = [stack.enter_context(open(n, \"w\", encoding=\"utf-8\"))\n             for n in names]\n    for f in files:\n        f.write(\"data\\n\")\nprint(\"all files closed\")",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Make the class-based `Section` print how long the block took by recording `time.perf_counter()` in `__enter__` and `__exit__`.",
+          "Write a `@contextmanager` called `cd(path)` that changes the working directory on enter and restores the original on exit (`os.getcwd` / `os.chdir`).",
+          "Change `Section.__exit__` to return `True` when the exception type is `ValueError`, and confirm a `ValueError` raised inside is swallowed.",
+          "Use `contextlib.redirect_stdout` to capture `print` output into an `io.StringIO` buffer and then print the captured text.",
+          "Write a context manager that opens two files (input and output) with a single `with` statement and copies lines from one to the other."
+        ]
+      }
+    },
+    {
+      "id": "glob",
+      "title": "Glob",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "The `glob` module finds files by Unix shell-style wildcard patterns — the quickest way to list \"all the `.csv` files\" without manual directory walking.",
+      "summary": [
+        "`glob` matches pathnames against shell wildcard patterns instead of regular expressions, which makes it perfect for file discovery. The three wildcards are `*` (any run of characters except the path separator), `?` (exactly one character), and `[...]` (a character set, e.g. `[0-9]`). `glob.glob(\"*.txt\")` returns a list of matching paths in arbitrary order; `glob.iglob(...)` returns an iterator for large result sets; and `glob.escape(name)` escapes special characters so you can match a literal filename that contains `*`, `?`, or brackets. Note that glob ignores dotfiles (names starting with `.`) by default, mirroring the shell.",
+        "For recursive search, pass `recursive=True` and use the `**` pattern, which matches any number of nested directories: `glob.glob(\"**/*.py\", recursive=True)` finds every `.py` file in the tree below the current directory. The `root_dir` parameter (Python 3.10+) lets you search relative to a directory without `chdir`, and `include_hidden=True` (3.11+) includes dotfiles. Because results come back unsorted, wrap the call in `sorted(...)` whenever you need deterministic output.",
+        "In modern code, `pathlib.Path.glob()` and `Path.rglob()` are the object-oriented equivalents and are usually preferred: `Path(\"src\").rglob(\"*.py\")` yields `Path` objects you can immediately call `.read_text()`, `.stat()`, or `.name` on, no string juggling required. Reach for the `glob` module when you want plain string paths or are matching against a single ad-hoc pattern; reach for `pathlib` when you are already working with `Path` objects, which is the norm in new projects."
+      ],
+      "keyPoints": [
+        "Wildcards: `*` (any characters, not `/`), `?` (one character), `[seq]` (a character set) — shell-style, not regex.",
+        "`glob.glob(pattern)` returns a list; `glob.iglob(pattern)` returns an iterator; results are unsorted, so wrap in `sorted()`.",
+        "Use `recursive=True` with the `**` pattern to descend into subdirectories (`**/*.py`).",
+        "Dotfiles are skipped by default; pass `include_hidden=True` (3.11+) to include them; `glob.escape()` matches literal wildcards.",
+        "`root_dir=` (3.10+) searches relative to a directory without changing the working directory.",
+        "Prefer `pathlib.Path.glob()` / `Path.rglob()` in new code — they yield `Path` objects ready for `.read_text()`, `.stat()`, etc."
+      ],
+      "code": [
+        {
+          "title": "Basic and recursive globbing",
+          "language": "python",
+          "code": "import glob\n\n# all .txt files in the current directory (unsorted)\nprint(sorted(glob.glob(\"*.txt\")))\n\n# one-character wildcard and a digit set\nprint(glob.glob(\"log?.txt\"))      # log1.txt, logA.txt ...\nprint(glob.glob(\"data[0-9].csv\")) # data0.csv ... data9.csv\n\n# recurse into all subdirectories with **\nfor path in sorted(glob.glob(\"**/*.py\", recursive=True)):\n    print(path)"
+        },
+        {
+          "title": "iglob, escape, and root_dir",
+          "language": "python",
+          "code": "import glob\n\n# iglob: lazy iterator, good for huge trees\nfor path in glob.iglob(\"**/*.log\", recursive=True):\n    print(path)\n\n# match a filename that literally contains a wildcard\nname = glob.escape(\"report[final].pdf\")\nprint(glob.glob(name))\n\n# search relative to a directory without chdir (3.10+)\nprint(glob.glob(\"*.json\", root_dir=\"config\"))"
+        },
+        {
+          "title": "The pathlib equivalent (preferred in new code)",
+          "language": "python",
+          "code": "from pathlib import Path\n\n# rglob is recursive; glob is single-level\nfor p in sorted(Path(\"src\").rglob(\"*.py\")):\n    print(p, p.stat().st_size, \"bytes\")\n\n# Path objects chain straight into file operations\npy_files = list(Path(\".\").glob(\"*.py\"))\ntotal_lines = sum(len(p.read_text(encoding=\"utf-8\").splitlines())\n                  for p in py_files)\nprint(\"total lines:\", total_lines)"
+        }
+      ],
+      "resources": [
+        {
+          "title": "glob — Unix style pathname pattern expansion (official docs)",
+          "url": "https://docs.python.org/3/library/glob.html",
+          "type": "official"
+        },
+        {
+          "title": "pathlib.Path.glob (official docs)",
+          "url": "https://docs.python.org/3/library/pathlib.html#pathlib.Path.glob",
+          "type": "official"
+        },
+        {
+          "title": "glob (Real Python reference)",
+          "url": "https://realpython.com/ref/stdlib/glob/",
+          "type": "article"
+        }
+      ],
+      "handsOn": {
+        "goal": "Create a small directory tree, then find files in it with the `glob` module and with `pathlib`, comparing single-level and recursive patterns.",
+        "steps": [
+          {
+            "title": "Build a tree of sample files",
+            "explanation": "Use `pathlib` to create nested directories and write a handful of files with different extensions so the glob patterns have something to match.",
+            "python": "# setup_tree.py\nfrom pathlib import Path\n\nfor sub in [\"logs\", \"logs/2026\", \"data\"]:\n    Path(sub).mkdir(parents=True, exist_ok=True)\n\nfiles = [\"a.txt\", \"b.txt\", \"data/x.csv\", \"data/y.csv\",\n         \"logs/app.log\", \"logs/2026/app.log\"]\nfor f in files:\n    Path(f).write_text(\"sample\\n\", encoding=\"utf-8\")\nprint(\"created\", len(files), \"files\")",
+            "javascript": null
+          },
+          {
+            "title": "Match a single level with the glob module",
+            "explanation": "`glob.glob` with a plain pattern only looks in the named directory (no recursion). Results come back unsorted, so wrap them in `sorted()` for stable output.",
+            "python": "import glob\n\nprint(\"txt here:\", sorted(glob.glob(\"*.txt\")))      # a.txt, b.txt\nprint(\"csv in data:\", sorted(glob.glob(\"data/*.csv\")))\nprint(\"single char:\", sorted(glob.glob(\"?.txt\")))   # a.txt, b.txt",
+            "javascript": null
+          },
+          {
+            "title": "Recurse with ** and recursive=True",
+            "explanation": "The `**` pattern only descends into subdirectories when `recursive=True` is passed. This finds the same-named log file at two different depths.",
+            "python": "import glob\n\nall_logs = sorted(glob.glob(\"**/*.log\", recursive=True))\nprint(\"all logs:\", all_logs)  # logs/app.log and logs/2026/app.log\n\nall_files = sorted(glob.glob(\"**/*\", recursive=True))\nprint(\"everything:\", len(all_files), \"paths\")",
+            "javascript": null
+          },
+          {
+            "title": "Do it the pathlib way",
+            "explanation": "`Path.glob` is single-level and `Path.rglob` recurses. Both yield `Path` objects you can immediately inspect — here we sum file sizes without any extra `open` calls.",
+            "python": "from pathlib import Path\n\ncsvs = sorted(Path(\"data\").glob(\"*.csv\"))\nprint(\"csv paths:\", [str(p) for p in csvs])\n\ntotal = 0\nfor p in Path(\".\").rglob(\"*.log\"):\n    total += p.stat().st_size\nprint(\"total log bytes:\", total)",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Use a character-set pattern like `data/[xy].csv` and confirm it matches both CSV files.",
+          "Count how many files have each extension by globbing `**/*` recursively and grouping on `Path(p).suffix`.",
+          "Add a hidden file `.secret.txt`, then show that `glob.glob('*.txt')` skips it but `glob.glob('*.txt', include_hidden=True)` finds it (3.11+).",
+          "Use `glob.iglob('**/*', recursive=True)` and stop after printing the first 3 results to see lazy iteration in action.",
+          "Rewrite the recursive log search as a one-liner with `Path('.').rglob('*.log')` and sort the results by file size."
+        ]
+      }
+    },
+    {
+      "id": "regular-expressions",
+      "title": "Regular Expressions",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Regular expressions describe text patterns for searching, validating, and replacing — Python's `re` module is the standard tool for the job.",
+      "summary": [
+        "A regular expression (regex) is a compact pattern language for matching text. Python exposes it through the `re` module. The core functions are `re.search(pattern, text)` (find the first match anywhere — usually what you want), `re.match(...)` (anchored at the start of the string), `re.fullmatch(...)` (the pattern must consume the whole string, ideal for validation), `re.findall(...)` (all non-overlapping matches as a list), `re.finditer(...)` (an iterator of richer `Match` objects), and `re.sub(pattern, repl, text)` (find-and-replace). Always write patterns as raw strings (`r\"\\d+\"`) so backslashes reach the regex engine instead of being interpreted by Python first.",
+        "The building blocks: character classes `\\d` (digit), `\\w` (word char), `\\s` (whitespace) and their uppercase negations; quantifiers `*` (zero or more), `+` (one or more), `?` (optional), and `{m,n}` (a range); anchors `^` / `$` (start/end) and `\\b` (word boundary); `.` for any character; `|` for alternation; and `[...]` for custom sets. Parentheses create capturing groups you retrieve with `match.group(1)`, and named groups `(?P<name>...)` let you pull values out by name with `match.group(\"name\")` — far more readable than numeric indices. Prefer `+?`/`*?` (lazy) over greedy quantifiers when matching delimited content like tags or quotes.",
+        "Two habits keep regex code maintainable. First, compile patterns you reuse with `pattern = re.compile(r\"...\")`, then call `pattern.search(text)`; it is faster in loops and reads better. Second, pass flags such as `re.IGNORECASE`, `re.MULTILINE` (so `^`/`$` match each line), and `re.VERBOSE` (which lets you space out a pattern and add `#` comments) to keep complex patterns legible. A `Match` object carries more than the text: `.group()`, `.groups()`, `.groupdict()`, and `.span()` give you the matched substrings and their positions. And know the limits — regex is the wrong tool for parsing nested structures like HTML or JSON; use a real parser there."
+      ],
+      "keyPoints": [
+        "Use raw strings for patterns (`r\"\\d+\"`) so backslashes reach the regex engine intact.",
+        "`search` finds the first match anywhere; `match` anchors at the start; `fullmatch` requires the whole string (great for validation).",
+        "`findall` returns a list of matches; `finditer` yields `Match` objects; `sub` does find-and-replace.",
+        "Capture with `(...)` and read via `group(1)`; prefer named groups `(?P<name>...)` and `group(\"name\")` for readability.",
+        "`re.compile(...)` once for reused patterns; flags like `re.IGNORECASE`, `re.MULTILINE`, and `re.VERBOSE` keep patterns clean.",
+        "Regex cannot parse nested structures (HTML, JSON) — use a dedicated parser for those instead."
+      ],
+      "code": [
+        {
+          "title": "search, groups, and named groups",
+          "language": "python",
+          "code": "import re\n\ntext = \"Order 12345 shipped on 2026-06-29\"\n\nm = re.search(r\"(?P<id>\\d+).*?(?P<date>\\d{4}-\\d{2}-\\d{2})\", text)\nif m:\n    print(m.group(\"id\"))     # 12345\n    print(m.group(\"date\"))   # 2026-06-29\n    print(m.groupdict())     # {'id': '12345', 'date': '2026-06-29'}\n    print(m.span(\"date\"))    # (23, 33)"
+        },
+        {
+          "title": "findall, finditer, and sub",
+          "language": "python",
+          "code": "import re\n\nlog = \"GET /a 200, POST /b 404, GET /c 500\"\n\n# every status code\nprint(re.findall(r\"\\b\\d{3}\\b\", log))   # ['200', '404', '500']\n\n# iterate with positions\nfor m in re.finditer(r\"(GET|POST) (\\S+)\", log):\n    print(m.group(1), \"->\", m.group(2))\n\n# redact 3-digit codes\nprint(re.sub(r\"\\b\\d{3}\\b\", \"XXX\", log))"
+        },
+        {
+          "title": "compile, flags, and validation",
+          "language": "python",
+          "code": "import re\n\n# compile once, reuse many times; VERBOSE allows comments\nEMAIL = re.compile(r\"\"\"\n    ^[\\w.+-]+      # local part\n    @[\\w-]+        # domain name\n    (\\.[\\w-]+)+$   # one or more TLD segments\n\"\"\", re.VERBOSE | re.IGNORECASE)\n\ndef is_email(s):\n    return EMAIL.fullmatch(s) is not None\n\nprint(is_email(\"Ada@Example.COM\"))  # True\nprint(is_email(\"nope@\"))            # False"
+        }
+      ],
+      "resources": [
+        {
+          "title": "re — Regular expression operations (official docs)",
+          "url": "https://docs.python.org/3/library/re.html",
+          "type": "official"
+        },
+        {
+          "title": "Regular Expression HOWTO (official guide)",
+          "url": "https://docs.python.org/3/howto/regex.html",
+          "type": "official"
+        },
+        {
+          "title": "Google for Education — Python Regular Expressions",
+          "url": "https://developers.google.com/edu/python/regular-expressions",
+          "type": "article"
+        }
+      ],
+      "handsOn": {
+        "goal": "Extract structured data from log lines, validate input with fullmatch, and clean text with sub — using compiled patterns and named groups.",
+        "steps": [
+          {
+            "title": "Search and capture with named groups",
+            "explanation": "`re.search` scans the whole string for the first match. Named groups `(?P<name>...)` make the captured pieces self-documenting when you read them back with `group(\"name\")`.",
+            "python": "# regex_lab.py\nimport re\n\nline = '192.168.0.1 - - [29/Jun/2026] \"GET /home\" 200'\npattern = re.compile(\n    r'(?P<ip>\\d+\\.\\d+\\.\\d+\\.\\d+).*\"(?P<method>\\w+) (?P<path>\\S+)\" (?P<status>\\d+)'\n)\nm = pattern.search(line)\nprint(m.group(\"ip\"))      # 192.168.0.1\nprint(m.group(\"method\")) # GET\nprint(m.group(\"status\")) # 200",
+            "javascript": null
+          },
+          {
+            "title": "Find every match in a body of text",
+            "explanation": "`findall` returns just the matched strings; `finditer` returns `Match` objects so you also get groups and positions. Use them to pull all occurrences, not only the first.",
+            "python": "import re\n\ntext = \"prices: $12, $7, and $1999 today\"\nprint(re.findall(r\"\\$(\\d+)\", text))   # ['12', '7', '1999']\n\nfor m in re.finditer(r\"\\$(\\d+)\", text):\n    print(f\"{m.group(0)} at {m.span()}\")  # match text + (start, end)",
+            "javascript": null
+          },
+          {
+            "title": "Validate input with fullmatch",
+            "explanation": "`fullmatch` succeeds only if the pattern consumes the entire string, which is exactly what validation needs. Compiling the pattern once keeps a reused validator fast and tidy.",
+            "python": "import re\n\nPHONE = re.compile(r\"\\d{3}-\\d{3}-\\d{4}\")\n\ndef valid_phone(s):\n    return PHONE.fullmatch(s) is not None\n\nprint(valid_phone(\"555-867-5309\"))   # True\nprint(valid_phone(\"555-8675\"))       # False\nprint(valid_phone(\"x 555-867-5309\")) # False (extra chars)",
+            "javascript": null
+          },
+          {
+            "title": "Clean and transform text with sub",
+            "explanation": "`re.sub` replaces every match. A replacement can reference captured groups with `\\1` (or `\\g<name>`), and passing a function as the replacement lets you compute each substitution.",
+            "python": "import re\n\n# collapse runs of whitespace into a single space\nmessy = \"too    many\\t\\tspaces\\n\\nhere\"\nprint(re.sub(r\"\\s+\", \" \", messy))\n\n# reformat dates YYYY-MM-DD -> DD/MM/YYYY using group references\nprint(re.sub(r\"(\\d{4})-(\\d{2})-(\\d{2})\", r\"\\3/\\2/\\1\", \"2026-06-29\"))\n\n# uppercase every word using a function replacement\nprint(re.sub(r\"\\b\\w+\\b\", lambda m: m.group(0).upper(), \"hello there\"))",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Extend the log pattern to also capture an optional response time like ` 0.42s` at the end of the line using `(?P<time>[\\d.]+)s`.",
+          "Write a regex that finds all hashtags (`#word`) in a string and returns them with `findall`.",
+          "Tighten the phone validator to also accept an optional `+1 ` country code prefix.",
+          "Use `re.sub` with a function to mask all but the last 4 digits of any credit-card-like number (`\\d{13,16}`).",
+          "Add `re.IGNORECASE` to a word-search pattern and confirm it matches 'Python', 'python', and 'PYTHON' alike."
+        ]
+      }
+    }
+  ]
+}

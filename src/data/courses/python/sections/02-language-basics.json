@@ -1,0 +1,452 @@
+{
+  "id": "language-basics",
+  "title": "Language Basics",
+  "description": "Syntax, variables, operators, strings, and control flow.",
+  "topics": [
+    {
+      "id": "basic-syntax",
+      "title": "Basic Syntax",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Python's defining feature is that indentation, not braces, defines code blocks — once you internalize that, the rest of the syntax is remarkably clean.",
+      "summary": [
+        "Where most languages wrap blocks in `{ }` and end statements with `;`, Python uses indentation and line breaks. A colon (`:`) introduces a block (after `if`, `for`, `def`, `class`, etc.), and every line indented underneath it belongs to that block. The community standard, defined in PEP 8, is four spaces per level — never mix tabs and spaces, because Python will raise a `TabError`. This whitespace-as-structure design is why Python code from different authors tends to look uniform and why the language reads almost like pseudocode.",
+        "Statements normally occupy one line and need no terminator. You can join lines explicitly with a trailing backslash, but the idiomatic approach is implicit continuation: anything inside `()`, `[]`, or `{}` can span multiple physical lines freely, which is how long function calls and data literals are formatted. Comments begin with `#` and run to the end of the line; there is no dedicated block-comment syntax, though triple-quoted strings are often used as docstrings at the top of modules, functions, and classes.",
+        "Identifiers (names for variables, functions, classes) are case-sensitive, must start with a letter or underscore, and may contain letters, digits, and underscores. Python reserves a fixed set of keywords (`if`, `def`, `return`, `True`, `None`, and so on) that cannot be used as names — `help(\"keywords\")` lists them all. The companion philosophy, the Zen of Python (`import this`), captures the values behind the syntax: explicit is better than implicit, readability counts, and there should be one obvious way to do it."
+      ],
+      "keyPoints": [
+        "Indentation defines blocks — use four spaces per level (PEP 8) and never mix tabs with spaces.",
+        "A colon `:` opens a block; the indented lines beneath it form that block's body.",
+        "Statements end at the newline; no semicolons needed, though `;` can separate two statements on one line.",
+        "Long expressions continue implicitly inside `()`, `[]`, `{}`; avoid backslash continuation when you can.",
+        "Comments start with `#`; triple-quoted strings serve as docstrings, not as true block comments.",
+        "Keywords like `if`, `def`, and `None` are reserved; run `import this` to read the Zen of Python."
+      ],
+      "code": [
+        {
+          "title": "Indentation defines blocks",
+          "language": "python",
+          "code": "# A colon opens a block; the indented lines are its body.\nscore = 87\n\nif score >= 90:\n    grade = \"A\"\n    print(\"Excellent\")\nelif score >= 80:\n    grade = \"B\"          # this line belongs to the elif block\n    print(\"Good\")\nelse:\n    grade = \"C\"\n\nprint(f\"Grade: {grade}\")  # back at the top level (no indent)"
+        },
+        {
+          "title": "Comments, line continuation, and docstrings",
+          "language": "python",
+          "code": "# This is a comment — it runs to the end of the line.\n\ndef area_of_triangle(base, height):\n    \"\"\"Return the area of a triangle (docstring, not a comment).\"\"\"\n    return 0.5 * base * height\n\n# Implicit continuation inside parentheses — no backslash needed.\ntotal = (\n    area_of_triangle(3, 4)\n    + area_of_triangle(5, 6)\n    + area_of_triangle(7, 8)\n)\nprint(total)"
+        }
+      ],
+      "resources": [
+        { "title": "The Python Language Reference — Lexical analysis", "url": "https://docs.python.org/3/reference/lexical_analysis.html", "type": "official" },
+        { "title": "PEP 8 — Style Guide for Python Code", "url": "https://peps.python.org/pep-0008/", "type": "official" },
+        { "title": "Learn X in Y Minutes — Python", "url": "https://learnxinyminutes.com/docs/python/", "type": "article" },
+        { "title": "Python for Beginners - Learn Python in 1 Hour", "url": "https://www.youtube.com/watch?v=kqtD5dpn9C8", "type": "video" }
+      ]
+    },
+    {
+      "id": "variables-and-data-types",
+      "title": "Variables and Data Types",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Variables in Python are just names bound to objects — you never declare a type, and the same name can point at different kinds of values over time.",
+      "summary": [
+        "A variable is created the moment you assign to it with `=`; there is no separate declaration and no type annotation required. Python is dynamically typed, meaning the type belongs to the value (the object), not to the name. So `x = 5` makes `x` refer to an integer object, and a later `x = \"hello\"` simply rebinds the same name to a string. Names are conventionally written in `snake_case`, and you can check what a value is at any time with `type(x)`. Multiple assignment (`a, b = 1, 2`) and chained assignment (`a = b = 0`) are common idioms.",
+        "The core built-in types fall into a few families. Numbers: `int` (arbitrary-precision integers — no overflow), `float` (double-precision decimals), and `complex`. Text: `str`, an immutable sequence of Unicode characters. Booleans: `bool`, with the literals `True` and `False` (which are really the integers 1 and 0 under the hood). The absence of a value is represented by `None`, a singleton of type `NoneType` used for \"no result,\" default arguments, and uninitialized state. Containers come next: `list` (ordered, mutable), `tuple` (ordered, immutable), `dict` (key-value mapping), and `set` (unordered unique items).",
+        "A crucial distinction is mutability: `int`, `float`, `str`, `bool`, and `tuple` are immutable (operations produce new objects), while `list`, `dict`, and `set` are mutable (they can be changed in place). Because variables are references, two names can point at the same mutable object, so changing it through one name is visible through the other — a frequent source of beginner bugs. Use `is` to test object identity and `==` to test value equality, and reach for `None`, not `False` or `0`, to mean \"nothing here.\""
+      ],
+      "keyPoints": [
+        "Assignment with `=` both creates and binds a variable; no declarations and no required type annotations.",
+        "Python is dynamically typed — the type lives on the value, so a name can be rebound to any type later.",
+        "Core scalar types: `int` (unbounded), `float`, `complex`, `str` (immutable text), `bool`, and `None`.",
+        "Core containers: `list` and `dict` and `set` are mutable; `tuple` and `str` are immutable.",
+        "Variables are references: two names can share one mutable object, so in-place edits are seen by both.",
+        "Use `==` for value equality and `is` for identity (especially `x is None`); inspect types with `type(x)`."
+      ],
+      "code": [
+        {
+          "title": "Dynamic typing and the core types",
+          "language": "python",
+          "code": "x = 42                 # int  (arbitrary precision: try 2 ** 200)\nprice = 19.99          # float\nname = \"Ada\"           # str (immutable)\nis_active = True       # bool\nnothing = None         # NoneType — the absence of a value\n\nfor value in (x, price, name, is_active, nothing):\n    print(f\"{value!r:>10}  ->  {type(value).__name__}\")\n\n# Multiple and chained assignment\na, b = 1, 2\nzero = total = 0\nprint(a, b, zero, total)"
+        },
+        {
+          "title": "References, mutability, and identity",
+          "language": "python",
+          "code": "# Two names can refer to the SAME mutable object.\noriginal = [1, 2, 3]\nalias = original           # not a copy — same list\nalias.append(4)\nprint(original)            # [1, 2, 3, 4]  <- changed via the alias!\n\ncopy = original[:]         # a real shallow copy\ncopy.append(99)\nprint(original)            # unchanged: [1, 2, 3, 4]\n\nprint(alias is original)   # True  (same object)\nprint(copy is original)    # False (different objects)\nprint(copy == [1, 2, 3, 4, 99])  # True  (equal values)"
+        }
+      ],
+      "resources": [
+        { "title": "Built-in Types (official docs)", "url": "https://docs.python.org/3/library/stdtypes.html", "type": "official" },
+        { "title": "Variables in Python", "url": "https://realpython.com/python-variables/", "type": "article" },
+        { "title": "Python Null (None): Guide to Missing Values and NoneType", "url": "https://roadmap.sh/python/null", "type": "article" },
+        { "title": "Python Variables and Data Types (playlist)", "url": "https://www.youtube.com/playlist?list=PLBlnK6fEyqRhN-sfWgCU1z_Qhakc1AGOn", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "Build intuition for dynamic typing, the core built-in types, and the reference-vs-copy distinction that trips up most newcomers.",
+        "steps": [
+          {
+            "title": "Bind names and inspect their types",
+            "explanation": "Create one value of each core type and print its type with `type(...).__name__`. Notice that you never declare a type — the value carries it.",
+            "python": "values = {\n    \"count\": 10,            # int\n    \"ratio\": 3.14,          # float\n    \"label\": \"python\",      # str\n    \"ready\": False,         # bool\n    \"missing\": None,        # NoneType\n    \"items\": [1, 2, 3],     # list\n    \"point\": (4, 5),        # tuple\n    \"lookup\": {\"a\": 1},     # dict\n    \"unique\": {1, 2, 2},    # set -> {1, 2}\n}\nfor name, value in values.items():\n    print(f\"{name:>8} = {value!r:<12} ({type(value).__name__})\")",
+            "javascript": null
+          },
+          {
+            "title": "Rebind a name to a different type",
+            "explanation": "Assign an int, then reassign the same name to a string. This is legal in Python because the type belongs to the value, not the name.",
+            "python": "data = 100\nprint(data, type(data).__name__)   # 100 int\n\ndata = \"one hundred\"               # rebinding to a new object\nprint(data, type(data).__name__)   # one hundred str",
+            "javascript": null
+          },
+          {
+            "title": "Prove that lists are shared references",
+            "explanation": "Bind two names to the same list, mutate through one, and watch the change appear through the other. Then make a real copy and confirm it is independent.",
+            "python": "a = [1, 2, 3]\nb = a              # same object\nb.append(4)\nprint(\"a:\", a)     # a: [1, 2, 3, 4]\nprint(\"a is b:\", a is b)   # True\n\nc = a.copy()       # independent shallow copy\nc.append(99)\nprint(\"a:\", a)     # still [1, 2, 3, 4]\nprint(\"a is c:\", a is c)   # False\nprint(\"a == c:\", a == c)   # False (different values now)",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Predict `type(True + True)` before running it, then confirm — booleans are a subclass of int.",
+          "Compute `2 ** 1000` and observe that Python integers never overflow.",
+          "Set `x = None` and write a function that returns 'empty' when its argument `is None` and 'has value' otherwise.",
+          "Create `t = (1, 2, 3)` and try `t[0] = 9`; read the TypeError to confirm tuples are immutable.",
+          "Make `d1 = {'a': 1}` and `d2 = d1`, add a key through `d2`, and verify it appears in `d1` (shared reference)."
+        ]
+      }
+    },
+    {
+      "id": "operators",
+      "title": "Operators",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Operators are the symbols and keywords that compute, compare, and combine values — Python's set is small, readable, and mostly free of surprises.",
+      "summary": [
+        "Arithmetic operators cover the basics plus two that catch newcomers off guard: `/` always produces a `float` (so `7 / 2` is `3.5`), `//` does floor division toward negative infinity (`7 // 2` is `3`, `-7 // 2` is `-4`), `%` is the modulo/remainder, and `**` is exponentiation. Comparison operators (`==`, `!=`, `<`, `<=`, `>`, `>=`) return booleans and can be chained the way mathematicians write them: `0 < x < 10` is evaluated as `0 < x and x < 10` with `x` computed once.",
+        "Logical operators are the words `and`, `or`, and `not`, and they short-circuit: `and` stops at the first falsy operand, `or` at the first truthy one. Critically, `and`/`or` return one of their operands rather than a strict boolean, which enables idioms like `name = user_input or \"Anonymous\"` (use the input if truthy, otherwise the default). Assignment operators combine an operation with assignment (`+=`, `-=`, `*=`, `//=`, etc.), and the walrus operator `:=` assigns inside an expression, handy in `while` and comprehension conditions.",
+        "Two more families round things out. Membership operators `in` and `not in` test whether a value appears in a sequence, set, or dict (`\"a\" in \"cat\"`, `3 in [1, 2, 3]`). Identity operators `is` and `is not` test whether two names point at the exact same object — reserve them for singletons like `None`, and use `==` for ordinary value comparisons. Bitwise operators (`&`, `|`, `^`, `~`, `<<`, `>>`) operate on the binary representation of integers and matter for flags, masks, and low-level work. When precedence is unclear, parenthesize: `**` binds tightest, then unary, then multiplicative, then additive, with the logical operators near the bottom."
+      ],
+      "keyPoints": [
+        "`/` yields a float, `//` floors toward negative infinity, `%` is remainder, and `**` is exponentiation.",
+        "Comparisons return booleans and chain: `0 < x < 10` means `0 < x and x < 10`.",
+        "`and`/`or` short-circuit and return an operand, enabling `value = candidate or default`.",
+        "Use `==` for value equality and `is` only for identity (idiomatically `x is None`).",
+        "`in` / `not in` test membership in strings, lists, sets, and dict keys.",
+        "When in doubt about precedence, add parentheses — `**` binds tightest, logical operators loosest."
+      ],
+      "code": [
+        {
+          "title": "Arithmetic, division, and comparison chaining",
+          "language": "python",
+          "code": "print(7 / 2)     # 3.5   (true division always returns float)\nprint(7 // 2)    # 3     (floor division)\nprint(-7 // 2)   # -4    (floors toward negative infinity)\nprint(7 % 3)     # 1     (remainder)\nprint(2 ** 10)   # 1024  (exponentiation)\n\nx = 5\nprint(0 < x < 10)   # True  (chained comparison)\nprint(x == 5 != 6)  # True"
+        },
+        {
+          "title": "Logical, membership, and identity operators",
+          "language": "python",
+          "code": "# and/or short-circuit and return an operand (not always a bool)\nuser_input = \"\"\nname = user_input or \"Anonymous\"\nprint(name)                 # Anonymous\n\nprint(True and \"yes\")       # 'yes'  (and returns the last truthy value)\nprint(0 or 42)             # 42\n\n# membership\nprint(\"a\" in \"cat\")        # True\nprint(3 not in [1, 2])      # True\n\n# identity vs equality\nresult = None\nprint(result is None)       # True   (correct way to check for None)\nprint([1, 2] == [1, 2])    # True   (== compares values)\nprint([1, 2] is [1, 2])    # False  (different objects)"
+        }
+      ],
+      "resources": [
+        { "title": "Expressions — Operator precedence (official docs)", "url": "https://docs.python.org/3/reference/expressions.html#operator-precedence", "type": "official" },
+        { "title": "Python Operators with examples (Programiz)", "url": "https://www.programiz.com/python-programming/operators", "type": "article" },
+        { "title": "Python Division: Operators, Floor Division, and Examples", "url": "https://roadmap.sh/python/division", "type": "article" },
+        { "title": "Python Modulo Operator (%): Complete Guide with Examples", "url": "https://roadmap.sh/python/modulo", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Exercise each family of operators and lock in the gotchas: float division, comparison chaining, short-circuiting, and identity vs equality.",
+        "steps": [
+          {
+            "title": "Contrast true division and floor division",
+            "explanation": "Run the same operands through `/`, `//`, and `%` to see how they relate. The identity `a == (a // b) * b + (a % b)` always holds for integers.",
+            "python": "a, b = 17, 5\nprint(a / b)    # 3.4\nprint(a // b)   # 3\nprint(a % b)    # 2\nprint((a // b) * b + (a % b) == a)  # True\n\n# floor division rounds toward negative infinity, not toward zero\nprint(-17 // 5)  # -4  (not -3)",
+            "javascript": null
+          },
+          {
+            "title": "Use short-circuit evaluation for defaults",
+            "explanation": "`or` returns its first truthy operand, so it makes a clean fallback. `and` returns its first falsy operand, useful for guarded access.",
+            "python": "def greet(name):\n    # if name is empty/None, fall back to a default\n    display = name or \"friend\"\n    return f\"Hello, {display}!\"\n\nprint(greet(\"Ada\"))   # Hello, Ada!\nprint(greet(\"\"))      # Hello, friend!\nprint(greet(None))    # Hello, friend!",
+            "javascript": null
+          },
+          {
+            "title": "Tell identity apart from equality",
+            "explanation": "Two distinct lists can be equal (`==`) without being the same object (`is`). Always test for `None` with `is`.",
+            "python": "list_a = [1, 2, 3]\nlist_b = [1, 2, 3]\nprint(list_a == list_b)   # True  (same values)\nprint(list_a is list_b)   # False (different objects)\n\nvalue = None\nprint(value is None)      # True  (the correct None check)",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Write `is_even = lambda n: n % 2 == 0` and test it on 4, 7, 0, and -3.",
+          "Use the walrus operator in a loop: `while (line := input()) != \"quit\": print(line)`.",
+          "Predict the result of `2 ** 3 ** 2` (exponentiation is right-associative) before running it.",
+          "Build a password check that requires `len(pw) >= 8 and any(c.isdigit() for c in pw)`.",
+          "Demonstrate that `0.1 + 0.2 == 0.3` is False, then fix the comparison with `math.isclose`."
+        ]
+      }
+    },
+    {
+      "id": "type-casting",
+      "title": "Type Casting",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "Type casting converts a value from one type to another — Python does some conversions automatically and leaves the rest to you via the built-in type constructors.",
+      "summary": [
+        "Python performs implicit conversion (also called coercion) only when it is unambiguous and lossless, most commonly promoting an `int` to a `float` in mixed arithmetic: `3 + 2.0` yields `5.0` automatically. It deliberately refuses to guess in risky cases — `\"5\" + 3` raises a `TypeError` rather than silently deciding whether you meant `\"53\"` or `8`. This is part of Python's philosophy that explicit is better than implicit, and it prevents a whole class of bugs that looser languages suffer from.",
+        "Explicit conversion uses the type's constructor function: `int(x)`, `float(x)`, `str(x)`, `bool(x)`, plus container constructors `list()`, `tuple()`, `set()`, and `dict()`. `int(\"42\")` parses a string to an integer (and `int(\"42\", 16)` reads it as hexadecimal), `float(\"3.14\")` parses a decimal, and `str(99)` renders any object as text. `int(3.99)` truncates toward zero to `3` rather than rounding — use `round()` if you want rounding. The most common real-world cast is reading user input: `input()` always returns a `str`, so numeric input must be converted with `int()` or `float()` before you can do math on it.",
+        "Conversions that cannot succeed raise `ValueError` (e.g. `int(\"hello\")` or `float(\"\")`), so production code wraps risky casts in `try/except` or validates first. The `bool()` conversion follows Python's truthiness rules: `0`, `0.0`, `\"\"`, `None`, and empty containers are falsy, while everything else is truthy — which is exactly the behavior you get when you put any value in an `if`. Knowing these rules lets you convert cleanly and avoid surprises like `bool(\"False\")` being `True` (it is a non-empty string, not the boolean)."
+      ],
+      "keyPoints": [
+        "Implicit conversion happens only when safe and lossless, mainly `int` -> `float` in mixed math.",
+        "Explicit casts use constructors: `int()`, `float()`, `str()`, `bool()`, `list()`, `tuple()`, `set()`, `dict()`.",
+        "`int(3.99)` truncates toward zero to 3; use `round()` for rounding behavior.",
+        "`input()` always returns a string — convert with `int()`/`float()` before doing arithmetic.",
+        "Invalid casts raise `ValueError` (`int(\"hi\")`); guard them with `try/except` or validation.",
+        "`bool()` follows truthiness: `0`, `\"\"`, `None`, and empty containers are falsy; `bool(\"False\")` is True."
+      ],
+      "code": [
+        {
+          "title": "Implicit vs explicit conversion",
+          "language": "python",
+          "code": "# Implicit: int is promoted to float in mixed arithmetic\nresult = 3 + 2.0\nprint(result, type(result).__name__)   # 5.0 float\n\n# Explicit: you must convert strings yourself\nquantity = int(\"42\")        # parse text to int\nprice = float(\"3.14\")       # parse text to float\nlabel = str(99)             # render number as text\nprint(quantity * price, label + \"%\")  # 131.88 99%\n\n# Truncation vs rounding\nprint(int(3.99))    # 3  (truncates toward zero)\nprint(round(3.99))  # 4"
+        },
+        {
+          "title": "Safely casting user input",
+          "language": "python",
+          "code": "def read_int(prompt):\n    while True:\n        raw = input(prompt)        # input() always returns a str\n        try:\n            return int(raw)        # may raise ValueError\n        except ValueError:\n            print(f\"{raw!r} is not a whole number — try again.\")\n\nage = read_int(\"Enter your age: \")\nprint(f\"Next year you will be {age + 1}.\")\n\n# Container conversions\nprint(list(\"abc\"))          # ['a', 'b', 'c']\nprint(set([1, 1, 2, 3]))    # {1, 2, 3}\nprint(tuple(range(3)))      # (0, 1, 2)"
+        }
+      ],
+      "resources": [
+        { "title": "Built-in Functions — int(), float(), str(), bool() (official docs)", "url": "https://docs.python.org/3/library/functions.html", "type": "official" },
+        { "title": "Type Conversion and Casting (Programiz)", "url": "https://www.programiz.com/python-programming/type-conversion-and-casting", "type": "article" },
+        { "title": "Truth Value Testing (official docs)", "url": "https://docs.python.org/3/library/stdtypes.html#truth-value-testing", "type": "official" }
+      ],
+      "handsOn": {
+        "goal": "Practice explicit casts, see where implicit coercion stops, and write input parsing that fails gracefully on bad data.",
+        "steps": [
+          {
+            "title": "Cast between the scalar types",
+            "explanation": "Round-trip a value through several types and observe what each constructor does — especially that `int()` truncates and `str()` renders.",
+            "python": "n = 7\nprint(float(n))      # 7.0\nprint(str(n))        # '7'\nprint(bool(n))       # True\nprint(int(\"100\", 2)) # 4   (parse '100' as base-2 binary)\nprint(int(3.75))     # 3   (truncates, does not round)",
+            "javascript": null
+          },
+          {
+            "title": "Watch implicit coercion refuse to guess",
+            "explanation": "Mixed int/float math works automatically, but mixing str with a number is a TypeError. Python forces you to state your intent.",
+            "python": "print(10 + 2.5)          # 12.5  (implicit int -> float)\n\ntry:\n    print(\"5\" + 3)       # TypeError: can only concatenate str to str\nexcept TypeError as e:\n    print(\"Error:\", e)\n\n# State your intent explicitly:\nprint(\"5\" + str(3))      # '53'   (string concatenation)\nprint(int(\"5\") + 3)      # 8      (integer addition)",
+            "javascript": null
+          },
+          {
+            "title": "Validate a cast with try/except",
+            "explanation": "Wrap a risky conversion so bad input produces a friendly message instead of a crash. This is the standard pattern for parsing any external data.",
+            "python": "def to_float_or_none(text):\n    try:\n        return float(text)\n    except ValueError:\n        return None\n\nfor sample in [\"3.14\", \"  -2 \", \"\", \"abc\", \"1e3\"]:\n    print(f\"{sample!r:>8} -> {to_float_or_none(sample)}\")",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Predict `bool(\"False\")`, `bool(0.0)`, `bool([])`, and `bool([0])`, then verify each.",
+          "Write a function that converts a temperature string like '98.6' to a float and rounds it to the nearest int.",
+          "Parse the string '255' as base-16 with `int('255', 16)` and explain the result.",
+          "Convert the list `[1, 2, 2, 3, 3, 3]` to a set, then back to a sorted list of unique values.",
+          "Read two numbers with `input()`, add them, and handle the case where the user types non-numeric text."
+        ]
+      }
+    },
+    {
+      "id": "working-with-strings",
+      "title": "Working with Strings",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Strings are immutable sequences of Unicode characters, and Python gives you slicing, a rich method set, and f-strings to slice, search, and build text with ease.",
+      "summary": [
+        "You create strings with single, double, or triple quotes; triple quotes (`\"\"\"...\"\"\"`) span multiple lines and are also used for docstrings. Because strings are immutable, every \"modifying\" method returns a new string and leaves the original untouched — `s.upper()` gives you a new uppercase string rather than changing `s`. As sequences, strings support indexing (`s[0]`, `s[-1]` for the last character), slicing (`s[1:4]`, `s[::-1]` to reverse), `len(s)`, iteration with `for ch in s`, concatenation with `+`, repetition with `*`, and membership with `in`.",
+        "The method set is where day-to-day string work happens. Case: `.upper()`, `.lower()`, `.title()`, `.capitalize()`. Whitespace and trimming: `.strip()`, `.lstrip()`, `.rstrip()`. Searching and testing: `.find()`/`.index()`, `.startswith()`, `.endswith()`, `.count()`, and predicates like `.isdigit()`, `.isalpha()`, `.isspace()`. Splitting and joining: `.split()` breaks a string into a list, and `\"sep\".join(items)` is the idiomatic, fast way to glue a list of strings back together (never build big strings with repeated `+=`). `.replace(old, new)` substitutes substrings.",
+        "For building strings from data, f-strings (formatted string literals, available since Python 3.6) are the modern standard: prefix the quote with `f` and embed any expression in `{ }`, e.g. `f\"Total: {price * qty:.2f}\"`. The optional format spec after a colon controls width, alignment, precision, and thousands separators (`f\"{n:>10,}\"`), and the `=` specifier (`f\"{value=}\"`) self-documents debugging output. Prefer f-strings over the older `%` operator and `str.format()`; reach for `r\"...\"` raw strings when you do not want backslash escapes (regular expressions and Windows paths)."
+      ],
+      "keyPoints": [
+        "Strings are immutable — methods like `.upper()` and `.replace()` return new strings, never mutate in place.",
+        "They are sequences: index, slice (`s[::-1]` reverses), iterate, and test membership with `in`.",
+        "Core methods: `.strip()`, `.split()`, `.replace()`, `.startswith()`, `.find()`, and the `.is*()` predicates.",
+        "Use `\"sep\".join(list)` to build strings from parts — far faster than repeated `+` concatenation.",
+        "f-strings (`f\"{expr:.2f}\"`) are the modern way to format; the spec after `:` controls precision/width/commas.",
+        "Use raw strings (`r\"...\"`) to disable backslash escapes in regexes and Windows file paths."
+      ],
+      "code": [
+        {
+          "title": "Indexing, slicing, and core methods",
+          "language": "python",
+          "code": "s = \"  Hello, Python!  \"\n\nprint(s.strip())            # 'Hello, Python!'  (trim whitespace)\nprint(s.strip().lower())    # 'hello, python!'\nprint(s.strip()[7:13])      # 'Python'          (slice)\nprint(\"Python\"[::-1])       # 'nohtyP'          (reverse)\n\nprint(\"a,b,c\".split(\",\"))   # ['a', 'b', 'c']\nprint(\"-\".join([\"2026\", \"06\", \"29\"]))  # '2026-06-29'\nprint(\"banana\".count(\"a\"))  # 3\nprint(\"hello\".replace(\"l\", \"L\"))       # 'heLLo'\nprint(\"file.txt\".endswith(\".txt\"))     # True"
+        },
+        {
+          "title": "f-strings and formatting",
+          "language": "python",
+          "code": "name, qty, price = \"Widget\", 3, 4.5\n\nprint(f\"{name}: {qty} @ ${price:.2f} = ${qty * price:.2f}\")\n# Widget: 3 @ $4.50 = $13.50\n\n# Alignment, width, and thousands separators\nfor n in (5, 1234, 1000000):\n    print(f\"{n:>12,}\")     # right-aligned in width 12 with commas\n\n# Self-documenting debug output with '='\nvalue = qty * price\nprint(f\"{value=}\")         # value=13.5\n\n# Raw string: backslashes are literal\nprint(r\"C:\\Users\\new\")    # C:\\Users\\new  (no escape interpretation)"
+        }
+      ],
+      "resources": [
+        { "title": "Text Sequence Type — str: String Methods (official docs)", "url": "https://docs.python.org/3/library/stdtypes.html#string-methods", "type": "official" },
+        { "title": "Input and Output — Formatted String Literals (official docs)", "url": "https://docs.python.org/3/tutorial/inputoutput.html", "type": "official" },
+        { "title": "Python Multiline Strings: The Complete Guide", "url": "https://roadmap.sh/python/multiline-strings", "type": "article" },
+        { "title": "Python Tutorial for Beginners 2: Strings - Working with Textual Data", "url": "https://www.youtube.com/watch?v=k9TUPpGqYTo", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "Manipulate text with slicing and methods, then format reports cleanly with f-strings — the two skills you use in almost every Python program.",
+        "steps": [
+          {
+            "title": "Slice and reverse a string",
+            "explanation": "Strings are sequences, so the same slice syntax that works on lists works here. The `[::-1]` step reverses, and negative indices count from the end.",
+            "python": "word = \"programming\"\nprint(word[0])      # 'p'\nprint(word[-1])     # 'g'\nprint(word[0:4])    # 'prog'\nprint(word[::-1])   # 'gnimmargorp'  (reversed)\nprint(len(word))    # 11\n\n# A simple palindrome check\ndef is_palindrome(s):\n    s = s.lower().replace(\" \", \"\")\n    return s == s[::-1]\n\nprint(is_palindrome(\"Race car\"))   # True",
+            "javascript": null
+          },
+          {
+            "title": "Clean and split user-style input",
+            "explanation": "Real input is messy. Chain `.strip()`, `.lower()`, and `.split()` to normalize it, then `join` the pieces back into a tidy form.",
+            "python": "raw = \"  Ada , Grace , Linus  \"\nnames = [n.strip() for n in raw.split(\",\")]\nprint(names)                 # ['Ada', 'Grace', 'Linus']\nprint(\", \".join(names))      # 'Ada, Grace, Linus'\nprint(\" and \".join(names))   # 'Ada and Grace and Linus'",
+            "javascript": null
+          },
+          {
+            "title": "Format a report with f-strings",
+            "explanation": "Use format specs to align columns and control precision. Pad with `:<` (left), `:>` (right), and add decimals with `:.2f`.",
+            "python": "items = [(\"Coffee\", 2, 3.5), (\"Sandwich\", 1, 7.25), (\"Cookie\", 4, 1.75)]\n\nprint(f\"{'Item':<10}{'Qty':>4}{'Total':>10}\")\nprint(\"-\" * 24)\ngrand = 0\nfor name, qty, price in items:\n    total = qty * price\n    grand += total\n    print(f\"{name:<10}{qty:>4}{total:>10.2f}\")\nprint(\"-\" * 24)\nprint(f\"{'TOTAL':<10}{'':>4}{grand:>10.2f}\")",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Write a function that counts the vowels in a string using a comprehension and the `in` operator.",
+          "Given a full name 'Ada Lovelace', produce the initials 'A.L.' using split and slicing.",
+          "Use `.title()` to fix the casing of 'the GREAT gatsby' and explain any edge cases.",
+          "Format the number 1234567.891 as '$1,234,567.89' with an f-string.",
+          "Replace every run of multiple spaces in a string with a single space using `' '.join(s.split())`."
+        ]
+      }
+    },
+    {
+      "id": "conditionals",
+      "title": "Conditionals",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Conditionals run different code depending on whether an expression is truthy — Python offers `if/elif/else` plus structural pattern matching with `match/case`.",
+      "summary": [
+        "The workhorse is the `if/elif/else` chain. Python evaluates each condition in order and runs the first block whose condition is truthy, skipping the rest; the optional `else` catches everything else. Conditions do not have to be strict booleans — Python applies truthiness, so empty containers, `0`, `\"\"`, and `None` are falsy while non-empty values are truthy. That lets you write `if items:` instead of `if len(items) > 0:`. For simple value selection, the conditional (ternary) expression `a if condition else b` returns one of two values inline, e.g. `status = \"adult\" if age >= 18 else \"minor\"`.",
+        "Because `and`/`or` short-circuit and comparisons chain, conditions read almost like English: `if 0 <= score <= 100 and not banned:`. Guard clauses — returning or `continue`-ing early when a precondition fails — keep nesting shallow and are preferred over deeply nested `if` blocks. Remember the indentation rule: the body of each branch is defined purely by its indentation, and a bare `else:` with no condition handles the fallthrough case.",
+        "Since Python 3.10, `match/case` adds structural pattern matching, which is far more powerful than the switch statements of other languages. It matches a subject against patterns: literal values, sequences (`case [x, y]`), mappings (`case {\"type\": t}`), class shapes (`case Point(x=0)`), captures, the wildcard `_`, alternatives with `|`, and guards (`case n if n < 0`). It is ideal for dispatching on the shape of structured data — parsing commands, handling JSON-like records, or walking syntax trees — while a plain `if/elif` chain remains the right tool for arbitrary boolean conditions."
+      ],
+      "keyPoints": [
+        "`if/elif/else` runs the first truthy branch; `else` is the catch-all and conditions follow truthiness rules.",
+        "Truthiness lets you write `if items:` rather than `if len(items) > 0:` — empty/0/None/\"\" are falsy.",
+        "The ternary `value = a if cond else b` selects between two values inline.",
+        "Prefer early-return guard clauses over deep nesting to keep branches flat and readable.",
+        "`match/case` (Python 3.10+) does structural pattern matching on literals, sequences, mappings, and classes.",
+        "Use `match` to dispatch on data shape; use `if/elif` for arbitrary boolean conditions."
+      ],
+      "code": [
+        {
+          "title": "if/elif/else and the ternary expression",
+          "language": "python",
+          "code": "def classify(temp):\n    if temp >= 30:\n        return \"hot\"\n    elif temp >= 15:\n        return \"mild\"\n    elif temp >= 0:\n        return \"cold\"\n    else:\n        return \"freezing\"\n\nprint(classify(32), classify(20), classify(-5))  # hot mild freezing\n\n# Truthiness: empty containers are falsy\nitems = []\nif items:\n    print(\"has items\")\nelse:\n    print(\"empty\")            # this runs\n\n# Ternary expression\nage = 17\nstatus = \"adult\" if age >= 18 else \"minor\"\nprint(status)                 # minor"
+        },
+        {
+          "title": "Structural pattern matching with match/case",
+          "language": "python",
+          "code": "def handle(command):\n    match command.split():\n        case [\"quit\"]:\n            return \"Goodbye!\"\n        case [\"move\", direction]:\n            return f\"Moving {direction}\"\n        case [\"go\", x, y]:\n            return f\"Going to ({x}, {y})\"\n        case [action, *rest]:\n            return f\"Unknown action {action!r} with args {rest}\"\n        case _:\n            return \"Empty command\"\n\nprint(handle(\"quit\"))           # Goodbye!\nprint(handle(\"move north\"))     # Moving north\nprint(handle(\"go 3 5\"))         # Going to (3, 5)\nprint(handle(\"jump high now\"))  # Unknown action 'jump' with args ['high', 'now']"
+        }
+      ],
+      "resources": [
+        { "title": "More Control Flow Tools — if and match (official docs)", "url": "https://docs.python.org/3/tutorial/controlflow.html", "type": "official" },
+        { "title": "PEP 636 — Structural Pattern Matching: Tutorial", "url": "https://peps.python.org/pep-0636/", "type": "official" },
+        { "title": "Conditional Statements in Python (Real Python)", "url": "https://realpython.com/python-conditional-statements/", "type": "article" },
+        { "title": "How to Use a Match Statement in Python", "url": "https://learnpython.com/blog/python-match-case-statement/", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Write branching logic with `if/elif/else`, lean on truthiness, then dispatch on data shape with `match/case`.",
+        "steps": [
+          {
+            "title": "Build an if/elif/else grader",
+            "explanation": "Order matters: the first truthy condition wins, so check the highest threshold first. The final `else` handles everything below the last cutoff.",
+            "python": "def letter_grade(score):\n    if score >= 90:\n        return \"A\"\n    elif score >= 80:\n        return \"B\"\n    elif score >= 70:\n        return \"C\"\n    else:\n        return \"F\"\n\nfor s in [95, 83, 71, 60]:\n    print(s, \"->\", letter_grade(s))",
+            "javascript": null
+          },
+          {
+            "title": "Use truthiness and a guard clause",
+            "explanation": "Return early when input is missing so the main logic is not nested. An empty string and None are both falsy, so one check covers both.",
+            "python": "def initials(full_name):\n    if not full_name:          # guard: '' or None is falsy\n        return \"?\"\n    parts = full_name.split()\n    return \".\".join(p[0].upper() for p in parts) + \".\"\n\nprint(initials(\"ada lovelace\"))  # A.L.\nprint(initials(\"\"))             # ?\nprint(initials(None))           # ?",
+            "javascript": null
+          },
+          {
+            "title": "Dispatch on shape with match/case",
+            "explanation": "Match the structure of a dict-like record. Patterns bind variables (`amount`) and guards add conditions (`if amount > 0`); `_` is the catch-all.",
+            "python": "def describe(event):\n    match event:\n        case {\"type\": \"deposit\", \"amount\": amount} if amount > 0:\n            return f\"Deposited {amount}\"\n        case {\"type\": \"withdraw\", \"amount\": amount}:\n            return f\"Withdrew {amount}\"\n        case {\"type\": kind}:\n            return f\"Unhandled event: {kind}\"\n        case _:\n            return \"Not an event\"\n\nprint(describe({\"type\": \"deposit\", \"amount\": 50}))\nprint(describe({\"type\": \"withdraw\", \"amount\": 20}))\nprint(describe({\"type\": \"transfer\"}))\nprint(describe(42))",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Rewrite the letter_grade function as a single chained comparison check and discuss readability.",
+          "Use a ternary to return 'even' or 'odd' for a number in one line.",
+          "Add a `case [\"go\", x, y]` branch to a command parser that also validates x and y are digits with a guard.",
+          "Write a FizzBuzz for 1..20 using if/elif/else and the modulo operator.",
+          "Match an HTTP status code with `match` returning 'ok' for 200, 'redirect' for 3xx via `case n if 300 <= n < 400`, and 'error' otherwise."
+        ]
+      }
+    },
+    {
+      "id": "loops",
+      "title": "Loops",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Loops repeat work — `for` iterates over a sequence of items, `while` repeats until a condition goes false, and a handful of helpers make both expressive.",
+      "summary": [
+        "Python's `for` loop is a for-each loop: it iterates directly over the items of any iterable — a list, string, tuple, dict, set, file, or generator — without manual index bookkeeping. When you genuinely need numbers, `range(stop)`, `range(start, stop)`, and `range(start, stop, step)` produce them lazily. The idiomatic helpers are key: `enumerate(seq)` yields `(index, item)` pairs so you rarely need `range(len(seq))`, `zip(a, b)` walks several sequences in lockstep, and iterating a dict gives its keys (use `.items()` for key/value pairs). Looping over indices is almost always a code smell in Python.",
+        "The `while` loop repeats as long as its condition stays truthy and is the right choice when you do not know the iteration count in advance — reading input until a sentinel, polling, or running a game loop. Both loop types support `break` (exit the loop immediately) and `continue` (skip to the next iteration). A less-known feature is the loop `else` clause, which runs only if the loop finished without hitting `break` — handy for search-and-report-not-found patterns.",
+        "Idiomatic Python favors iterating over objects rather than indices, and favors comprehensions over manual append loops when you are building a new collection: `[x * 2 for x in nums if x > 0]` replaces a multi-line loop. Be careful never to mutate a list while iterating over it (iterate a copy or build a new list instead). For lazy, memory-efficient iteration over large or infinite sequences you reach for generators and the `itertools` module, which the course covers later; for now, master `for`, `while`, `range`, `enumerate`, and `zip`."
+      ],
+      "keyPoints": [
+        "`for` iterates directly over items of any iterable; you rarely need an explicit index.",
+        "Use `range()` for number sequences, `enumerate()` for index+item, and `zip()` to walk sequences in parallel.",
+        "`while` repeats until its condition is falsy — use it when the iteration count is unknown up front.",
+        "`break` exits the loop; `continue` skips to the next iteration; both work in `for` and `while`.",
+        "The loop `else` runs only when the loop completes without a `break` (great for search loops).",
+        "Prefer comprehensions over append loops when building a new collection, and never mutate a list while iterating it."
+      ],
+      "code": [
+        {
+          "title": "for, range, enumerate, and zip",
+          "language": "python",
+          "code": "fruits = [\"apple\", \"banana\", \"cherry\"]\n\n# Iterate items directly (not indices)\nfor fruit in fruits:\n    print(fruit)\n\n# range for numbers\nfor i in range(0, 10, 2):\n    print(i, end=\" \")     # 0 2 4 6 8\nprint()\n\n# enumerate gives (index, item) — no range(len(...)) needed\nfor i, fruit in enumerate(fruits, start=1):\n    print(f\"{i}. {fruit}\")\n\n# zip walks two sequences in lockstep\nprices = [0.5, 0.3, 0.8]\nfor fruit, price in zip(fruits, prices):\n    print(f\"{fruit}: ${price:.2f}\")"
+        },
+        {
+          "title": "while, break/continue, and the loop else",
+          "language": "python",
+          "code": "# while: repeat until a condition becomes false\ncountdown = 3\nwhile countdown > 0:\n    print(countdown)\n    countdown -= 1\nprint(\"Liftoff!\")\n\n# break / continue\nfor n in range(1, 11):\n    if n % 2 == 0:\n        continue          # skip evens\n    if n > 7:\n        break             # stop entirely\n    print(n, end=\" \")     # 1 3 5 7\nprint()\n\n# loop else: runs only if no break occurred\ntarget = 42\nfor n in [10, 20, 30]:\n    if n == target:\n        print(\"found\")\n        break\nelse:\n    print(\"not found\")    # this runs"
+        }
+      ],
+      "resources": [
+        { "title": "More Control Flow Tools — for, range, break/continue (official docs)", "url": "https://docs.python.org/3/tutorial/controlflow.html", "type": "official" },
+        { "title": "Python \"for\" Loops (Definite Iteration) — Real Python", "url": "https://realpython.com/python-for-loop/", "type": "article" },
+        { "title": "Python \"while\" Loops (Indefinite Iteration) — Real Python", "url": "https://realpython.com/python-while-loop/", "type": "article" },
+        { "title": "Python For Loops", "url": "https://www.youtube.com/watch?v=KWgYha0clzw", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "Iterate the Pythonic way — over items, with enumerate and zip — and control flow with break, continue, and while, including the loop else clause.",
+        "steps": [
+          {
+            "title": "Iterate over items, not indices",
+            "explanation": "Loop directly over the list, then use `enumerate` when you also need the position. This reads better and avoids off-by-one index bugs.",
+            "python": "tasks = [\"write\", \"test\", \"ship\"]\n\n# Wrong-feeling: index bookkeeping\nfor i in range(len(tasks)):\n    print(i, tasks[i])\n\n# Pythonic: enumerate\nfor i, task in enumerate(tasks, start=1):\n    print(f\"Step {i}: {task}\")",
+            "javascript": null
+          },
+          {
+            "title": "Combine sequences with zip",
+            "explanation": "`zip` pairs elements positionally and stops at the shortest input, which is perfect for walking parallel lists like names and scores.",
+            "python": "students = [\"Ada\", \"Grace\", \"Linus\"]\nscores = [91, 88, 79]\n\nfor name, score in zip(students, scores):\n    verdict = \"pass\" if score >= 80 else \"retake\"\n    print(f\"{name:<6} {score:>3}  {verdict}\")\n\n# Build a dict from two lists\ngrades = dict(zip(students, scores))\nprint(grades)",
+            "javascript": null
+          },
+          {
+            "title": "Use while with a sentinel and loop else",
+            "explanation": "A `while` loop reads until the user types 'done'. The search loop's `else` reports when a value was never found because `break` never fired.",
+            "python": "# Sentinel-controlled while loop\ntotal = 0\nwhile True:\n    raw = input(\"Add amount (or 'done'): \")\n    if raw == \"done\":\n        break\n    total += float(raw)\nprint(f\"Total: {total:.2f}\")\n\n# Search with loop else\nhaystack = [3, 8, 12, 19]\nneedle = 12\nfor x in haystack:\n    if x == needle:\n        print(\"found\", needle)\n        break\nelse:\n    print(needle, \"not present\")",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Sum the numbers 1..100 with a for loop, then again with `sum(range(1, 101))`, and confirm they match.",
+          "Use `enumerate` to print only the items at even indices of a list.",
+          "Zip three lists (name, age, city) together and print one formatted line per person.",
+          "Write a while loop that keeps halving a number until it drops below 1, counting the steps.",
+          "Use a for/else loop to check whether a number is prime, breaking on the first divisor found."
+        ]
+      }
+    }
+  ]
+}

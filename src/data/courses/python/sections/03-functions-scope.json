@@ -1,0 +1,280 @@
+{
+  "id": "functions-scope",
+  "title": "Functions & Scope",
+  "description": "Defining and using functions, built-ins, lambdas, and scope.",
+  "topics": [
+    {
+      "id": "functions",
+      "title": "Functions",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "A function is a named, reusable block of code that runs when you call it — the single most important tool for keeping programs modular, readable, and DRY.",
+      "summary": [
+        "In Python you define a function with the `def` keyword, a name, a parenthesized parameter list, and a colon; the indented block beneath it is the body. Calling the function runs that body with the arguments you pass, and a `return` statement hands a value back to the caller. A function with no `return` (or a bare `return`) implicitly returns `None`. The first statement in the body can be a triple-quoted docstring describing what the function does, which tools like `help()` and IDEs surface automatically.",
+        "Python's argument handling is unusually flexible. Parameters can have default values (`def greet(name, greeting=\"Hi\")`), and callers can pass arguments positionally or by keyword (`greet(name=\"Ada\")`), which makes calls self-documenting. `*args` collects extra positional arguments into a tuple and `**kwargs` collects extra keyword arguments into a dict, so a single function can accept a variable number of inputs. You can also force call styles: a bare `*` in the signature makes following parameters keyword-only (available since Python 3.0, PEP 3102), and a `/` makes preceding ones positional-only (added in Python 3.8, PEP 570) — both are widely used in modern standard-library APIs.",
+        "Two rules prevent the classic beginner bugs. First, never use a mutable object (a list or dict) as a default value: `def f(items=[])` shares one list across every call because defaults are evaluated once at definition time — use `items=None` and create the list inside. Second, a function can return multiple values by returning a tuple (`return x, y`), which the caller unpacks (`a, b = f()`); under the hood there is still exactly one return value. Adding type hints (`def add(a: int, b: int) -> int`) documents intent and unlocks static checkers like mypy without changing runtime behavior."
+      ],
+      "keyPoints": [
+        "Define with `def name(params):`, return a value with `return`; a function with no return yields `None`.",
+        "Arguments can be passed positionally or by keyword, and parameters can declare default values for optional inputs.",
+        "`*args` gathers extra positional args into a tuple; `**kwargs` gathers extra keyword args into a dict.",
+        "Never use a mutable default like `def f(x=[])` — defaults are evaluated once; use `None` and build the object inside.",
+        "Return multiple values by returning a tuple and unpacking it: `return a, b` then `x, y = f()`.",
+        "Type hints (`def add(a: int, b: int) -> int`) document the contract and enable static checking without runtime cost."
+      ],
+      "code": [
+        {
+          "title": "Defining and calling functions",
+          "language": "python",
+          "code": "def greet(name, greeting=\"Hello\"):\n    \"\"\"Return a friendly greeting for `name`.\"\"\"\n    return f\"{greeting}, {name}!\"\n\nprint(greet(\"Ada\"))                       # Hello, Ada!\nprint(greet(\"Bob\", greeting=\"Hi\"))        # Hi, Bob! (keyword arg)\nprint(greet.__doc__)                       # Return a friendly greeting for `name`."
+        },
+        {
+          "title": "*args, **kwargs, and multiple return values",
+          "language": "python",
+          "code": "def stats(*numbers, **options):\n    # numbers is a tuple, options is a dict\n    total = sum(numbers)\n    count = len(numbers)\n    average = total / count if count else 0\n    if options.get(\"verbose\"):\n        print(f\"got {count} numbers\")\n    return total, average            # returns a tuple\n\ntotal, avg = stats(1, 2, 3, 4, verbose=True)\nprint(total, avg)                    # 10 2.5"
+        },
+        {
+          "title": "The mutable-default-argument trap",
+          "language": "python",
+          "code": "# WRONG: the list is created once and shared across calls\ndef add_bad(item, bucket=[]):\n    bucket.append(item)\n    return bucket\n\nprint(add_bad(1))   # [1]\nprint(add_bad(2))   # [1, 2]  <- surprise! same list\n\n# RIGHT: use None as the sentinel and build a fresh list each call\ndef add_good(item, bucket=None):\n    if bucket is None:\n        bucket = []\n    bucket.append(item)\n    return bucket\n\nprint(add_good(1))  # [1]\nprint(add_good(2))  # [2]"
+        }
+      ],
+      "resources": [
+        { "title": "More on Defining Functions (official tutorial)", "url": "https://docs.python.org/3/tutorial/controlflow.html#defining-functions", "type": "official" },
+        { "title": "Built-in Functions (official docs)", "url": "https://docs.python.org/3/library/functions.html", "type": "official" },
+        { "title": "Defining Your Own Python Function (Real Python)", "url": "https://realpython.com/defining-your-own-python-function/", "type": "article" },
+        { "title": "How to Return Multiple Values in Python", "url": "https://roadmap.sh/python/return-multiple-values", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Write functions that use default, keyword, and variable arguments, return multiple values, and avoid the mutable-default trap.",
+        "steps": [
+          {
+            "title": "A function with defaults and keyword arguments",
+            "explanation": "Define `make_label` with one required parameter and two optional ones. Call it three ways — positionally, with a keyword, and with all defaults — to see how flexible the calling convention is.",
+            "python": "# functions_lab.py\ndef make_label(text, *, upper=False, prefix=\"\"):\n    label = f\"{prefix}{text}\"\n    return label.upper() if upper else label\n\nprint(make_label(\"home\"))                       # home\nprint(make_label(\"home\", prefix=\"nav-\"))        # nav-home\nprint(make_label(\"home\", upper=True))           # HOME\n# make_label(\"home\", True)  # TypeError: upper is keyword-only (the bare * forces it)",
+            "javascript": null
+          },
+          {
+            "title": "Collect variable arguments and return a tuple",
+            "explanation": "`*scores` gathers any number of positional arguments into a tuple. Return both the highest score and the average, then unpack the result at the call site — one return value (a tuple), two names.",
+            "python": "def summarize(*scores):\n    if not scores:\n        return 0, 0.0\n    best = max(scores)\n    average = sum(scores) / len(scores)\n    return best, average\n\ntop, avg = summarize(82, 91, 77, 95)\nprint(f\"best={top} avg={avg:.1f}\")              # best=95 avg=86.2\nprint(summarize())                              # (0, 0.0)",
+            "javascript": null
+          },
+          {
+            "title": "Pass through keyword arguments with **kwargs",
+            "explanation": "`**options` captures arbitrary keyword arguments into a dict, which you can forward to another function. This is the pattern wrapper and decorator functions use to stay generic.",
+            "python": "def connect(host, port=5432, **options):\n    print(f\"connecting to {host}:{port}\")\n    for key, value in options.items():\n        print(f\"  option {key}={value}\")\n\nconnect(\"db.example.com\", timeout=30, sslmode=\"require\")\n# connecting to db.example.com:5432\n#   option timeout=30\n#   option sslmode=require",
+            "javascript": null
+          },
+          {
+            "title": "Fix a mutable default argument",
+            "explanation": "Reproduce the shared-list bug, then fix it with the `None` sentinel pattern. The buggy version accumulates across calls because the default list is created once at definition time, not per call.",
+            "python": "def append_buggy(x, acc=[]):\n    acc.append(x)\n    return acc\n\nprint(append_buggy(1), append_buggy(2))   # [1, 2] [1, 2]  <- both are the same shared list!\n\ndef append_fixed(x, acc=None):\n    acc = [] if acc is None else acc\n    acc.append(x)\n    return acc\n\nprint(append_fixed(1), append_fixed(2))   # [1] [2]   <- independent",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Write `clamp(value, low=0, high=100)` that returns `value` constrained to the range, using default bounds.",
+          "Write `minmax(*numbers)` that returns both the smallest and largest values as a tuple, and handle the empty case.",
+          "Add type hints to `minmax` (e.g. `-> tuple[int, int]`) and run `mypy` or `pyright` to confirm it type-checks.",
+          "Write a `log(message, /, *, level=\"INFO\")` function using `/` to make `message` positional-only, and explain why a caller cannot write `log(message=\"hi\")`.",
+          "Write a `tag(name, **attrs)` function that builds an HTML-like string such as `<a href=\"/x\" class=\"btn\">` from keyword arguments."
+        ]
+      }
+    },
+    {
+      "id": "builtin-functions",
+      "title": "Builtin Functions & Modules",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Python ships \"batteries included\": ~70 always-available built-in functions plus a large standard library of modules, so much of what you need is already on your machine.",
+      "summary": [
+        "Built-in functions are the names available everywhere without any import: `print`, `len`, `range`, `enumerate`, `zip`, `sorted`, `sum`, `min`, `max`, `map`, `filter`, the type constructors (`int`, `str`, `list`, `dict`, `set`, `tuple`), and introspection helpers like `type`, `isinstance`, `dir`, and `help`. They form the vocabulary of idiomatic Python — for example you iterate with `for i, item in enumerate(items)` rather than managing an index by hand, and you pair sequences with `for a, b in zip(xs, ys)`. The full list lives in the official Built-in Functions reference and is worth skimming end to end once.",
+        "Beyond the built-ins, Python's standard library is a huge collection of modules you import with the `import` statement. Everyday workhorses include `math` (numeric functions and constants), `random` (random numbers and sampling), `datetime` (dates and times), `os` and `pathlib` (filesystem and OS access — prefer `pathlib.Path` for new code), `sys` (interpreter and arguments), `json` (serialization), `re` (regular expressions), `collections` (`Counter`, `defaultdict`, `deque`), and `itertools` (efficient iterator building blocks). Because these ship with Python, using them adds zero dependencies and works on any machine.",
+        "The mechanics of importing matter. `import math` then `math.sqrt(9)` keeps the namespace explicit; `from math import sqrt` pulls a single name in; `import numpy as np` aliases a long name. Avoid `from module import *`, which dumps unknown names into your namespace and hides where things came from. When you are unsure what a module offers, `import` it and call `dir(module)` to list its names or `help(module)` to read its docs right in the REPL. The Python Module Index is the canonical catalog of every standard-library module."
+      ],
+      "keyPoints": [
+        "Built-in functions (`len`, `range`, `enumerate`, `zip`, `sorted`, `sum`, `map`, `filter`, `isinstance`, ...) need no import.",
+        "`enumerate` and `zip` are the idiomatic way to loop with an index or over parallel sequences — avoid manual counters.",
+        "The standard library covers files, dates, math, randomness, JSON, regex, and more with zero extra dependencies.",
+        "Prefer `pathlib.Path` over raw `os.path` string juggling for filesystem work in modern Python.",
+        "Import explicitly (`import math` / `from math import sqrt`); avoid `from module import *`, which pollutes the namespace.",
+        "Use `dir(obj)` and `help(obj)` in the REPL to discover what a module or object provides."
+      ],
+      "code": [
+        {
+          "title": "Idiomatic built-ins: enumerate, zip, sorted",
+          "language": "python",
+          "code": "names = [\"Ada\", \"Bob\", \"Cleo\"]\nscores = [91, 78, 85]\n\n# enumerate gives index + value\nfor i, name in enumerate(names, start=1):\n    print(i, name)\n\n# zip walks parallel sequences together\nfor name, score in zip(names, scores):\n    print(name, score)\n\n# sorted with a key function\ntop = sorted(zip(names, scores), key=lambda pair: pair[1], reverse=True)\nprint(top)   # [('Ada', 91), ('Cleo', 85), ('Bob', 78)]"
+        },
+        {
+          "title": "Importing and using standard-library modules",
+          "language": "python",
+          "code": "import math\nfrom datetime import date\nfrom pathlib import Path\nfrom collections import Counter\n\nprint(math.sqrt(144))                 # 12.0\nprint(date.today().isoformat())       # e.g. 2026-06-29\nprint(Path(\"notes.txt\").suffix)       # .txt\n\nwords = \"red blue red green blue red\".split()\nprint(Counter(words))                 # Counter({'red': 3, 'blue': 2, 'green': 1})"
+        },
+        {
+          "title": "Discovering what a module offers",
+          "language": "python",
+          "code": "import random\n\n# list the public names a module exposes\nprint([name for name in dir(random) if not name.startswith(\"_\")][:6])\n# ['BPF', 'LOG4', 'NV_MAGICCONST', 'RECIP_BPF', 'Random', 'SG_MAGICCONST']  (dir() sorts ASCII, uppercase first)\n\nrandom.seed(42)                       # reproducible results\nprint(random.choice([\"heads\", \"tails\"]))\nprint(random.sample(range(1, 50), k=6))   # 6 unique numbers"
+        }
+      ],
+      "resources": [
+        { "title": "Built-in Functions (official docs)", "url": "https://docs.python.org/3/library/functions.html", "type": "official" },
+        { "title": "The Python Module Index (official docs)", "url": "https://docs.python.org/3/py-modindex.html", "type": "official" },
+        { "title": "Modules (official tutorial)", "url": "https://docs.python.org/3/tutorial/modules.html", "type": "official" },
+        { "title": "Python Modules (DigitalOcean)", "url": "https://www.digitalocean.com/community/tutorials/python-modules", "type": "article" }
+      ]
+    },
+    {
+      "id": "lambdas",
+      "title": "Lambdas",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "A lambda is a tiny anonymous function written inline as a single expression — perfect as a throwaway `key=` or callback, and nothing more.",
+      "summary": [
+        "The `lambda` keyword creates an anonymous function in one expression: `lambda x: x * 2` is equivalent to a `def` that takes `x` and returns `x * 2`, but with no name and no statements — only a single expression whose value is returned automatically. Lambdas can take any number of arguments, including defaults (`lambda a, b=1: a + b`), but the body must be one expression: no assignments, no loops, no `return`, no multiple statements. Their entire reason to exist is to define a small function exactly where it is used, so you do not have to name and define a full function elsewhere.",
+        "The overwhelmingly common use is as the `key` argument to `sorted`, `min`, `max`, and `list.sort`, where you need a quick \"how do I rank these\" function: `sorted(people, key=lambda p: p.age)`. Lambdas also appear as the function passed to `map` and `filter`, and as small callbacks in GUI and event code. In all these cases the lambda is passed in, called a few times, and forgotten — exactly the throwaway role it is designed for.",
+        "Idiomatically, reach for a lambda only when the function is trivial and used once. PEP 8 explicitly says not to assign a lambda to a variable (`f = lambda x: x*2`) — if it needs a name, use `def f(x): return x*2` instead, because the named `def` gives better tracebacks and is clearer. Also remember that for many `map`/`filter` cases a list comprehension or generator expression is more readable than a lambda: `[x*2 for x in xs]` beats `list(map(lambda x: x*2, xs))`. Lambdas shine for `key=` functions and short callbacks; for anything with logic, prefer a real function."
+      ],
+      "keyPoints": [
+        "`lambda args: expression` is an anonymous one-expression function; the expression's value is returned automatically.",
+        "The body must be a single expression — no statements, assignments, loops, or explicit `return`.",
+        "The main use is the `key=` argument to `sorted`, `min`, `max`, and `.sort()`, plus `map`/`filter` and small callbacks.",
+        "PEP 8 says don't bind a lambda to a name; if it needs a name, write a `def` for clearer tracebacks.",
+        "For element-wise transforms, a list comprehension is usually more readable than `map`/`filter` with a lambda.",
+        "Lambdas can take defaults and multiple args (`lambda a, b=1: a + b`) but stay trivial — push logic into a real function."
+      ],
+      "code": [
+        {
+          "title": "Lambda basics vs an equivalent def",
+          "language": "python",
+          "code": "double = lambda x: x * 2          # works, but PEP 8 says don't name a lambda\nprint(double(5))                  # 10\n\n# the equivalent, preferred when it needs a name\ndef double(x):\n    return x * 2\n\n# lambdas can take several args and defaults\nadd = lambda a, b=1: a + b\nprint(add(3), add(3, 4))          # 4 7"
+        },
+        {
+          "title": "Lambdas as sort keys",
+          "language": "python",
+          "code": "people = [(\"Ada\", 36), (\"Bob\", 24), (\"Cleo\", 29)]\n\nby_age = sorted(people, key=lambda p: p[1])\nprint(by_age)        # [('Bob', 24), ('Cleo', 29), ('Ada', 36)]\n\noldest = max(people, key=lambda p: p[1])\nprint(oldest)        # ('Ada', 36)\n\n# sort a list of dicts by a field\nrows = [{\"name\": \"x\", \"qty\": 3}, {\"name\": \"y\", \"qty\": 1}]\nrows.sort(key=lambda r: r[\"qty\"])\nprint(rows)          # [{'name': 'y', 'qty': 1}, {'name': 'x', 'qty': 3}]"
+        },
+        {
+          "title": "map/filter vs a comprehension",
+          "language": "python",
+          "code": "nums = [1, 2, 3, 4, 5, 6]\n\n# map + lambda\nsquares = list(map(lambda n: n * n, nums))\n# usually clearer as a comprehension:\nsquares = [n * n for n in nums]\nprint(squares)            # [1, 4, 9, 16, 25, 36]\n\n# filter + lambda\nevens = list(filter(lambda n: n % 2 == 0, nums))\nevens = [n for n in nums if n % 2 == 0]   # clearer\nprint(evens)              # [2, 4, 6]"
+        }
+      ],
+      "resources": [
+        { "title": "Lambda Expressions (official tutorial)", "url": "https://docs.python.org/3/tutorial/controlflow.html#lambda-expressions", "type": "official" },
+        { "title": "How to Use Python Lambda Functions (Real Python)", "url": "https://realpython.com/python-lambda/", "type": "article" },
+        { "title": "Python Lambda Functions (video)", "url": "https://www.youtube.com/watch?v=KR22jigJLok", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "Use lambdas where they shine — as sort keys and small callbacks — and recognize when a comprehension or a named function is the better choice.",
+        "steps": [
+          {
+            "title": "Sort structured data with a lambda key",
+            "explanation": "Given a list of dicts, sort it by one field using `key=lambda`. Then sort by two fields at once by returning a tuple from the lambda — Python compares tuples element by element.",
+            "python": "# lambdas_lab.py\nbooks = [\n    {\"title\": \"A\", \"year\": 2001, \"rating\": 4.5},\n    {\"title\": \"B\", \"year\": 1999, \"rating\": 4.5},\n    {\"title\": \"C\", \"year\": 2001, \"rating\": 4.9},\n]\n\nby_year = sorted(books, key=lambda b: b[\"year\"])\nprint([b[\"title\"] for b in by_year])          # ['B', 'A', 'C']\n\n# sort by rating (desc), then year (asc) using a tuple key\nranked = sorted(books, key=lambda b: (-b[\"rating\"], b[\"year\"]))\nprint([b[\"title\"] for b in ranked])           # ['C', 'B', 'A']",
+            "javascript": null
+          },
+          {
+            "title": "Use a lambda as a small callback",
+            "explanation": "Write a function that takes a transform function as an argument, then pass a lambda in. This is exactly how `key=` and event callbacks work — the lambda is created where it is used.",
+            "python": "def apply_to_each(items, fn):\n    return [fn(x) for x in items]\n\nprices = [10.0, 25.5, 99.99]\nwith_tax = apply_to_each(prices, lambda p: round(p * 1.08, 2))\nprint(with_tax)                                # [10.8, 27.54, 107.99]",
+            "javascript": null
+          },
+          {
+            "title": "Know when NOT to use a lambda",
+            "explanation": "Rewrite a `map(lambda ...)` as a comprehension, and promote a lambda that needs a name into a `def`. Both versions produce identical output; the rewrites are simply more idiomatic and debuggable.",
+            "python": "words = [\"hi\", \"there\", \"friend\"]\n\n# fine, but a comprehension reads better:\nlengths = list(map(lambda w: len(w), words))\nlengths = [len(w) for w in words]\nprint(lengths)                                 # [2, 5, 6]\n\n# if it needs a name and any logic, use def (clearer tracebacks):\ndef shout(w):\n    return w.upper() + \"!\"\n\nprint([shout(w) for w in words])               # ['HI!', 'THERE!', 'FRIEND!']",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Sort a list of `(name, score)` tuples by score descending, breaking ties by name ascending, using a single tuple-returning lambda key.",
+          "Use `max(words, key=lambda w: len(w))` to find the longest word in a list, then rewrite it without a lambda using a `def`.",
+          "Rewrite `list(filter(lambda n: n % 3 == 0, range(30)))` as a list comprehension and confirm the outputs match.",
+          "Write `apply_to_each` from the lab so it also accepts a named function, and pass both a lambda and `str.upper` to it.",
+          "Explain in a comment why `f = lambda x: x + 1` is discouraged by PEP 8 and what `def f(x): return x + 1` gives you instead."
+        ]
+      }
+    },
+    {
+      "id": "variable-scope",
+      "title": "Variable Scope",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Scope is the region of a program where a name is visible; Python resolves names with the LEGB rule, and `global`/`nonlocal` let you rebind names in outer scopes.",
+      "summary": [
+        "When you use a name, Python searches for it in four scopes in a fixed order, the LEGB rule: Local (names bound inside the current function), Enclosing (the local scope of any enclosing functions, for nested functions), Global (the module's top-level namespace), and Built-in (names like `len` and `print` that are always available). The first match wins. This is why a variable defined inside a function is invisible outside it, and why a built-in like `list` can be shadowed if you carelessly name a variable `list` inside a function.",
+        "Assignment changes the picture in a way that surprises beginners. Any name that is assigned anywhere in a function is treated as local to that function for the whole function body — so reading it before that assignment raises `UnboundLocalError`, even if a global of the same name exists. To assign to a module-level variable from inside a function you must declare `global x` first; to rebind a variable in an enclosing function (not the global scope) from a nested function you declare `nonlocal x`. Reading an outer variable needs no declaration; only rebinding does.",
+        "These rules underpin closures: an inner function that captures variables from its enclosing scope keeps access to them after the outer function returns, which is the basis of decorators, callbacks, and stateful function factories. In practice, prefer passing data in as arguments and returning results rather than mutating globals — heavy `global` use makes code hard to test and reason about. Reach for `nonlocal` deliberately when you genuinely need a closure to maintain state (a counter, an accumulator), and keep the rest of your state local."
+      ],
+      "keyPoints": [
+        "LEGB name resolution order: Local, then Enclosing, then Global, then Built-in; the first match wins.",
+        "Assigning to a name anywhere in a function makes it local for the entire function body.",
+        "Reading a name assigned later in the same function raises `UnboundLocalError` — assignment 'claims' the name.",
+        "Use `global x` to rebind a module-level variable from inside a function; reading it needs no declaration.",
+        "Use `nonlocal x` to rebind a variable in an enclosing function's scope (not the global scope) from a nested function.",
+        "Closures capture enclosing variables and outlive the outer call — the foundation of decorators and function factories; avoid leaning on `global` for state."
+      ],
+      "code": [
+        {
+          "title": "LEGB resolution in action",
+          "language": "python",
+          "code": "x = \"global\"\n\ndef outer():\n    x = \"enclosing\"\n    def inner():\n        x = \"local\"\n        print(x)        # local\n    inner()\n    print(x)            # enclosing\n\nouter()\nprint(x)                # global\nprint(len)              # <built-in function len> (B in LEGB)"
+        },
+        {
+          "title": "The UnboundLocalError trap",
+          "language": "python",
+          "code": "count = 10\n\ndef broken():\n    print(count)    # UnboundLocalError: count is local because it's assigned below\n    count = count + 1\n\n# broken()  # raises UnboundLocalError\n\ndef fixed():\n    global count    # declare intent to use/rebind the module-level name\n    print(count)    # 10\n    count = count + 1\n\nfixed()\nprint(count)        # 11"
+        },
+        {
+          "title": "nonlocal: a closure that keeps state",
+          "language": "python",
+          "code": "def make_counter():\n    n = 0\n    def increment():\n        nonlocal n      # rebind n in the enclosing scope, not create a local\n        n += 1\n        return n\n    return increment\n\ncounter = make_counter()\nprint(counter(), counter(), counter())   # 1 2 3\n\nother = make_counter()                    # independent state\nprint(other())                            # 1"
+        }
+      ],
+      "resources": [
+        { "title": "Execution model: naming, binding, global & nonlocal (official reference)", "url": "https://docs.python.org/3/reference/executionmodel.html#naming-and-binding", "type": "official" },
+        { "title": "Python Variable Scope and the LEGB Rule Explained (DataCamp)", "url": "https://www.datacamp.com/tutorial/scope-of-variables-python", "type": "article" },
+        { "title": "Python nonlocal Keyword Explained", "url": "https://roadmap.sh/python/nonlocal", "type": "article" },
+        { "title": "Variable Scope: the LEGB rule, global and nonlocal (video)", "url": "https://www.youtube.com/watch?v=QVdf0LgmICw", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "See LEGB resolution, trigger and fix UnboundLocalError, and build a stateful closure with nonlocal.",
+        "steps": [
+          {
+            "title": "Observe LEGB shadowing",
+            "explanation": "Define the same name `msg` at global, enclosing, and local levels and print it at each level. Each function sees the nearest binding — proof that scope is layered, not flat.",
+            "python": "# scope_lab.py\nmsg = \"global\"\n\ndef outer():\n    msg = \"enclosing\"\n    def inner():\n        msg = \"local\"\n        print(\"inner sees:\", msg)     # local\n    inner()\n    print(\"outer sees:\", msg)         # enclosing\n\nouter()\nprint(\"module sees:\", msg)            # global",
+            "javascript": null
+          },
+          {
+            "title": "Reproduce and fix UnboundLocalError",
+            "explanation": "Assigning `total` inside the function makes it local everywhere in that function, so reading it first fails. Declaring `global total` tells Python you mean the module-level name.",
+            "python": "total = 0\n\ndef add_broken(n):\n    # total = total + n  # uncomment to see UnboundLocalError\n    pass\n\ndef add_fixed(n):\n    global total\n    total = total + n\n    return total\n\nprint(add_fixed(5))   # 5\nprint(add_fixed(3))   # 8\nprint(total)          # 8",
+            "javascript": null
+          },
+          {
+            "title": "Build a counter with nonlocal",
+            "explanation": "A closure captures `n` from the enclosing function. Without `nonlocal`, `n += 1` would try to create a new local and raise UnboundLocalError; with it, the inner function rebinds the captured variable so state persists across calls.",
+            "python": "def make_accumulator(start=0):\n    total = start\n    def add(amount):\n        nonlocal total\n        total += amount\n        return total\n    return add\n\nacc = make_accumulator(100)\nprint(acc(10))   # 110\nprint(acc(5))    # 115\n\nfresh = make_accumulator()   # separate, independent state\nprint(fresh(1)) # 1",
+            "javascript": null
+          },
+          {
+            "title": "Avoid accidental built-in shadowing",
+            "explanation": "Naming a variable after a built-in (`list`, `sum`, `id`, `type`) shadows it for the rest of that scope. Print the built-in before and after to see it disappear, then rename to recover it.",
+            "python": "print(sum([1, 2, 3]))      # 6 — the built-in\n\ndef report(values):\n    sum = 0                # oops: shadows the built-in inside this function\n    for v in values:\n        sum += v\n    return sum             # works, but sum() is now unavailable here\n\nprint(report([1, 2, 3]))   # 6\n# fix: name it `running_total` instead of `sum`",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Write a `make_toggle()` factory that returns a function flipping between True and False on each call, using `nonlocal`.",
+          "Create a global `cache = {}` and a function that reads from it without `global` but writes to it without `global` — explain why reading and mutating work but rebinding (`cache = {}`) would need `global`.",
+          "Trigger an `UnboundLocalError` deliberately, read the traceback, then fix it two ways: with `global` and by passing the value in as an argument and returning the result.",
+          "Write `make_multiplier(factor)` returning a closure that multiplies its argument by the captured `factor`; create `double` and `triple` from it.",
+          "Demonstrate that two counters from `make_counter()` keep independent state, proving each call creates a fresh enclosing scope."
+        ]
+      }
+    }
+  ]
+}

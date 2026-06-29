@@ -1,0 +1,394 @@
+{
+  "id": "oop",
+  "title": "Object-Oriented Programming",
+  "description": "Classes, methods, inheritance, encapsulation, and paradigms.",
+  "topics": [
+    {
+      "id": "oop-overview",
+      "title": "OOP Overview",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "Object-oriented programming bundles data and the behavior that operates on it into objects, modeling your program as cooperating things rather than a list of steps.",
+      "summary": [
+        "Object-oriented programming (OOP) is a paradigm that organizes code around objects: self-contained units that bundle together state (data, called attributes) and behavior (functions, called methods). Instead of passing loose dictionaries and lists through standalone functions, you define a class as a blueprint and create instances of it, each carrying its own data. A `BankAccount` object knows its own `balance` and exposes a `deposit()` method that mutates that balance, so the data and the only code allowed to touch it live together. In Python this matters less for safety (Python does not enforce privacy) and more for organization: related state and behavior stay in one place and your code starts to read like the domain it models.",
+        "OOP rests on four classic pillars. Encapsulation bundles data with the methods that manage it and signals which parts are internal. Inheritance lets a new class reuse and extend an existing one, building hierarchies like `Dog` is-an `Animal`. Polymorphism lets different objects respond to the same method call in their own way, so code calling `shape.area()` works for circles and squares alike. Abstraction hides messy implementation behind a clean interface, so callers depend on what an object does, not how. Python supports all four, but applies them loosely and idiomatically rather than rigidly.",
+        "A crucial point for Python specifically: everything is already an object. Integers, strings, lists, functions, and even classes themselves are objects with types and methods, which is why `\"hi\".upper()` and `[1, 2].append(3)` work. So you have been using OOP since your first line of Python; learning to write your own classes simply lets you create new kinds of objects tailored to your problem. Python also leans heavily on duck typing, meaning an object's suitability is judged by the methods it has, not the class it inherits from, which makes Python OOP more flexible and less ceremonial than in languages like Java or C++."
+      ],
+      "keyPoints": [
+        "An object bundles state (attributes) with behavior (methods); a class is the blueprint, an instance is a concrete object built from it.",
+        "The four pillars are encapsulation, inheritance, polymorphism, and abstraction; Python supports all four but enforces none rigidly.",
+        "In Python everything is an object already, so `str`, `list`, `int`, and even functions and classes have types and methods.",
+        "OOP's payoff is organization: related data and the code that manages it live together and read like the domain you are modeling.",
+        "Python favors duck typing, judging objects by the methods they expose rather than the class they descend from.",
+        "OOP is one paradigm among several in Python, not a mandate, plenty of good Python is plain functions and data."
+      ],
+      "code": [
+        {
+          "title": "Everything is already an object",
+          "language": "python",
+          "code": "# the built-in types you already use are objects with methods\nprint(type(42))          # <class 'int'>\nprint(type(\"hi\"))        # <class 'str'>\nprint(type([1, 2, 3]))   # <class 'list'>\n\n# calling a method on an object\nprint(\"hello\".upper())   # HELLO\n\n# even a class is an object, and its instances have a type\nclass Dog:\n    pass\n\nrex = Dog()\nprint(type(rex))         # <class '__main__.Dog'>\nprint(isinstance(rex, Dog))  # True"
+        },
+        {
+          "title": "A tiny class: state plus behavior",
+          "language": "python",
+          "code": "class Counter:\n    def __init__(self, start=0):\n        self.value = start      # state lives on the instance\n\n    def increment(self):        # behavior operates on that state\n        self.value += 1\n        return self.value\n\nc = Counter()\nc.increment()\nc.increment()\nprint(c.value)   # 2\n\n# each instance carries its own independent state\nother = Counter(start=100)\nprint(other.value)  # 100\nprint(c.value)      # 2"
+        }
+      ],
+      "resources": [
+        { "title": "The Python Tutorial — Classes", "url": "https://docs.python.org/3/tutorial/classes.html", "type": "official" },
+        { "title": "Python Glossary (object, method, attribute, duck-typing)", "url": "https://docs.python.org/3/glossary.html", "type": "official" },
+        { "title": "Object-Oriented Programming (OOP) in Python — Full Course for Beginners", "url": "https://www.youtube.com/watch?v=Ej_02ICOIgs", "type": "video" }
+      ]
+    },
+    {
+      "id": "classes",
+      "title": "Classes",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "A class is a blueprint that defines what attributes and methods its instances will have, and `__init__` is where each instance gets initialized.",
+      "summary": [
+        "You define a class with the `class` keyword and conventionally name it in `CapWords` (PascalCase). The special method `__init__` is the initializer: Python calls it automatically right after a new instance is created, and its job is to set up the instance's starting state. Its first parameter is always `self`, the instance being built, and you attach per-instance data by assigning to `self.attribute`. When you write `dog = Dog(\"Rex\", 3)`, Python creates a blank `Dog` object, then calls `Dog.__init__(dog, \"Rex\", 3)`, which is why `self` is implicit at the call site but explicit in the definition. There is no `new` keyword, calling the class itself constructs the instance.",
+        "It is essential to distinguish instance attributes from class attributes. Instance attributes are assigned through `self` (usually in `__init__`) and are unique to each object, your dog's name is not my dog's name. Class attributes are defined directly in the class body and are shared by every instance, useful for constants, defaults, or counters that span all objects. A subtle and common bug: never use a mutable object (like `[]` or `{}`) as a class attribute that instances mutate, because every instance will share and modify the same list. Initialize mutable per-instance state inside `__init__` instead. Attribute lookup checks the instance first, then the class, so an instance assignment can shadow a class attribute.",
+        "Two more pieces complete the basic picture. `__repr__` defines the official, unambiguous string shown in the REPL and by `repr()`, and a good `__repr__` ideally looks like valid code that could recreate the object; `__str__` is the friendly, human-readable form used by `print()` and `str()`, falling back to `__repr__` if you do not define it. Always define at least `__repr__` for your own classes, it makes debugging vastly easier. For data-centric classes that mostly hold values, reach for `@dataclass` from the standard library, which auto-generates `__init__`, `__repr__`, and `__eq__` from typed field declarations, letting you write a clean class in a few lines instead of boilerplate."
+      ],
+      "keyPoints": [
+        "Define classes with `class Name:` in `CapWords`; calling `Name(...)` constructs an instance, there is no `new` keyword.",
+        "`__init__(self, ...)` initializes a freshly created instance; `self` is the instance and is passed automatically.",
+        "Instance attributes (`self.x = ...`) are per-object; class attributes (defined in the class body) are shared by all instances.",
+        "Never use a mutable default (`[]`, `{}`) as a shared class attribute that instances mutate, initialize it in `__init__` instead.",
+        "Define `__repr__` (unambiguous, dev-facing) and optionally `__str__` (friendly, user-facing) so your objects print usefully.",
+        "For value-holding classes, `@dataclass` auto-generates `__init__`, `__repr__`, and `__eq__` from typed fields."
+      ],
+      "code": [
+        {
+          "title": "A class with __init__ and __repr__",
+          "language": "python",
+          "code": "class Dog:\n    species = \"Canis familiaris\"   # class attribute: shared by all dogs\n\n    def __init__(self, name, age):\n        self.name = name           # instance attributes: unique per dog\n        self.age = age\n\n    def describe(self):\n        return f\"{self.name} is {self.age} years old\"\n\n    def __repr__(self):\n        return f\"Dog(name={self.name!r}, age={self.age})\"\n\nrex = Dog(\"Rex\", 3)\nprint(rex)              # Dog(name='Rex', age=3)\nprint(rex.describe())   # Rex is 3 years old\nprint(rex.species)      # Canis familiaris (read from the class)"
+        },
+        {
+          "title": "The mutable class-attribute trap",
+          "language": "python",
+          "code": "# WRONG: tricks shared across all instances\nclass BadDog:\n    tricks = []                # one list shared by every BadDog!\n    def add_trick(self, t):\n        self.tricks.append(t)\n\na, b = BadDog(), BadDog()\na.add_trick(\"roll over\")\nprint(b.tricks)   # ['roll over']  <- leaked into b!\n\n# RIGHT: give each instance its own list in __init__\nclass GoodDog:\n    def __init__(self):\n        self.tricks = []\n    def add_trick(self, t):\n        self.tricks.append(t)\n\nx, y = GoodDog(), GoodDog()\nx.add_trick(\"roll over\")\nprint(y.tricks)   # []  <- independent"
+        },
+        {
+          "title": "Less boilerplate with @dataclass",
+          "language": "python",
+          "code": "from dataclasses import dataclass\n\n@dataclass\nclass Point:\n    x: float\n    y: float\n    label: str = \"origin\"   # field with a default\n\np = Point(1.5, 2.0)\nprint(p)                    # Point(x=1.5, y=2.0, label='origin')\nprint(p == Point(1.5, 2.0)) # True  (auto-generated __eq__)\n# __init__, __repr__, and __eq__ were all generated for you"
+        }
+      ],
+      "resources": [
+        { "title": "The Python Tutorial — Classes", "url": "https://docs.python.org/3/tutorial/classes.html", "type": "official" },
+        { "title": "object.__init__ and __repr__ (Data Model reference)", "url": "https://docs.python.org/3/reference/datamodel.html#object.__init__", "type": "official" },
+        { "title": "dataclasses — Data Classes (standard library)", "url": "https://docs.python.org/3/library/dataclasses.html", "type": "official" }
+      ],
+      "handsOn": {
+        "goal": "Build a `BankAccount` class from scratch: initialize state in `__init__`, add behavior methods, give it a good `__repr__`, and observe instance vs class attributes.",
+        "steps": [
+          {
+            "title": "Define the class and initialize state",
+            "explanation": "Create a `BankAccount` with an owner and a starting balance. Set both as instance attributes through `self` inside `__init__` so each account carries its own data. Add a class attribute for the shared currency symbol.",
+            "python": "# bank.py\nclass BankAccount:\n    currency = \"USD\"   # class attribute: shared by all accounts\n\n    def __init__(self, owner, balance=0):\n        self.owner = owner       # instance attributes: per account\n        self.balance = balance\n\nacct = BankAccount(\"Ada\", 100)\nprint(acct.owner, acct.balance, acct.currency)  # Ada 100 USD",
+            "javascript": null
+          },
+          {
+            "title": "Add behavior methods that mutate state",
+            "explanation": "Methods take `self` first and operate on the instance's attributes. `deposit` and `withdraw` change `self.balance`, and `withdraw` guards against overdrawing by raising a clear error.",
+            "python": "class BankAccount:\n    currency = \"USD\"\n\n    def __init__(self, owner, balance=0):\n        self.owner = owner\n        self.balance = balance\n\n    def deposit(self, amount):\n        self.balance += amount\n        return self.balance\n\n    def withdraw(self, amount):\n        if amount > self.balance:\n            raise ValueError(\"Insufficient funds\")\n        self.balance -= amount\n        return self.balance\n\nacct = BankAccount(\"Ada\", 100)\nacct.deposit(50)\nacct.withdraw(30)\nprint(acct.balance)   # 120",
+            "javascript": null
+          },
+          {
+            "title": "Add a useful __repr__",
+            "explanation": "A good `__repr__` returns an unambiguous, code-like string so the object prints helpfully in the REPL and in logs. Use `!r` to get the repr of inner values (quotes around the owner name).",
+            "python": "class BankAccount:\n    currency = \"USD\"\n\n    def __init__(self, owner, balance=0):\n        self.owner = owner\n        self.balance = balance\n\n    def __repr__(self):\n        return f\"BankAccount(owner={self.owner!r}, balance={self.balance})\"\n\nacct = BankAccount(\"Ada\", 100)\nprint(acct)            # BankAccount(owner='Ada', balance=100)\nprint([acct])          # [BankAccount(owner='Ada', balance=100)]",
+            "javascript": null
+          },
+          {
+            "title": "Prove instances are independent",
+            "explanation": "Create two accounts and confirm that mutating one does not affect the other, each has its own `balance` because it lives on the instance, while `currency` comes from the shared class.",
+            "python": "a = BankAccount(\"Ada\", 100)\nb = BankAccount(\"Bo\", 0)\na.deposit(25)\nprint(a.balance, b.balance)   # 125 0  (independent state)\nprint(a.currency is b.currency)  # True (shared class attribute)",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `transactions` list to each account in `__init__` and append a description on every deposit and withdrawal, then print the history.",
+          "Add a `transfer(self, other, amount)` method that withdraws from `self` and deposits into another account.",
+          "Add a class attribute `account_count` and increment it inside `__init__` so the class tracks how many accounts have been created.",
+          "Rewrite `BankAccount` as a `@dataclass` with `owner: str` and `balance: float = 0`, then add the `deposit`/`withdraw` methods, and compare the boilerplate you saved.",
+          "Trigger the overdraft path by withdrawing more than the balance and confirm a `ValueError` is raised with your message."
+        ]
+      }
+    },
+    {
+      "id": "methods",
+      "title": "Methods & Dunder Methods",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Methods are functions bound to a class, and the double-underscore \"dunder\" methods let your objects plug into Python's built-in syntax like `+`, `len()`, `==`, and `print()`.",
+      "summary": [
+        "Python has three flavors of method, distinguished by their first parameter and decorators. An instance method (the default) takes `self` and operates on a specific object's data, this is what you write most of the time. A class method, marked `@classmethod`, takes `cls` (the class itself) instead of an instance and is the idiomatic way to write alternative constructors, like `Date.from_string(...)`. A static method, marked `@staticmethod`, takes neither `self` nor `cls`, it is just a plain function namespaced inside the class because it logically belongs there. Choosing the right kind communicates intent: does this operation need an instance, the class, or nothing but its arguments?",
+        "Dunder (double-underscore) methods, also called magic or special methods, are how your classes hook into Python's syntax and built-in functions. Python calls them implicitly: `a + b` invokes `a.__add__(b)`, `len(x)` invokes `x.__len__()`, `print(x)` uses `x.__str__()`, `x == y` invokes `x.__eq__(y)`, and indexing `x[i]` invokes `x.__getitem__(i)`. By implementing the relevant dunders, your own objects behave like native Python types, this is operator overloading and protocol implementation. You are not redefining Python; you are filling in the hooks Python already looks for. The full catalog lives in the data model reference, but a handful covers most needs.",
+        "A few rules keep this idiomatic. Always implement `__repr__`; implement `__str__` only when a separate human-friendly form helps. If you implement `__eq__`, also implement `__hash__` (or set `__hash__ = None` to make instances unhashable) so the object behaves correctly in sets and dict keys, defining `__eq__` alone silently makes a class unhashable. For ordering (`<`, `<=`, `>`, `>=`), implement the comparisons you need or use `functools.total_ordering` to derive the rest from `__eq__` and `__lt__`. And remember the easy path: `@dataclass` generates `__init__`, `__repr__`, and `__eq__` for you, and with `order=True` it generates the comparison dunders too."
+      ],
+      "keyPoints": [
+        "Instance methods take `self`; `@classmethod` takes `cls` (great for alternative constructors); `@staticmethod` takes neither.",
+        "Dunder methods let Python's syntax call into your class: `__add__` for `+`, `__len__` for `len()`, `__eq__` for `==`, `__getitem__` for `x[i]`.",
+        "`__repr__` is the unambiguous dev representation; `__str__` is the friendly one for `print()` and falls back to `__repr__`.",
+        "If you define `__eq__`, also define `__hash__` (or set it to `None`); otherwise instances become unhashable.",
+        "Use `functools.total_ordering` to fill in the remaining comparison operators from `__eq__` and `__lt__`.",
+        "The complete list of special methods is in the official Data Model reference; you rarely need more than a dozen."
+      ],
+      "code": [
+        {
+          "title": "Instance, class, and static methods",
+          "language": "python",
+          "code": "class Pizza:\n    def __init__(self, toppings):\n        self.toppings = toppings\n\n    def describe(self):                  # instance method: uses self\n        return f\"Pizza with {', '.join(self.toppings)}\"\n\n    @classmethod\n    def margherita(cls):                 # alternative constructor: uses cls\n        return cls([\"tomato\", \"mozzarella\", \"basil\"])\n\n    @staticmethod\n    def is_vegetarian(toppings):         # no self/cls: a plain helper\n        return \"pepperoni\" not in toppings\n\np = Pizza.margherita()\nprint(p.describe())                      # Pizza with tomato, mozzarella, basil\nprint(Pizza.is_vegetarian([\"tomato\"]))   # True"
+        },
+        {
+          "title": "Operator overloading with dunder methods",
+          "language": "python",
+          "code": "class Vector:\n    def __init__(self, x, y):\n        self.x, self.y = x, y\n\n    def __repr__(self):\n        return f\"Vector({self.x}, {self.y})\"\n\n    def __add__(self, other):        # enables v1 + v2\n        return Vector(self.x + other.x, self.y + other.y)\n\n    def __eq__(self, other):         # enables v1 == v2\n        return (self.x, self.y) == (other.x, other.y)\n\n    def __abs__(self):               # enables abs(v)\n        return (self.x ** 2 + self.y ** 2) ** 0.5\n\nv = Vector(1, 2) + Vector(3, 4)\nprint(v)              # Vector(4, 6)\nprint(abs(Vector(3, 4)))   # 5.0\nprint(Vector(1, 2) == Vector(1, 2))  # True"
+        },
+        {
+          "title": "Container behavior with __len__ and __getitem__",
+          "language": "python",
+          "code": "class Playlist:\n    def __init__(self, songs):\n        self._songs = list(songs)\n\n    def __len__(self):               # enables len(playlist)\n        return len(self._songs)\n\n    def __getitem__(self, i):        # enables playlist[i] AND iteration\n        return self._songs[i]\n\npl = Playlist([\"Song A\", \"Song B\", \"Song C\"])\nprint(len(pl))        # 3\nprint(pl[1])          # Song B\nfor song in pl:       # works because __getitem__ supports iteration\n    print(song)"
+        }
+      ],
+      "resources": [
+        { "title": "Data Model — Special method names (the full dunder reference)", "url": "https://docs.python.org/3/reference/datamodel.html#special-method-names", "type": "official" },
+        { "title": "classmethod and staticmethod (Built-in Functions)", "url": "https://docs.python.org/3/library/functions.html#classmethod", "type": "official" },
+        { "title": "functools.total_ordering", "url": "https://docs.python.org/3/library/functools.html#functools.total_ordering", "type": "official" }
+      ],
+      "handsOn": {
+        "goal": "Build a `Money` class that adds with `+`, compares with `==` and `<`, prints nicely, and works correctly as a dict key by implementing the right dunder methods.",
+        "steps": [
+          {
+            "title": "Store cents and define both string forms",
+            "explanation": "Represent money as integer cents to avoid float rounding errors. Provide `__repr__` (unambiguous, dev-facing) and `__str__` (friendly, formatted dollars).",
+            "python": "# money.py\nclass Money:\n    def __init__(self, dollars=0, cents=0):\n        self.cents = dollars * 100 + cents   # store everything as cents\n\n    def __repr__(self):\n        return f\"Money(cents={self.cents})\"\n\n    def __str__(self):\n        return f\"${self.cents / 100:.2f}\"\n\nm = Money(4, 50)\nprint(repr(m))   # Money(cents=450)\nprint(m)         # $4.50",
+            "javascript": null
+          },
+          {
+            "title": "Overload + with __add__",
+            "explanation": "Implementing `__add__` lets `m1 + m2` work. Return a new `Money` (do not mutate operands), this keeps the type immutable-feeling and composable.",
+            "python": "    def __add__(self, other):\n        return Money(cents=self.cents + other.cents)\n\n# with __add__ added to the class:\nprint(Money(4, 50) + Money(1, 75))   # $6.25",
+            "javascript": null
+          },
+          {
+            "title": "Make it comparable and hashable",
+            "explanation": "Define `__eq__` so equality compares value, not identity. Because we defined `__eq__`, we must also define `__hash__` to keep instances usable as set members and dict keys, hash the same field equality uses.",
+            "python": "    def __eq__(self, other):\n        return self.cents == other.cents\n\n    def __lt__(self, other):\n        return self.cents < other.cents\n\n    def __hash__(self):\n        return hash(self.cents)\n\n# now Money works in sets and as dict keys\nprices = {Money(1, 0): \"cheap\", Money(100, 0): \"pricey\"}\nprint(prices[Money(1, 0)])          # cheap\nprint(Money(2, 0) < Money(5, 0))    # True\nprint(Money(3, 0) == Money(3, 0))   # True",
+            "javascript": null
+          },
+          {
+            "title": "Derive the rest of the ordering",
+            "explanation": "With `@functools.total_ordering`, defining just `__eq__` and `__lt__` gives you `<=`, `>`, and `>=` for free, so you can sort a list of `Money` objects.",
+            "python": "from functools import total_ordering\n\n@total_ordering\nclass Money:\n    def __init__(self, dollars=0, cents=0):\n        self.cents = dollars * 100 + cents\n    def __eq__(self, other):\n        return self.cents == other.cents\n    def __lt__(self, other):\n        return self.cents < other.cents\n    def __repr__(self):\n        return f\"${self.cents / 100:.2f}\"\n\nwallet = [Money(5), Money(1, 50), Money(0, 99)]\nprint(sorted(wallet))   # [$0.99, $1.50, $5.00]\nprint(Money(5) >= Money(1))   # True (derived by total_ordering)",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `__sub__` method for subtraction and a `__mul__` that multiplies money by an integer quantity (`Money(2) * 3`).",
+          "Make `__add__` reject adding a `Money` to a plain number by returning `NotImplemented` for non-`Money` operands.",
+          "Add a `@classmethod` named `from_string` that parses `\"$4.50\"` into a `Money` instance.",
+          "Remove `__hash__` (keep `__eq__`) and confirm that using `Money` as a dict key now raises `TypeError: unhashable type`.",
+          "Build a `Deck` class wrapping a list of cards; implement `__len__`, `__getitem__`, and confirm `random.shuffle` works on it because it supports indexing."
+        ]
+      }
+    },
+    {
+      "id": "inheritance",
+      "title": "Inheritance",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Inheritance lets a subclass reuse and extend a parent class, and `super()` is how you cooperatively call the parent's behavior instead of copy-pasting it.",
+      "summary": [
+        "Inheritance creates an \"is-a\" relationship: a subclass derives from a base class and automatically gains its attributes and methods, which it can use as-is, extend, or override. You write `class Dog(Animal):` to make `Dog` inherit from `Animal`. To override a method, simply define one with the same name in the subclass; to extend rather than fully replace the parent's behavior, call `super().method(...)` from inside the override. The canonical case is `__init__`: a subclass's initializer typically calls `super().__init__(...)` first to let the parent set up the attributes it owns, then adds its own. `super()` returns a proxy that dispatches to the next class in the method resolution order, so you never hard-code the parent's name.",
+        "Python supports multiple inheritance, where a class lists several parents. The order in which Python searches them is the Method Resolution Order (MRO), computed by the C3 linearization algorithm and viewable with `ClassName.__mro__` or `ClassName.mro()`. The guarantees are intuitive: a class always precedes its parents, and left-to-right order among bases is respected. The classic \"diamond problem\" (two parents sharing a common ancestor) is resolved cleanly by C3, but only if every class in the chain cooperates by calling `super()`, if one link calls the parent by name or skips `super()`, methods downstream get silently dropped. A practical guideline: inherit from at most one concrete class plus any number of stateless mixins, and list mixins before the base class.",
+        "Inheritance is powerful but easy to overuse. The widely repeated advice is to prefer composition over inheritance: rather than making a `Car` inherit from `Engine`, give the `Car` an engine attribute. Reserve inheritance for genuine is-a relationships and shallow hierarchies; deep, multi-parent trees become hard to reason about. Python's duck typing also means you often do not need inheritance for polymorphism at all, any object with the right methods works. Use `isinstance(obj, Class)` to check membership (it respects subclasses) and `issubclass(A, B)` to check class relationships, and lean on abstract base classes from the `abc` module when you want to formally declare an interface that subclasses must implement."
+      ],
+      "keyPoints": [
+        "`class Sub(Base):` makes `Sub` inherit Base's methods and attributes; override by redefining, extend by calling `super()`.",
+        "`super().__init__(...)` lets the parent initialize its part of the object before the subclass adds its own state.",
+        "Multiple inheritance uses the MRO (C3 linearization); inspect it with `Cls.__mro__` and let `super()` follow it.",
+        "Cooperative multiple inheritance only works if every class in the chain calls `super()`; one broken link drops methods.",
+        "`isinstance(obj, Cls)` and `issubclass(Sub, Base)` respect the inheritance hierarchy; both treat subclasses as the parent type.",
+        "Prefer composition over inheritance, and reserve inheritance for true is-a relationships with shallow hierarchies."
+      ],
+      "code": [
+        {
+          "title": "Override and extend with super()",
+          "language": "python",
+          "code": "class Animal:\n    def __init__(self, name):\n        self.name = name\n    def speak(self):\n        return f\"{self.name} makes a sound\"\n\nclass Dog(Animal):\n    def __init__(self, name, breed):\n        super().__init__(name)   # let Animal set up self.name\n        self.breed = breed       # then add Dog-specific state\n    def speak(self):             # override\n        return f\"{self.name} barks\"\n\nclass Cat(Animal):\n    def speak(self):             # override\n        return f\"{self.name} meows\"\n\nfor a in [Dog(\"Rex\", \"Lab\"), Cat(\"Felix\")]:\n    print(a.speak())   # Rex barks / Felix meows  (polymorphism)"
+        },
+        {
+          "title": "isinstance, issubclass, and the MRO",
+          "language": "python",
+          "code": "class Animal: pass\nclass Dog(Animal): pass\n\nrex = Dog(\"Rex\") if False else Dog()\nprint(isinstance(rex, Dog))      # True\nprint(isinstance(rex, Animal))   # True  (Dog is-a Animal)\nprint(issubclass(Dog, Animal))   # True\nprint(issubclass(Animal, Dog))   # False\n\n# the method resolution order Python searches\nprint(Dog.__mro__)\n# (<class 'Dog'>, <class 'Animal'>, <class 'object'>)"
+        },
+        {
+          "title": "Multiple inheritance with cooperative super()",
+          "language": "python",
+          "code": "class Loggable:\n    def __init__(self, **kw):\n        super().__init__(**kw)        # pass the chain along\n        print(\"Loggable init\")\n\nclass Serializable:\n    def __init__(self, **kw):\n        super().__init__(**kw)\n        print(\"Serializable init\")\n\nclass Widget(Loggable, Serializable):  # mixins first\n    def __init__(self, name, **kw):\n        super().__init__(**kw)\n        self.name = name\n\nWidget(\"button\")\n# Serializable init\n# Loggable init\nprint([c.__name__ for c in Widget.__mro__])\n# ['Widget', 'Loggable', 'Serializable', 'object']"
+        }
+      ],
+      "resources": [
+        { "title": "The Python Tutorial — Inheritance", "url": "https://docs.python.org/3/tutorial/classes.html#inheritance", "type": "official" },
+        { "title": "The Python 2.3 Method Resolution Order (C3 linearization, HOWTO)", "url": "https://docs.python.org/3/howto/mro.html", "type": "official" },
+        { "title": "Built-in super()", "url": "https://docs.python.org/3/library/functions.html#super", "type": "official" },
+        { "title": "abc — Abstract Base Classes", "url": "https://docs.python.org/3/library/abc.html", "type": "official" }
+      ],
+      "handsOn": {
+        "goal": "Build a small shape hierarchy with a shared base class, override an `area()` method per shape, extend `__init__` with `super()`, and use polymorphism to total a list of mixed shapes.",
+        "steps": [
+          {
+            "title": "Define an abstract base class",
+            "explanation": "Use the `abc` module to declare `Shape` as an interface: any subclass MUST implement `area()`. Marking `area` with `@abstractmethod` prevents instantiating a `Shape` directly or a subclass that forgets to implement it.",
+            "python": "# shapes.py\nfrom abc import ABC, abstractmethod\n\nclass Shape(ABC):\n    def __init__(self, name):\n        self.name = name\n\n    @abstractmethod\n    def area(self):\n        ...\n\n    def describe(self):\n        return f\"{self.name} has area {self.area():.2f}\"\n\n# Shape(\"x\") would raise TypeError: can't instantiate abstract class",
+            "javascript": null
+          },
+          {
+            "title": "Subclass and extend __init__ with super()",
+            "explanation": "`Circle` and `Rectangle` each call `super().__init__(name)` to let `Shape` set `self.name`, then add their own fields. Each overrides `area()` with its own formula.",
+            "python": "import math\n\nclass Circle(Shape):\n    def __init__(self, radius):\n        super().__init__(\"Circle\")\n        self.radius = radius\n    def area(self):\n        return math.pi * self.radius ** 2\n\nclass Rectangle(Shape):\n    def __init__(self, w, h):\n        super().__init__(\"Rectangle\")\n        self.w, self.h = w, h\n    def area(self):\n        return self.w * self.h\n\nprint(Circle(2).describe())        # Circle has area 12.57\nprint(Rectangle(3, 4).describe())  # Rectangle has area 12.00",
+            "javascript": null
+          },
+          {
+            "title": "Use polymorphism over a mixed list",
+            "explanation": "Because every shape exposes the same `area()` interface, code that loops over them does not care about concrete types, this is polymorphism. Sum the areas without a single `isinstance` check.",
+            "python": "shapes = [Circle(1), Rectangle(2, 3), Circle(2)]\ntotal = sum(s.area() for s in shapes)\nprint(f\"total area: {total:.2f}\")\n\nfor s in shapes:\n    print(s.describe())   # each prints with its own area() implementation",
+            "javascript": null
+          },
+          {
+            "title": "Inspect the hierarchy",
+            "explanation": "Confirm the is-a relationships with `isinstance`/`issubclass` and view the MRO. A `Circle` is both a `Circle` and a `Shape`, and its MRO ends at `object`.",
+            "python": "c = Circle(1)\nprint(isinstance(c, Circle))    # True\nprint(isinstance(c, Shape))     # True\nprint(issubclass(Circle, Shape))  # True\nprint([cls.__name__ for cls in Circle.__mro__])\n# ['Circle', 'Shape', 'ABC', 'object']",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `Square` subclass of `Rectangle` (not of `Shape`) that calls `super().__init__(side, side)`, this is reuse via inheritance.",
+          "Add a `Triangle(Shape)` with base and height; verify `sum` over a mixed list still works without changing the loop.",
+          "Remove the `area()` method from one subclass and confirm Python refuses to instantiate it because of the abstract method.",
+          "Create a `Named` mixin with a `label()` method and have `Circle` inherit from both `Shape` and the mixin; print `Circle.__mro__`.",
+          "Refactor to composition: instead of `Square(Rectangle)`, give a `Square` a `Rectangle` attribute and delegate `area()` to it, then compare the two designs."
+        ]
+      }
+    },
+    {
+      "id": "encapsulation",
+      "title": "Encapsulation",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Encapsulation bundles data with the methods that manage it and signals what is internal, in Python this is convention-driven and best expressed with `@property`.",
+      "summary": [
+        "Encapsulation has two faces. The first is bundling: keeping data together with the methods allowed to operate on it, so the rules that protect an object's invariants live next to the data they protect. The second is information hiding: signaling which attributes and methods are part of the public interface and which are internal implementation details callers should not depend on. Unlike Java or C++, Python has no `private` or `protected` keywords, it deliberately trusts programmers (\"we are all consenting adults here\"). Instead, encapsulation is expressed through naming conventions and the `property` mechanism, and it is enforced by discipline and tooling, not by the runtime locking you out.",
+        "The conventions are simple and near-universal. A single leading underscore (`_balance`) marks an attribute or method as non-public: it is an implementation detail, use at your own risk, and may change without notice. A double leading underscore (`__balance`) triggers name mangling: Python rewrites it to `_ClassName__balance`, which is not about secrecy but about avoiding accidental name clashes between a class and its subclasses. Most code uses the single underscore for \"internal\" and reserves double underscores for the specific case of attributes that must not collide in an inheritance hierarchy. Crucially, none of this is true privacy, a determined caller can still reach `obj._balance`; the underscore is a contract, not a lock.",
+        "The idiomatic way to encapsulate in Python is the `@property` decorator, which turns method calls into attribute access. Start by exposing a plain public attribute (`account.balance`); if you later need validation, computation, or read-only behavior, you can promote it to a property without changing any calling code, this is why Python programmers do not write Java-style getters and setters up front. A bare `@property` gives a read-only computed attribute; adding a matching `@x.setter` lets you validate on assignment (rejecting a negative balance, for example); omitting the setter makes the attribute read-only. This \"start simple, add a property only when you need one\" approach is the heart of Pythonic encapsulation."
+      ],
+      "keyPoints": [
+        "Python has no `private`/`protected` keywords; encapsulation is convention plus the `property` mechanism, not runtime enforcement.",
+        "A single leading underscore (`_x`) means \"non-public, internal\"; it is a contract, not a lock, you can still access it.",
+        "A double leading underscore (`__x`) triggers name mangling to `_ClassName__x`, used to avoid clashes in subclasses, not for secrecy.",
+        "Expose plain attributes first; promote to `@property` later for validation or computation without breaking callers.",
+        "`@property` with no setter gives a read-only attribute; add `@x.setter` to validate or transform on assignment.",
+        "Don't write Java-style getters/setters preemptively, properties let you add them only when a real need appears."
+      ],
+      "code": [
+        {
+          "title": "Underscore conventions and name mangling",
+          "language": "python",
+          "code": "class Account:\n    def __init__(self):\n        self.owner = \"Ada\"      # public\n        self._balance = 100     # 'internal' by convention\n        self.__pin = \"1234\"     # name-mangled\n\na = Account()\nprint(a.owner)        # Ada\nprint(a._balance)     # 100  (works, but you're told not to rely on it)\n\n# __pin is mangled, so this fails:\n# print(a.__pin)      # AttributeError\nprint(a._Account__pin)  # 1234  (mangled name, still reachable)"
+        },
+        {
+          "title": "Read-only and validated properties",
+          "language": "python",
+          "code": "class Temperature:\n    def __init__(self, celsius):\n        self._celsius = celsius\n\n    @property\n    def celsius(self):              # getter with validation on set\n        return self._celsius\n\n    @celsius.setter\n    def celsius(self, value):\n        if value < -273.15:\n            raise ValueError(\"below absolute zero\")\n        self._celsius = value\n\n    @property\n    def fahrenheit(self):           # computed, read-only (no setter)\n        return self._celsius * 9 / 5 + 32\n\nt = Temperature(25)\nprint(t.fahrenheit)   # 77.0  (accessed like an attribute, not t.fahrenheit())\nt.celsius = 30        # goes through the setter\n# t.fahrenheit = 100  # AttributeError: no setter (read-only)\n# t.celsius = -300    # ValueError: below absolute zero"
+        }
+      ],
+      "resources": [
+        { "title": "Built-in property() / @property (getters, setters, deleters)", "url": "https://docs.python.org/3/library/functions.html#property", "type": "official" },
+        { "title": "Private Variables and name mangling (Python Tutorial)", "url": "https://docs.python.org/3/tutorial/classes.html#private-variables", "type": "official" },
+        { "title": "PEP 8 — Naming Conventions (leading underscores)", "url": "https://peps.python.org/pep-0008/#descriptive-naming-styles", "type": "official" }
+      ],
+      "handsOn": {
+        "goal": "Refactor a class from a public attribute to a validated, read-only-where-appropriate property without breaking existing calling code.",
+        "steps": [
+          {
+            "title": "Start with a plain public attribute",
+            "explanation": "Begin Pythonic: expose `balance` as a normal attribute. Callers read and write it directly. This is the right default, no getters/setters until you have a reason.",
+            "python": "# account.py\nclass Account:\n    def __init__(self, balance=0):\n        self.balance = balance   # plain public attribute\n\na = Account(100)\nprint(a.balance)   # 100\na.balance = 150    # direct assignment works\nprint(a.balance)   # 150",
+            "javascript": null
+          },
+          {
+            "title": "Add validation by promoting to a property",
+            "explanation": "Now a rule appears: balance can't go negative. Store the real value in `_balance` and wrap it in a `@property` getter plus a `@balance.setter` that validates. Calling code (`a.balance = ...`) does not change at all.",
+            "python": "class Account:\n    def __init__(self, balance=0):\n        self.balance = balance        # goes through the setter below\n\n    @property\n    def balance(self):\n        return self._balance\n\n    @balance.setter\n    def balance(self, value):\n        if value < 0:\n            raise ValueError(\"balance cannot be negative\")\n        self._balance = value\n\na = Account(100)\na.balance = 150       # same syntax, now validated\nprint(a.balance)      # 150\n# a.balance = -5      # ValueError: balance cannot be negative",
+            "javascript": null
+          },
+          {
+            "title": "Add a computed, read-only property",
+            "explanation": "Expose `is_overdrawn` as a derived value with no setter, attempting to assign it raises `AttributeError`. Computed read-only properties keep derived state always consistent with the source.",
+            "python": "    @property\n    def is_overdrawn(self):\n        return self._balance == 0\n\na = Account(0)\nprint(a.is_overdrawn)   # True\n# a.is_overdrawn = False  # AttributeError: property has no setter",
+            "javascript": null
+          },
+          {
+            "title": "Confirm the underscore is a convention, not a lock",
+            "explanation": "Show that `_balance` is still reachable directly (bypassing the setter), demonstrating that Python's privacy is by agreement. This is why teams rely on conventions, linters, and code review rather than runtime enforcement.",
+            "python": "a = Account(50)\na._balance = -999      # nothing stops you; you broke the invariant\nprint(a.balance)       # -999  (validation was bypassed)\n# the lesson: respect the underscore; properties guard the public path only",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add an `owner` property that is read-only (set once in `__init__`, no setter) and confirm assignment raises `AttributeError`.",
+          "Add `deposit` and `withdraw` methods that go through the `balance` setter so the negative-balance rule is enforced everywhere.",
+          "Add a `currency` attribute with a setter that uppercases the value (`'usd'` becomes `'USD'`) on assignment.",
+          "Rename `_balance` to `__balance` and observe how name mangling changes the attribute name you must use to reach it from outside.",
+          "Add a `@balance.deleter` that resets the balance to 0 when `del account.balance` is called, and test it."
+        ]
+      }
+    },
+    {
+      "id": "programming-paradigms",
+      "title": "Programming Paradigms",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "Python is multi-paradigm: it lets you write imperative, object-oriented, and functional code, often mixing all three in the same program.",
+      "summary": [
+        "A programming paradigm is a style of structuring code, and Python deliberately supports several rather than forcing one. Imperative/procedural code describes the steps to perform, statements, loops, and mutable variables, and is what most beginners write first. Object-oriented code organizes the program around objects that bundle state and behavior, which you have just learned. Functional code treats functions as first-class values, favors pure functions (no side effects) and immutable data, and builds programs by composing transformations. Python is not purist about any of these: it is pragmatic and lets you reach for whichever style fits the problem, and idiomatic Python freely blends them.",
+        "The functional toolkit is worth knowing because it shows up everywhere in real code. Functions are first-class objects: you can store them in variables, pass them as arguments, and return them from other functions. `map`, `filter`, and `functools.reduce` transform iterables; `lambda` creates small anonymous functions; comprehensions (`[f(x) for x in xs if cond]`) are the Pythonic, readable alternative to `map`/`filter` for most cases; and generators produce values lazily. `functools` adds higher-order tools like `partial` (pre-fill some arguments) and `reduce` (fold a sequence into one value), while `itertools` provides composable iterator building blocks. These are not separate from the rest of Python, they are everyday features you mix into otherwise imperative or object-oriented code.",
+        "There is no single \"best\" paradigm; choosing well is a design skill. Object-oriented design fits problems with clear entities and relationships and shared mutable state guarded by an interface. Functional style fits data-transformation pipelines, concurrency (immutability avoids race conditions), and code you want to test in isolation because pure functions have no hidden dependencies. Plain procedural code is perfect for scripts and glue. The Pythonic instinct is to prefer the simplest style that reads clearly: comprehensions over loops where they clarify, classes where they organize, pure functions where state is incidental, you are not obligated to model everything as an object."
+      ],
+      "keyPoints": [
+        "Python is multi-paradigm: imperative/procedural, object-oriented, and functional styles coexist and mix freely.",
+        "Functions are first-class objects, you can store, pass, and return them, which underpins all functional patterns.",
+        "`map`, `filter`, `lambda`, and `functools.reduce` are functional staples; comprehensions are the readable Pythonic alternative.",
+        "Pure functions (no side effects) and immutable data make code easier to test and safer under concurrency.",
+        "`functools` (e.g. `partial`, `reduce`) and `itertools` provide higher-order and lazy iterator tools.",
+        "Pick the paradigm per problem; the Pythonic default is the simplest style that reads clearly, not OOP everywhere."
+      ],
+      "code": [
+        {
+          "title": "Functions are first-class values",
+          "language": "python",
+          "code": "def shout(s): return s.upper() + \"!\"\ndef whisper(s): return s.lower() + \"...\"\n\n# store a function in a variable, pass it as an argument\ndef apply(fn, text):\n    return fn(text)\n\nfor f in (shout, whisper):     # functions in a tuple\n    print(apply(f, \"Hello\"))   # HELLO!  then  hello...\n\n# return a function from a function (a closure)\ndef multiplier(n):\n    return lambda x: x * n\n\ntimes3 = multiplier(3)\nprint(times3(10))   # 30"
+        },
+        {
+          "title": "Functional tools vs the Pythonic comprehension",
+          "language": "python",
+          "code": "from functools import reduce\n\nnums = [1, 2, 3, 4, 5, 6]\n\n# functional style: map + filter\nevens_sq = list(map(lambda x: x ** 2, filter(lambda x: x % 2 == 0, nums)))\nprint(evens_sq)   # [4, 16, 36]\n\n# the same thing, more Pythonic: a comprehension\nevens_sq2 = [x ** 2 for x in nums if x % 2 == 0]\nprint(evens_sq2)  # [4, 16, 36]\n\n# reduce folds a sequence into a single value\ntotal = reduce(lambda acc, x: acc + x, nums, 0)\nprint(total)      # 21  (often just sum(nums))"
+        },
+        {
+          "title": "Same problem, three paradigms",
+          "language": "python",
+          "code": "data = [\"apple\", \"banana\", \"cherry\"]\n\n# imperative: explicit loop and mutable accumulator\nresult = []\nfor word in data:\n    result.append(word.title())\n\n# functional: a transformation, no mutation\nresult_fp = list(map(str.title, data))\n\n# object-oriented: behavior bundled into a type\nclass TitleCaser:\n    def apply(self, words):\n        return [w.title() for w in words]\n\nprint(result)                    # ['Apple', 'Banana', 'Cherry']\nprint(result_fp == result)       # True\nprint(TitleCaser().apply(data))  # ['Apple', 'Banana', 'Cherry']"
+        }
+      ],
+      "resources": [
+        { "title": "Functional Programming HOWTO (official docs)", "url": "https://docs.python.org/3/howto/functional.html", "type": "official" },
+        { "title": "functools — Higher-order functions and operations on callables", "url": "https://docs.python.org/3/library/functools.html", "type": "official" },
+        { "title": "itertools — Functions creating iterators for efficient looping", "url": "https://docs.python.org/3/library/itertools.html", "type": "official" }
+      ]
+    }
+  ]
+}

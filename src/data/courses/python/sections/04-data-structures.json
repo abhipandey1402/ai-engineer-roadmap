@@ -1,0 +1,342 @@
+{
+  "id": "data-structures",
+  "title": "Data Structures",
+  "description": "Python's core collections and comprehensions.",
+  "topics": [
+    {
+      "id": "lists",
+      "title": "Lists",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "A list is Python's go-to ordered, mutable, growable sequence — written with square brackets and able to hold items of any type.",
+      "summary": [
+        "A `list` is an ordered, mutable collection written with square brackets: `[1, 2, 3]`. \"Ordered\" means items keep the position you put them in and are accessed by integer index starting at `0` (with negative indices counting from the end, so `xs[-1]` is the last item). \"Mutable\" means you can change a list in place after creation — append, insert, remove, or reassign elements — without making a new object. Unlike arrays in many other languages, a Python list is heterogeneous: `[1, \"two\", 3.0, [4]]` is perfectly valid, because each slot just holds a reference to any object.",
+        "Lists carry a rich set of methods. `append(x)` adds one item to the end; `extend(iterable)` adds many; `insert(i, x)` places an item at an index; `pop([i])` removes and returns an item (the last by default); `remove(x)` deletes the first matching value; `sort()` and `reverse()` reorder the list in place and return `None` (use the built-in `sorted(xs)` when you want a new sorted list instead). Slicing — `xs[1:4]`, `xs[::2]`, `xs[::-1]` — extracts sub-lists, and slice assignment can splice elements in or out. Because indexing past the end raises `IndexError`, reach for `len(xs)` and `in` to check bounds and membership safely.",
+        "The one gotcha that bites every Python beginner is aliasing. `b = a` does not copy the list — both names point at the same object, so mutating through one is visible through the other. Make a shallow copy with `a.copy()` or `a[:]`, and use `copy.deepcopy` for nested structures. Likewise, never use a mutable list as a default argument (`def f(x, acc=[])`) because that single list is shared across all calls; use `acc=None` and create a fresh list inside. Lists are the right default sequence; reach for a `tuple` when the data is fixed, a `set` for fast membership tests, or `collections.deque` when you need fast appends and pops at both ends."
+      ],
+      "keyPoints": [
+        "Lists are ordered, mutable, and heterogeneous; created with `[]` or `list(iterable)`, indexed from `0`, with `-1` as the last item.",
+        "Core methods: `append`, `extend`, `insert`, `pop`, `remove`, `index`, `count`; `sort()`/`reverse()` mutate in place and return `None`.",
+        "Use `sorted(xs)` for a new sorted list and `xs[::-1]` to get a reversed copy without mutating the original.",
+        "Slicing (`xs[a:b:step]`) reads sub-lists; slice assignment can insert or delete ranges in place.",
+        "`b = a` aliases the same list — copy with `a[:]`, `a.copy()`, or `copy.deepcopy` for nested data.",
+        "Never use a mutable default argument like `def f(acc=[])`; default to `None` and build the list inside the function."
+      ],
+      "code": [
+        {
+          "title": "Creating and mutating lists",
+          "language": "python",
+          "code": "fruits = [\"apple\", \"banana\", \"cherry\"]\n\nfruits.append(\"date\")           # add one at the end\nfruits.insert(0, \"avocado\")     # add at index 0\nfruits.extend([\"elderberry\", \"fig\"])  # add many\n\nprint(fruits[0], fruits[-1])    # first and last: avocado fig\nprint(fruits[1:3])              # slice: ['apple', 'banana']\nprint(len(fruits))              # 6\nprint(\"banana\" in fruits)       # True\n\nfruits.remove(\"apple\")          # delete by value\nlast = fruits.pop()             # remove + return the last item\nprint(last, fruits)"
+        },
+        {
+          "title": "Sorting, copying, and the aliasing trap",
+          "language": "python",
+          "code": "nums = [3, 1, 4, 1, 5, 9, 2]\n\nordered = sorted(nums)          # new list; original untouched\nnums.sort(reverse=True)         # in place; returns None\nprint(ordered)                  # [1, 1, 2, 3, 4, 5, 9]\nprint(nums)                     # [9, 5, 4, 3, 2, 1, 1]\n\n# aliasing vs copying\na = [1, 2, 3]\nb = a                           # SAME list\nc = a[:]                        # a real (shallow) copy\nb.append(99)\nprint(a)   # [1, 2, 3, 99]  -> b mutated a!\nprint(c)   # [1, 2, 3]      -> copy is independent"
+        }
+      ],
+      "resources": [
+        { "title": "An Introduction to Python — Lists (official tutorial)", "url": "https://docs.python.org/3/tutorial/introduction.html#lists", "type": "official" },
+        { "title": "More on Lists (official tutorial)", "url": "https://docs.python.org/3/tutorial/datastructures.html#more-on-lists", "type": "official" },
+        { "title": "Tuples vs. Lists vs. Sets in Python", "url": "https://jerrynsh.com/tuples-vs-lists-vs-sets-in-python/", "type": "article" },
+        { "title": "Difference Between List, Tuple, Set and Dictionary in Python", "url": "https://www.youtube.com/watch?v=n0krwG38SHI", "type": "video" }
+      ]
+    },
+    {
+      "id": "tuples",
+      "title": "Tuples",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "A tuple is an ordered, immutable sequence — perfect for fixed records, multiple return values, and as dictionary keys.",
+      "summary": [
+        "A `tuple` is an ordered collection like a list, but immutable: once created it cannot be changed. You write one with parentheses — `(1, 2, 3)` — though it is actually the comma that makes a tuple, so `1, 2, 3` works too, and a single-element tuple needs a trailing comma: `(42,)`. The empty tuple is `()`. Because tuples cannot grow or shrink, they signal intent: this group of values belongs together and should not be modified. That is why they model fixed records well — `point = (3, 4)`, `rgb = (255, 0, 0)` — and why functions returning \"multiple values\" actually return one tuple that you unpack at the call site.",
+        "Tuple unpacking is one of Python's most pleasant features. `x, y = point` binds each element to a name; `a, b = b, a` swaps two variables with no temporary; and the star target `first, *rest = [1, 2, 3, 4]` captures the leftover items into a list (`rest == [2, 3, 4]`). Unpacking drives idiomatic loops too, as in `for index, value in enumerate(items)` and `for key, val in mapping.items()`. Tuples support the same indexing, slicing, iteration, `len`, `in`, `count`, and `index` that sequences share — they simply omit every mutating operation.",
+        "Immutability has a concrete payoff: a tuple of hashable items is itself hashable, so it can be used as a dictionary key or a set element where a list cannot. That makes tuples the natural key for composite lookups like `prices[(\"NYC\", \"2026\")]`. One subtlety: a tuple is only hashable if everything inside it is hashable, so `(1, [2])` will still raise `TypeError` when hashed because it contains a list. When you find yourself writing many fixed-shape tuples and accessing fields by position, consider `collections.namedtuple` or a `@dataclass` for readable, named fields without giving up the lightweight, value-like feel."
+      ],
+      "keyPoints": [
+        "Tuples are ordered and immutable; it is the comma that builds them, and a one-element tuple needs a trailing comma: `(x,)`.",
+        "Use tuples for fixed records and to return multiple values from a function; the caller unpacks them.",
+        "Unpacking is idiomatic: `a, b = b, a`, `first, *rest = seq`, and `for k, v in d.items()`.",
+        "A tuple of hashable items is hashable, so it can be a dict key or set member — a list cannot.",
+        "Tuples share read-only sequence operations (index, slice, `in`, `count`, `index`) but no mutating methods.",
+        "For named fields, graduate to `collections.namedtuple` or a `@dataclass` instead of remembering positions."
+      ],
+      "code": [
+        {
+          "title": "Tuples, unpacking, and multiple return values",
+          "language": "python",
+          "code": "point = (3, 4)\nx, y = point                 # unpacking\nprint(x, y)                  # 3 4\n\na, b = 1, 2\na, b = b, a                  # swap without a temp\nprint(a, b)                  # 2 1\n\nfirst, *rest = [10, 20, 30, 40]\nprint(first, rest)           # 10 [20, 30, 40]\n\ndef min_max(values):\n    return min(values), max(values)   # returns a tuple\n\nlo, hi = min_max([5, 2, 9, 1])\nprint(lo, hi)                # 1 9\n\nsingle = (42,)               # trailing comma => tuple, not int\nprint(type(single))          # <class 'tuple'>"
+        },
+        {
+          "title": "Tuples as dictionary keys",
+          "language": "python",
+          "code": "# composite keys: (city, year) -> value\nrainfall = {\n    (\"NYC\", 2025): 47.3,\n    (\"NYC\", 2026): 51.1,\n    (\"LA\", 2026): 14.2,\n}\nprint(rainfall[(\"NYC\", 2026)])   # 51.1\n\n# a list can't be a key, but a tuple can\ntry:\n    {[1, 2]: \"nope\"}\nexcept TypeError as e:\n    print(\"list key fails:\", e)"
+        }
+      ],
+      "resources": [
+        { "title": "Tuples and Sequences (official tutorial)", "url": "https://docs.python.org/3/tutorial/datastructures.html#tuples-and-sequences", "type": "official" },
+        { "title": "Python for Beginners: When and How to Use Tuples", "url": "https://thenewstack.io/python-for-beginners-when-and-how-to-use-tuples/", "type": "article" },
+        { "title": "Python's tuple Data Type: A Deep Dive With Examples", "url": "https://realpython.com/python-tuple/", "type": "article" },
+        { "title": "why are Tuples even a thing?", "url": "https://www.youtube.com/watch?v=fR_D_KIAYrE", "type": "video" }
+      ]
+    },
+    {
+      "id": "sets",
+      "title": "Sets",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "A set is an unordered collection of unique, hashable items with near-instant membership tests and built-in mathematical operations.",
+      "summary": [
+        "A `set` is a mutable, unordered collection of unique elements. Create one with braces — `{1, 2, 3}` — or `set(iterable)`, but note that `{}` is an empty dict, so the empty set is written `set()`. Sets enforce uniqueness automatically: `set([1, 1, 2, 2, 3])` collapses to `{1, 2, 3}`, which makes deduplicating any iterable a one-liner. Because there is no order, sets are not indexed or sliced; you iterate them, test membership, and add or discard elements. Every member must be hashable, so numbers, strings, and tuples are fine but lists and dicts cannot be set members.",
+        "The headline feature is speed. Membership testing with `x in s` is on average O(1) because sets are hash tables, versus O(n) for a list where Python must scan element by element. When you repeatedly ask \"have I seen this already?\" — visited nodes, seen IDs, allowed values — a set is the right tool and the performance difference is dramatic on large data. Mutation is by `add(x)` for one item, `update(iterable)` for many, `discard(x)` (safe if absent) or `remove(x)` (raises `KeyError` if absent), and `pop()` to remove an arbitrary element.",
+        "Sets also bring mathematical operations straight into the language. Union is `a | b`, intersection `a & b`, difference `a - b`, and symmetric difference `a ^ b` (items in exactly one set); each has an in-place augmented form (`|=`, `&=`, and so on) and a method version (`a.union(b)`) that accepts any iterable, not just another set. Subset and superset relationships use `<=` and `>=`. When you need an immutable, hashable set — for example a set used as a dictionary key or stored inside another set — use `frozenset`, which supports all the read-only operations but none of the mutating ones."
+      ],
+      "keyPoints": [
+        "Sets hold unique, hashable items with no order; build them with `{...}` or `set()` — but `{}` is an empty dict, so use `set()` for an empty set.",
+        "`x in s` is average O(1) because a set is a hash table; the same test on a list is O(n).",
+        "`set(iterable)` deduplicates anything in one line; iterate sets but don't index or slice them.",
+        "Mutate with `add`, `update`, `discard` (safe) and `remove` (raises `KeyError` if missing).",
+        "Operators `|` `&` `-` `^` give union, intersection, difference, and symmetric difference, with `|=`-style in-place variants.",
+        "Use `frozenset` when you need an immutable, hashable set — e.g. as a dict key or a member of another set."
+      ],
+      "code": [
+        {
+          "title": "Creating sets, deduping, and membership",
+          "language": "python",
+          "code": "nums = {1, 2, 3, 3, 2}\nprint(nums)                 # {1, 2, 3} (duplicates dropped)\n\nempty = set()               # NOT {} -- that is an empty dict\n\n# dedupe any iterable in one line, preserving uniqueness\nwords = [\"a\", \"b\", \"a\", \"c\", \"b\"]\nunique = set(words)\nprint(unique)               # {'a', 'b', 'c'}\n\n# fast membership test\nallowed = {\"GET\", \"POST\", \"PUT\"}\nprint(\"POST\" in allowed)    # True (O(1) on average)\n\nnums.add(4)\nnums.discard(99)            # no error even though 99 is absent\nprint(nums)"
+        },
+        {
+          "title": "Set algebra",
+          "language": "python",
+          "code": "a = {1, 2, 3, 4}\nb = {3, 4, 5, 6}\n\nprint(a | b)   # union: {1, 2, 3, 4, 5, 6}\nprint(a & b)   # intersection: {3, 4}\nprint(a - b)   # difference: {1, 2}\nprint(a ^ b)   # symmetric difference: {1, 2, 5, 6}\n\nprint({1, 2} <= a)   # subset? True\nprint(a >= {1, 9})   # superset? False\n\n# frozenset: immutable + hashable\nkey = frozenset({\"read\", \"write\"})\npermissions = {key: \"editor\"}\nprint(permissions[frozenset({\"write\", \"read\"})])  # editor"
+        }
+      ],
+      "resources": [
+        { "title": "Sets (official tutorial)", "url": "https://docs.python.org/3/tutorial/datastructures.html#sets", "type": "official" },
+        { "title": "set / frozenset (official library reference)", "url": "https://docs.python.org/3/library/stdtypes.html#set-types-set-frozenset", "type": "official" },
+        { "title": "An In-Depth Guide to Working with Python Sets", "url": "https://learnpython.com/blog/python-sets/", "type": "article" },
+        { "title": "Python Sets tutorial for Beginners", "url": "https://www.youtube.com/watch?v=t9j8lCUGZXo", "type": "video" }
+      ]
+    },
+    {
+      "id": "dictionaries",
+      "title": "Dictionaries",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "A dictionary maps unique keys to values for fast lookup — Python's workhorse for structured, keyed data.",
+      "summary": [
+        "A `dict` is a mapping from unique, hashable keys to arbitrary values, written `{\"name\": \"Ada\", \"age\": 36}`. Keys must be hashable (strings, numbers, tuples), values can be anything. Lookup, insertion, and deletion are average O(1) because a dict is a hash table, which is why dictionaries are everywhere in Python — they back objects' attributes, keyword arguments, JSON, configuration, counting, and grouping. Since Python 3.7 dictionaries are guaranteed to preserve insertion order, so iterating a dict yields keys in the order they were first added.",
+        "Read a value with `d[key]`, but indexing a missing key raises `KeyError`. The safer pattern for optional keys is `d.get(key, default)`, which returns the default (or `None`) instead of raising, and `setdefault(key, default)` which inserts the default only if the key is absent. To iterate, use the three view objects: `d.keys()`, `d.values()`, and especially `d.items()` for `for key, value in d.items()`. Membership (`key in d`) tests keys. Merge dictionaries with the `|` operator (`merged = a | b`, Python 3.9+) or update in place with `a |= b` or `a.update(b)`; later keys win on conflict.",
+        "Two standard-library tools save real work. `collections.Counter` tallies occurrences (`Counter(words)` gives counts, with `.most_common(n)` ready to go) and `collections.defaultdict` supplies a default value for any missing key so you can append or increment without a guard — `defaultdict(list)` builds a key-to-list grouping in a single loop. Build dicts concisely with a dict comprehension, `{k: v for ...}`, and remember that copying behaves like lists: `b = a` aliases the same dict, so use `a.copy()` for a shallow copy and `copy.deepcopy` for nested data."
+      ],
+      "keyPoints": [
+        "Dicts map hashable keys to any values with average O(1) lookup, insert, and delete; written `{k: v, ...}`.",
+        "Since Python 3.7, insertion order is guaranteed when you iterate keys, values, or items.",
+        "`d[key]` raises `KeyError` if missing — prefer `d.get(key, default)` and `d.setdefault(key, default)` for optional keys.",
+        "Iterate with `d.items()` (key + value), `d.keys()`, and `d.values()`; `key in d` tests keys, not values.",
+        "Merge with `a | b` / `a |= b` (3.9+) or `a.update(b)`; on a key clash the right-hand/last value wins.",
+        "Reach for `collections.Counter` to tally and `collections.defaultdict` to group without missing-key guards."
+      ],
+      "code": [
+        {
+          "title": "Building, reading, and safely accessing a dict",
+          "language": "python",
+          "code": "user = {\"name\": \"Ada\", \"age\": 36}\n\nprint(user[\"name\"])              # Ada\nprint(user.get(\"email\", \"n/a\"))  # n/a (no KeyError)\n\nuser[\"email\"] = \"ada@example.com\"  # add / update\ndel user[\"age\"]                   # remove a key\n\nfor key, value in user.items():\n    print(f\"{key}: {value}\")\n\nprint(\"name\" in user)             # True (checks keys)\n\n# merge (Python 3.9+); right-hand keys win\ndefaults = {\"theme\": \"light\", \"lang\": \"en\"}\nchosen = defaults | {\"theme\": \"dark\"}\nprint(chosen)                     # {'theme': 'dark', 'lang': 'en'}"
+        },
+        {
+          "title": "Counting and grouping with collections",
+          "language": "python",
+          "code": "from collections import Counter, defaultdict\n\nwords = \"the cat sat on the mat the cat\".split()\n\ncounts = Counter(words)\nprint(counts)                     # Counter({'the': 3, 'cat': 2, ...})\nprint(counts.most_common(2))      # [('the', 3), ('cat', 2)]\n\n# group words by their first letter, no missing-key guard needed\ngroups = defaultdict(list)\nfor w in words:\n    groups[w[0]].append(w)\nprint(dict(groups))               # {'t': [...], 'c': [...], ...}\n\n# dict comprehension: square each number\nsquares = {n: n * n for n in range(1, 6)}\nprint(squares)                    # {1: 1, 2: 4, 3: 9, 4: 16, 5: 25}"
+        }
+      ],
+      "resources": [
+        { "title": "Dictionaries (official tutorial)", "url": "https://docs.python.org/3/tutorial/datastructures.html#dictionaries", "type": "official" },
+        { "title": "collections — Counter & defaultdict (official docs)", "url": "https://docs.python.org/3/library/collections.html", "type": "official" },
+        { "title": "Dictionaries in Python", "url": "https://realpython.com/python-dicts/", "type": "article" },
+        { "title": "Python KeyError Exceptions: Causes and Fixes", "url": "https://roadmap.sh/python/keyerror", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Use a dictionary to count word frequencies in a piece of text, then refactor the manual counting loop into `collections.Counter` and a `defaultdict` grouping.",
+        "steps": [
+          {
+            "title": "Count words by hand with get()",
+            "explanation": "Split text into words and tally each one. The `dict.get(word, 0)` pattern returns 0 for words seen for the first time, so you never hit a `KeyError` while building the counts.",
+            "python": "text = \"\"\"\nthe quick brown fox the lazy dog\nthe fox jumps the dog sleeps\n\"\"\"\nwords = text.lower().split()\n\ncounts = {}\nfor word in words:\n    counts[word] = counts.get(word, 0) + 1\n\nprint(counts)\nprint(\"'the' appears\", counts[\"the\"], \"times\")",
+            "javascript": null
+          },
+          {
+            "title": "Find the top words by sorting items()",
+            "explanation": "Iterate `counts.items()` and sort by the count (the second element of each pair) in descending order. `sorted` with a `key` function returns a new sorted list of `(word, count)` tuples.",
+            "python": "top = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)\nfor word, n in top[:3]:\n    print(f\"{word}: {n}\")",
+            "javascript": null
+          },
+          {
+            "title": "Replace the loop with Counter",
+            "explanation": "`collections.Counter` does the exact counting loop for you and ships with `.most_common(n)`, which returns the top items already sorted. This is the idiomatic way to count in Python.",
+            "python": "from collections import Counter\n\ncounts = Counter(words)\nprint(counts.most_common(3))\nprint(counts[\"missing\"])   # 0, not a KeyError",
+            "javascript": null
+          },
+          {
+            "title": "Group words by length with defaultdict",
+            "explanation": "A `defaultdict(list)` auto-creates an empty list the first time you touch a key, so you can append immediately. Here we bucket every word by how many letters it has.",
+            "python": "from collections import defaultdict\n\nby_length = defaultdict(list)\nfor word in set(words):       # set() to dedupe first\n    by_length[len(word)].append(word)\n\nfor length in sorted(by_length):\n    print(length, \"->\", sorted(by_length[length]))",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Modify the manual counter to ignore words shorter than 3 letters before counting.",
+          "Use `counts.most_common()` with no argument and print the full ranking; confirm it matches your hand-sorted version.",
+          "Write a `defaultdict(int)` version of the word counter and compare it to the `get()` version — which reads more clearly to you?",
+          "Group the words by their first letter instead of length, then print each group sorted alphabetically.",
+          "Read a real `.txt` file with `open(...).read()`, strip punctuation with `str.translate` or a comprehension, and report the 10 most common words."
+        ]
+      }
+    },
+    {
+      "id": "list-comprehensions",
+      "title": "List Comprehensions",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "List comprehensions build a new list from an iterable in one readable expression — Python's idiomatic alternative to a build-up loop.",
+      "summary": [
+        "A list comprehension constructs a list in a single expression: `[expr for item in iterable]`. It is the Pythonic replacement for the common pattern of creating an empty list and appending inside a `for` loop — `[x * x for x in range(5)]` produces `[0, 1, 4, 9, 16]` with no `result = []` and no `.append`. You can add a filter with a trailing `if`: `[x for x in nums if x % 2 == 0]` keeps only the even numbers. The mental model is \"map and filter, left to right\": the leading expression transforms each item, and the optional `if` decides which items survive.",
+        "The same bracket-and-clause syntax generalizes to other collections. Swap the brackets for braces to get a set comprehension, `{x % 3 for x in range(10)}`, or a dict comprehension with a `key: value` head, `{w: len(w) for w in words}`. A conditional *expression* can sit in the output position to choose between two values per item — `[\"even\" if x % 2 == 0 else \"odd\" for x in nums]` — which is different from the trailing filter `if` that decides inclusion. You can also nest loops: `[(r, c) for r in rows for c in cols]` reads top to bottom in the same order you would write the equivalent nested `for` statements.",
+        "Comprehensions are about building a collection, not about side effects: never write a comprehension just to call `print` or mutate something — use a plain loop for that. And keep them readable. A comprehension that needs several clauses, deep nesting, or wraps past a comfortable line length is clearer as an explicit loop; the rule of thumb is that if you cannot explain it in one breath, expand it. When the result is large and you only iterate it once, prefer a generator expression (parentheses instead of brackets) so you never materialize the whole list in memory."
+      ],
+      "keyPoints": [
+        "Syntax is `[expr for item in iterable if condition]`; the `if` at the end filters, choosing which items are included.",
+        "A conditional in the output position (`a if cond else b`) transforms each item and is distinct from the trailing filter `if`.",
+        "The same form yields set comprehensions `{...}` and dict comprehensions `{k: v for ...}`.",
+        "Nested loops read in statement order: `[... for r in rows for c in cols]` equals the equivalent nested `for`.",
+        "Use comprehensions to build collections, never for pure side effects like `print` — use a loop there.",
+        "Favor a generator expression (parentheses) over a list comprehension when the result is large and used only once."
+      ],
+      "code": [
+        {
+          "title": "Map, filter, and the conditional expression",
+          "language": "python",
+          "code": "nums = [1, 2, 3, 4, 5, 6]\n\nsquares = [n * n for n in nums]\nprint(squares)                 # [1, 4, 9, 16, 25, 36]\n\nevens = [n for n in nums if n % 2 == 0]\nprint(evens)                   # [2, 4, 6]\n\n# conditional EXPRESSION in the output position (not a filter)\nlabels = [\"even\" if n % 2 == 0 else \"odd\" for n in nums]\nprint(labels)                  # ['odd', 'even', 'odd', 'even', 'odd', 'even']\n\n# the equivalent explicit loop, for comparison\nresult = []\nfor n in nums:\n    if n % 2 == 0:\n        result.append(n * n)\nprint(result)                  # [4, 16, 36]"
+        },
+        {
+          "title": "Set, dict, and nested comprehensions",
+          "language": "python",
+          "code": "words = [\"apple\", \"banana\", \"cherry\"]\n\nlengths = {w: len(w) for w in words}      # dict comprehension\nprint(lengths)            # {'apple': 5, 'banana': 6, 'cherry': 6}\n\nremainders = {n % 3 for n in range(10)}   # set comprehension\nprint(remainders)         # {0, 1, 2}\n\n# nested loops -> a flat list of coordinate pairs\ngrid = [(r, c) for r in range(2) for c in range(3)]\nprint(grid)               # [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2)]\n\n# flatten a 2D list\nmatrix = [[1, 2], [3, 4], [5, 6]]\nflat = [x for row in matrix for x in row]\nprint(flat)               # [1, 2, 3, 4, 5, 6]"
+        }
+      ],
+      "resources": [
+        { "title": "List Comprehensions (official tutorial)", "url": "https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions", "type": "official" },
+        { "title": "Nested List Comprehensions (official tutorial)", "url": "https://docs.python.org/3/tutorial/datastructures.html#nested-list-comprehensions", "type": "official" },
+        { "title": "Python List Comprehensions Quiz (Real Python)", "url": "https://realpython.com/quizzes/list-comprehension-python/", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Rewrite a series of build-up loops as comprehensions, then practice filtering, conditional expressions, and the set/dict variants.",
+        "steps": [
+          {
+            "title": "Turn a build-up loop into a comprehension",
+            "explanation": "Start from the verbose pattern — empty list plus append — and collapse it into one line. Both produce the same list; the comprehension just states the intent more directly.",
+            "python": "# verbose version\nsquares = []\nfor n in range(1, 11):\n    squares.append(n * n)\nprint(squares)\n\n# the comprehension that replaces it\nsquares = [n * n for n in range(1, 11)]\nprint(squares)",
+            "javascript": null
+          },
+          {
+            "title": "Add a filter",
+            "explanation": "A trailing `if` keeps only the items that satisfy a condition. Here we keep numbers divisible by 3, transforming them as we go.",
+            "python": "result = [n * n for n in range(1, 21) if n % 3 == 0]\nprint(result)   # squares of 3, 6, 9, 12, 15, 18",
+            "javascript": null
+          },
+          {
+            "title": "Transform each item with a conditional expression",
+            "explanation": "Put `a if cond else b` in the output position to choose a value per item. This is FizzBuzz-style mapping — every item produces an output, unlike the filter `if` which drops items.",
+            "python": "nums = range(1, 11)\nfizz = [\"fizz\" if n % 3 == 0 else n for n in nums]\nprint(fizz)   # [1, 2, 'fizz', 4, 5, 'fizz', 7, 8, 'fizz', 10]",
+            "javascript": null
+          },
+          {
+            "title": "Use the dict and set variants",
+            "explanation": "Swap brackets for braces to build a set; add a `key: value` head to build a dict. Same comprehension machinery, different output collection.",
+            "python": "names = [\"Ada\", \"Bob\", \"Ada\", \"Cleo\"]\n\nunique_initials = {name[0] for name in names}      # set comp\nprint(unique_initials)            # {'A', 'B', 'C'}\n\nname_lengths = {name: len(name) for name in names} # dict comp\nprint(name_lengths)               # {'Ada': 3, 'Bob': 3, 'Cleo': 4}",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Build a list of the first 10 powers of two using a comprehension over `range(10)`.",
+          "From a list of words, build a comprehension that keeps only words longer than 4 letters, uppercased.",
+          "Write a comprehension that produces `[\"FizzBuzz\" if divisible by 15 else \"Fizz\"/\"Buzz\"/n]` for 1..30 using nested conditional expressions.",
+          "Given `pairs = [(\"a\", 1), (\"b\", 2)]`, build a dict from it with a comprehension (then confirm `dict(pairs)` does the same).",
+          "Flatten a 3-level nested list with a comprehension that has three `for` clauses, and check it against a manual loop."
+        ]
+      }
+    },
+    {
+      "id": "generator-expressions",
+      "title": "Generator Expressions",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "A generator expression looks like a list comprehension in parentheses, but produces values lazily one at a time instead of building the whole list in memory.",
+      "summary": [
+        "A generator expression has the exact syntax of a list comprehension with parentheses instead of square brackets: `(x * x for x in range(10))`. The crucial difference is laziness. A list comprehension computes every element immediately and stores the full list; a generator expression returns a generator object that computes each value on demand as you iterate, holding only one value at a time. For a million-element sequence that you only pass through once, this is the difference between allocating a giant list and allocating almost nothing — generators shine on large or infinite streams and on pipelines where data flows through several stages.",
+        "Because they are lazy, generators are single-use: once you iterate to the end (with a `for` loop, `sum`, `list`, `max`, and so on) they are exhausted and yield nothing more. You cannot index a generator or call `len` on it, and you cannot iterate it twice — re-create the expression if you need a second pass. They compose beautifully: chaining generator expressions builds a streaming pipeline where each stage pulls one item from the previous, so memory stays flat no matter how long the source is. A particularly clean idiom is dropping the parentheses when a generator is the sole argument to a function: `sum(x * x for x in nums)` needs no extra brackets.",
+        "The practical decision rule: reach for a generator expression when you are consuming the result once and want to save memory, and a list comprehension when you need the materialized list — to index it, take its length, iterate it multiple times, or pass it where a real list is required. Generator expressions are the inline cousins of generator functions (which use `yield`); the expression form is perfect for short transformations, while a `def ... yield` function is better when the per-item logic is complex or needs setup. Feeding aggregate functions — `sum`, `max`, `min`, `any`, `all`, `sorted` — directly from a generator expression is among the most idiomatic patterns in modern Python."
+      ],
+      "keyPoints": [
+        "Same syntax as a list comprehension but with parentheses: `(expr for item in iterable)` returns a lazy generator.",
+        "Values are produced one at a time on demand, so memory stays flat even for huge or infinite sequences.",
+        "Generators are single-use and not indexable: you cannot re-iterate, slice, or call `len` on them.",
+        "Omit the parentheses when the generator is a function's only argument, e.g. `sum(x*x for x in nums)`.",
+        "Choose a list comprehension when you need the full list (indexing, length, multiple passes); a generator when you consume it once.",
+        "They chain into streaming pipelines and pair perfectly with `sum`, `max`, `any`, `all`, and `sorted`."
+      ],
+      "code": [
+        {
+          "title": "Generator vs list comprehension",
+          "language": "python",
+          "code": "import sys\n\ngen = (x * x for x in range(1_000_000))   # lazy: builds nothing yet\nlst = [x * x for x in range(1_000_000)]   # eager: builds a huge list\n\nprint(type(gen))                  # <class 'generator'>\nprint(sys.getsizeof(gen))         # ~200 bytes regardless of size\nprint(sys.getsizeof(lst))         # many megabytes\n\n# consume the generator one item at a time\nprint(next(gen))                  # 0\nprint(next(gen))                  # 1\n\n# a generator is single-use: once exhausted, it is empty\nsquares = (n * n for n in range(3))\nprint(list(squares))              # [0, 1, 4]\nprint(list(squares))              # [] -- already consumed"
+        },
+        {
+          "title": "Streaming aggregation and pipelines",
+          "language": "python",
+          "code": "nums = range(1, 1_000_001)\n\n# feed a generator straight into sum() -- no extra parentheses needed\ntotal = sum(x * x for x in nums if x % 2 == 0)\nprint(total)\n\n# any() / all() short-circuit and stop early on a generator\nhas_big = any(x > 999_000 for x in nums)\nprint(has_big)                    # True (stops as soon as it finds one)\n\n# chained generators form a memory-flat pipeline\nlines = (line.strip() for line in [\"  a \", \"\", \" b\", \"c \"])\nnonempty = (ln for ln in lines if ln)\nupper = (ln.upper() for ln in nonempty)\nprint(list(upper))                # ['A', 'B', 'C']"
+        }
+      ],
+      "resources": [
+        { "title": "Generator Expressions (official language reference)", "url": "https://docs.python.org/3/reference/expressions.html#generator-expressions", "type": "official" },
+        { "title": "Generator Expressions (official tutorial)", "url": "https://docs.python.org/3/tutorial/classes.html#generator-expressions", "type": "official" },
+        { "title": "Python Generator Expressions", "url": "https://www.pythontutorial.net/advanced-python/python-generator-expressions/", "type": "article" },
+        { "title": "List Comprehensions and Generator Expressions", "url": "https://djangostars.com/blog/list-comprehensions-and-generator-expressions/", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Measure the memory difference between a list comprehension and a generator expression, then build a streaming pipeline that processes a large sequence without materializing it.",
+        "steps": [
+          {
+            "title": "See the memory difference",
+            "explanation": "Build the same squares two ways and compare their sizes with `sys.getsizeof`. The list grows with the data; the generator stays tiny because it stores only the recipe, not the results.",
+            "python": "import sys\n\nlst = [x * x for x in range(100_000)]\ngen = (x * x for x in range(100_000))\n\nprint(\"list bytes:\", sys.getsizeof(lst))   # large\nprint(\"gen bytes: \", sys.getsizeof(gen))   # tiny and constant",
+            "javascript": null
+          },
+          {
+            "title": "Consume lazily with next()",
+            "explanation": "A generator yields one value per `next()` call and remembers where it left off. When there is nothing left it raises `StopIteration` — which is exactly what a `for` loop catches for you under the hood.",
+            "python": "gen = (x * x for x in range(3))\nprint(next(gen))   # 0\nprint(next(gen))   # 1\nprint(next(gen))   # 4\ntry:\n    next(gen)\nexcept StopIteration:\n    print(\"exhausted\")",
+            "javascript": null
+          },
+          {
+            "title": "Feed a generator into an aggregate",
+            "explanation": "Aggregate functions consume an iterator to completion. Passing a generator expression directly to `sum` keeps memory flat even over a million items — and the parentheses are optional when it is the only argument.",
+            "python": "total = sum(x for x in range(1_000_000) if x % 7 == 0)\nprint(total)\n\nbiggest = max(len(w) for w in [\"hi\", \"hello\", \"hey\"])\nprint(biggest)   # 5",
+            "javascript": null
+          },
+          {
+            "title": "Chain generators into a pipeline",
+            "explanation": "Each generator pulls one item from the previous stage, so the whole chain processes the source one element at a time. Nothing is materialized until the final `list()` (or other consumer) pulls it through.",
+            "python": "raw = (f\"  item-{i}  \" for i in range(5))\nstripped = (s.strip() for s in raw)\nlabeled = (s.upper() for s in stripped if int(s.split('-')[1]) % 2 == 0)\n\nprint(list(labeled))   # ['ITEM-0', 'ITEM-2', 'ITEM-4']",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Replace a list comprehension you wrote earlier with a generator expression inside `sum()` and confirm the result is identical.",
+          "Prove a generator is single-use: call `list()` on the same generator twice and observe the second result is empty.",
+          "Use `any()` with a generator to check whether any number in `range(1_000_000)` is divisible by 999_983, and reason about why it can stop early.",
+          "Build a 3-stage pipeline that reads lines from a file, strips them, and yields only non-empty ones — without ever building a full list.",
+          "Compare timing of `sum([...])` vs `sum(...)` over `range(10_000_000)` and explain the memory (not just speed) difference."
+        ]
+      }
+    }
+  ]
+}

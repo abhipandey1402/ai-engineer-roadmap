@@ -1,0 +1,646 @@
+{
+  "id": "environments-packaging",
+  "title": "Environments & Packaging",
+  "description": "Virtual environments, package managers, and project config.",
+  "topics": [
+    {
+      "id": "package-managers",
+      "title": "Package Managers",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "A package manager installs and tracks the third-party code your project depends on, so you don't have to wire libraries together by hand.",
+      "summary": [
+        "Almost no real Python project lives off the standard library alone. You pull in `requests` for HTTP, `pandas` for data, `pytest` for tests, and each of those pulls in its own dependencies. A package manager is the tool that finds those libraries, picks compatible versions, downloads them, and records what it installed so the next person (or the next machine) gets the exact same set. Without one you would be downloading zip files and fighting version conflicts by hand.",
+        "The Python ecosystem has an unusually crowded field of these tools because they grew up solving overlapping problems at different times. `pip` is the official installer and the lowest common denominator — every other tool builds on or replaces parts of it. On top of (or instead of) pip sit project managers like `poetry`, `pdm`, `pipenv`, and the newer Rust-based `uv`, which add lockfiles, virtual-environment management, and a single `pyproject.toml` config. Separately, `conda` manages not just Python packages but Python itself and non-Python binaries, which is why it dominates data-science and scientific stacks.",
+        "You do not need to learn all of them. The practical 2026 advice is: understand `pip` because it is universal, learn one modern project manager for new work (`uv` is the fastest-rising default, `poetry` the established alternative), and reach for `conda` only when you need its scientific binary ecosystem. The rest of this section walks each tool so you can recognize them in the wild and choose deliberately."
+      ],
+      "keyPoints": [
+        "A package manager resolves, installs, and records third-party dependencies so environments are reproducible.",
+        "`pip` is the official, universal installer; everything else builds on it or replaces parts of it.",
+        "Project managers (poetry, pdm, pipenv, uv) add lockfiles, virtualenv handling, and a single `pyproject.toml`.",
+        "`conda` is different: it manages Python itself plus non-Python binaries, which is why scientific stacks use it.",
+        "`pipx` installs Python CLI applications into isolated environments so they don't pollute your projects.",
+        "Pick deliberately: know `pip`, adopt one modern manager (uv or poetry) for new projects, use conda only when you need it."
+      ],
+      "code": [
+        {
+          "title": "The pip baseline every tool shares",
+          "language": "python",
+          "code": "# Every Python package manager ultimately installs from PyPI.\n# The universal, always-available path is pip:\n#\n#   python3 -m pip install requests\n#   python3 -m pip list\n#   python3 -m pip freeze > requirements.txt\n#\n# A modern project manager wraps this with a lockfile and a venv:\n#\n#   uv add requests      # or: poetry add requests\n#   uv sync              # or: poetry install\n#\n# pipx isolates CLI apps so they never collide with your projects:\n#\n#   pipx install ruff\n#   pipx run black .     # run once without installing"
+        }
+      ],
+      "resources": [
+        { "title": "Python Packaging User Guide — Tool Recommendations", "url": "https://packaging.python.org/en/latest/guides/tool-recommendations/", "type": "official" },
+        { "title": "pypa/pipx — install and run Python CLI apps in isolation", "url": "https://github.com/pypa/pipx", "type": "opensource" },
+        { "title": "An unbiased evaluation of environment and packaging tools", "url": "https://alpopkes.com/posts/python/packaging_tools/", "type": "article" }
+      ]
+    },
+    {
+      "id": "pip",
+      "title": "pip",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "`pip` is Python's official package installer — the universal command that pulls libraries from PyPI into your environment.",
+      "summary": [
+        "`pip` installs and manages packages that are not part of the standard library. It ships with modern Python, so it is the one tool you can assume is present everywhere. The single most important habit is to invoke it as `python3 -m pip ...` rather than a bare `pip`: that guarantees you are installing into the same interpreter you are running, which avoids the classic confusion of installing a package and then importing it with a different Python and getting `ModuleNotFoundError`.",
+        "The core verbs are small and memorable: `install` adds a package (optionally pinned, like `requests==2.32.3` or `\"requests>=2,<3\"`), `uninstall` removes it, `list` shows what is installed, and `show` prints a package's metadata and dependencies. For reproducibility, `pip freeze` dumps the exact installed versions into a `requirements.txt`, which `pip install -r requirements.txt` can replay on another machine. This freeze/replay pattern is the oldest reproducibility story in Python and still common, though lockfile-based tools now do it more rigorously.",
+        "Two modern touches are worth knowing. `pip install -e .` does an editable (\"development\") install of your own project so code edits take effect without reinstalling. And since pip 25.1 you can install from `pyproject.toml` dependency groups with `pip install --group dev`, aligning pip with the newer PEP 735 standard. Run pip inside a virtual environment (the next topics) so installs are project-local rather than polluting your system Python."
+      ],
+      "keyPoints": [
+        "Always run `python3 -m pip ...` so you install into the interpreter you are actually using.",
+        "`install`, `uninstall`, `list`, and `show` cover day-to-day use; pin versions with `==`, `>=`, or ranges.",
+        "`pip freeze > requirements.txt` plus `pip install -r requirements.txt` is the classic reproducibility pattern.",
+        "`pip install -e .` installs your own project in editable mode so edits take effect without reinstalling.",
+        "`pip install --upgrade pip` keeps the installer itself current; resolver improvements ship regularly.",
+        "Use pip inside a virtual environment so installs stay project-local instead of touching system Python."
+      ],
+      "code": [
+        {
+          "title": "Everyday pip commands",
+          "language": "python",
+          "code": "# Run pip through the interpreter you intend to use:\n#   python3 -m pip install requests\n#   python3 -m pip install \"requests>=2.32,<3\"   # version range\n#   python3 -m pip install --upgrade requests\n#   python3 -m pip uninstall requests\n#   python3 -m pip show requests                 # metadata + deps\n#   python3 -m pip list                          # everything installed"
+        },
+        {
+          "title": "Freeze and replay for reproducibility",
+          "language": "python",
+          "code": "# Capture exact versions, then reproduce them elsewhere:\n#   python3 -m pip freeze > requirements.txt\n#   python3 -m pip install -r requirements.txt\n#\n# Editable install of your own project (changes take effect live):\n#   python3 -m pip install -e .\n#\n# Install a named dependency group from pyproject.toml (pip 25.1+):\n#   python3 -m pip install --group dev"
+        }
+      ],
+      "resources": [
+        { "title": "pip documentation (official)", "url": "https://pip.pypa.io/en/stable/", "type": "official" },
+        { "title": "pip — Installation guide", "url": "https://pip.pypa.io/en/stable/installation/", "type": "official" },
+        { "title": "What Is Pip? A Guide for New Pythonistas (Real Python)", "url": "https://realpython.com/what-is-pip/", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Use pip correctly inside a virtual environment: install a pinned package, inspect it, freeze the environment, and reproduce it from requirements.txt.",
+        "steps": [
+          {
+            "title": "Create and activate a virtual environment",
+            "explanation": "Always install into an isolated environment, not system Python. Create one with the built-in `venv` module, then activate it so `python` and `pip` point inside the environment.",
+            "python": "python3 -m venv .venv\nsource .venv/bin/activate      # Windows: .venv\\Scripts\\activate\npython -m pip install --upgrade pip\npython -c \"import sys; print(sys.prefix)\"   # path now points inside .venv",
+            "javascript": null
+          },
+          {
+            "title": "Install a pinned package and inspect it",
+            "explanation": "Install a specific version so the result is deterministic, then use `show` and `list` to see what landed and which dependencies came along for the ride.",
+            "python": "python -m pip install \"requests==2.32.3\"\npython -m pip show requests        # version, location, Requires/Required-by\npython -m pip list                 # requests + its transitive deps (urllib3, certifi, ...)\npython -c \"import requests; print(requests.__version__)\"",
+            "javascript": null
+          },
+          {
+            "title": "Freeze the environment",
+            "explanation": "`pip freeze` writes the exact installed versions, including transitive dependencies, to a requirements file you can commit to version control.",
+            "python": "python -m pip freeze > requirements.txt\ncat requirements.txt\n# requests==2.32.3\n# certifi==...\n# urllib3==...   (your exact versions will vary)",
+            "javascript": null
+          },
+          {
+            "title": "Reproduce the environment from scratch",
+            "explanation": "Delete the environment and rebuild it from the requirements file alone. Getting identical versions back proves the freeze/replay loop works.",
+            "python": "deactivate\nrm -rf .venv\npython3 -m venv .venv && source .venv/bin/activate\npython -m pip install -r requirements.txt\npython -m pip show requests        # same 2.32.3 as before",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Install `rich` without pinning, then run `pip freeze` and pin it to whatever version you got in requirements.txt.",
+          "Use `pip install --upgrade requests` and observe how the version in `pip show` changes.",
+          "Run `pip show requests` and follow the `Requires:` line to install one of its dependencies directly, then check `Required-by:`.",
+          "Create a second venv and install only from your committed requirements.txt — confirm `pip list` matches the first environment exactly.",
+          "Try `pip install -e .` inside a folder containing a minimal `pyproject.toml` and import your own package from another directory."
+        ]
+      }
+    },
+    {
+      "id": "pypi",
+      "title": "PyPI",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "PyPI is the Python Package Index — the central public repository of several hundred thousand packages that `pip` and friends download from.",
+      "summary": [
+        "PyPI (the Python Package Index, pronounced \"pie-pee-eye\") is the default warehouse from which Python tools fetch packages. When you run `pip install requests`, pip queries PyPI, finds a compatible distribution, and downloads it. The catalog ranges from one-line toys to foundational libraries like NumPy and frameworks like Django, with hundreds of thousands of projects and millions of releases. Every package has a project page at `pypi.org/project/<name>/` showing its versions, description, dependencies, and links.",
+        "Packages are published as two kinds of distributions. A wheel (`.whl`) is a prebuilt, ready-to-install artifact — the fast, preferred format, especially for packages with compiled C extensions, because nothing has to compile on your machine. A source distribution (sdist, a `.tar.gz`) contains the raw source and is built at install time when no matching wheel exists. Tools strongly prefer wheels; you will only feel the difference when a wheel is missing for your platform and a build kicks off.",
+        "Publishing your own package is a well-trodden path: build artifacts with a backend (commonly via `python -m build` or `uv build`), then upload with `twine` or `uv publish`. Crucially, you authenticate with API tokens, never your password, and you can rehearse the whole flow against TestPyPI, a separate sandbox instance, before touching the real index. Security matters here — typosquatting and malicious uploads exist — so verify package names and prefer well-known, maintained projects."
+      ],
+      "keyPoints": [
+        "PyPI is the default public index that `pip`, `uv`, `poetry`, and others download packages from.",
+        "Each project lives at `pypi.org/project/<name>/` with its versions, metadata, and dependency list.",
+        "Wheels (`.whl`) are prebuilt and fast; sdists (`.tar.gz`) build from source when no wheel matches your platform.",
+        "Publish by building artifacts then uploading with `twine` or `uv publish`, authenticating via API tokens (not passwords).",
+        "TestPyPI is a sandbox index for rehearsing a release without polluting the real one.",
+        "Watch for typosquatting; verify exact package names and prefer maintained, widely-used projects."
+      ],
+      "code": [
+        {
+          "title": "Installing from PyPI vs the publish flow",
+          "language": "python",
+          "code": "# Installing: pip resolves the name against PyPI and grabs a wheel if one exists\n#   python3 -m pip install numpy\n#   python3 -m pip download requests   # fetch artifacts without installing\n#\n# Publishing your own package:\n#   python3 -m build                   # produces dist/*.whl and dist/*.tar.gz\n#   python3 -m twine upload dist/*     # uploads to PyPI (use an API token)\n#\n# Rehearse against the sandbox index first:\n#   python3 -m twine upload --repository testpypi dist/*"
+        }
+      ],
+      "resources": [
+        { "title": "PyPI — the Python Package Index", "url": "https://pypi.org/", "type": "official" },
+        { "title": "Packaging Python Projects (official tutorial)", "url": "https://packaging.python.org/en/latest/tutorials/packaging-projects/", "type": "official" },
+        { "title": "How to Publish an Open-Source Python Package to PyPI (Real Python)", "url": "https://realpython.com/pypi-publish-python-package/", "type": "article" },
+        { "title": "Getting Started with pip and PyPI", "url": "https://www.youtube.com/watch?v=bPSfNKvhooA", "type": "video" }
+      ]
+    },
+    {
+      "id": "virtualenv",
+      "title": "virtualenv & venv",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "A virtual environment is an isolated, per-project Python with its own installed packages, so different projects never fight over versions.",
+      "summary": [
+        "Installing packages globally is a trap: project A needs `Django 4`, project B needs `Django 5`, and your system Python can only hold one. A virtual environment solves this by creating a self-contained folder with its own copy (or link) of the interpreter and its own `site-packages`. When you activate it, `python` and `pip` resolve to that folder, so anything you install lives only there and disappears when you delete the folder. This is the single most important hygiene habit in Python — make a fresh environment per project, every time.",
+        "There are two tools with confusingly similar names. `venv` is built into the standard library (`python3 -m venv .venv`) and is all most projects ever need. `virtualenv` is a faster, more featureful third-party package that predates `venv`, supports older Pythons, and is what many tools use under the hood; its CLI is nearly identical. Activation differs by shell — `source .venv/bin/activate` on macOS/Linux, `.venv\\Scripts\\activate` on Windows — and `deactivate` exits. A common modern shortcut is to skip manual activation entirely and run `python` from `.venv/bin/python` directly, which is exactly what tools like `uv run` do for you.",
+        "Conventionally the folder is named `.venv` and added to `.gitignore` — you commit your `requirements.txt` or `pyproject.toml`, never the environment itself, because it is large and platform-specific. The modern project managers (uv, poetry, pdm, pipenv) all create and manage a virtual environment for you automatically, so you rarely call `venv` by hand once you adopt one. Still, understanding what a venv is demystifies every \"works on my machine\" bug."
+      ],
+      "keyPoints": [
+        "A virtual environment is a per-project folder with its own interpreter and `site-packages`, isolating dependencies.",
+        "`venv` (stdlib, `python3 -m venv .venv`) is built in; `virtualenv` is a faster third-party superset with the same idea.",
+        "Activate with `source .venv/bin/activate` (Unix) or `.venv\\Scripts\\activate` (Windows); leave with `deactivate`.",
+        "Name it `.venv` and gitignore it — commit your dependency manifest, never the environment folder.",
+        "You can skip activation and call `.venv/bin/python` directly; that is what `uv run` does under the hood.",
+        "Modern managers (uv, poetry, pdm) create and manage the venv for you, so you rarely run `venv` by hand."
+      ],
+      "code": [
+        {
+          "title": "Create, activate, and use a venv",
+          "language": "python",
+          "code": "# Create an isolated environment in ./.venv\n#   python3 -m venv .venv\n#\n# Activate it (your prompt usually shows (.venv) afterwards)\n#   source .venv/bin/activate          # macOS / Linux\n#   .venv\\Scripts\\activate             # Windows (PowerShell/cmd)\n#\n# Now python and pip are project-local\n#   python -m pip install requests\n#   which python                       # -> .../.venv/bin/python\n#\n# Leave the environment\n#   deactivate"
+        },
+        {
+          "title": "Activation-free usage",
+          "language": "python",
+          "code": "# You never actually have to 'activate' — just call the venv's python:\n#   .venv/bin/python my_script.py\n#   .venv/bin/python -m pip install rich\n#\n# This is exactly what high-level tools do for you:\n#   uv run my_script.py     # creates/uses .venv and runs inside it"
+        }
+      ],
+      "resources": [
+        { "title": "venv — Creation of virtual environments (official docs)", "url": "https://docs.python.org/3/library/venv.html", "type": "official" },
+        { "title": "virtualenv documentation (official)", "url": "https://virtualenv.pypa.io/en/latest/", "type": "official" },
+        { "title": "Python Virtual Environments: A Primer (Real Python)", "url": "https://realpython.com/python-virtual-environments-a-primer/", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Prove environment isolation firsthand: create two separate venvs, install a different version of the same package in each, and watch them not interfere.",
+        "steps": [
+          {
+            "title": "Create the first environment and install a package",
+            "explanation": "Make a project-local environment, activate it, and install a specific version. The version lives only inside this folder.",
+            "python": "mkdir proj-a && cd proj-a\npython3 -m venv .venv\nsource .venv/bin/activate\npython -m pip install \"rich==13.7.1\"\npython -c \"import rich; print('proj-a', rich.__version__)\"   # 13.7.1\ndeactivate && cd ..",
+            "javascript": null
+          },
+          {
+            "title": "Create a second, independent environment",
+            "explanation": "A different project gets its own environment and a different version of the same library — something impossible with a single global install.",
+            "python": "mkdir proj-b && cd proj-b\npython3 -m venv .venv\nsource .venv/bin/activate\npython -m pip install \"rich==13.9.4\"\npython -c \"import rich; print('proj-b', rich.__version__)\"   # 13.9.4\ndeactivate && cd ..",
+            "javascript": null
+          },
+          {
+            "title": "Confirm the environments are isolated",
+            "explanation": "Re-enter each environment and check the version. Each keeps its own `rich`; neither leaked into the other or into system Python.",
+            "python": "cd proj-a && source .venv/bin/activate\npython -c \"import rich; print('A still has', rich.__version__)\"   # 13.7.1\nwhich python    # -> .../proj-a/.venv/bin/python\ndeactivate && cd ..",
+            "javascript": null
+          },
+          {
+            "title": "Inspect what makes a venv tick",
+            "explanation": "Look inside the folder: a private interpreter, a `pyvenv.cfg` pointing at the base Python, and an isolated `site-packages`. Deleting the folder removes everything cleanly.",
+            "python": "cd proj-a\nls .venv/bin            # python, pip, activate scripts\ncat .venv/pyvenv.cfg    # home = path to the base Python it was built from\npython -c \"import site; print(site.getsitepackages())\"\ncd ..",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add `.venv/` to a `.gitignore` and confirm `git status` no longer lists the environment.",
+          "Without activating, run a script in proj-b using `proj-b/.venv/bin/python` directly and verify it sees rich 13.9.4.",
+          "Create a venv with a specific Python version using `python3.12 -m venv .venv` (if installed) and check `python --version` inside it.",
+          "Run `python -m pip freeze` in each environment and diff the two files to see how isolated they are.",
+          "Delete `proj-a/.venv`, recreate it, and reinstall from a `pip freeze` you saved earlier — confirm you get rich 13.7.1 back."
+        ]
+      }
+    },
+    {
+      "id": "pyenv",
+      "title": "pyenv",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "`pyenv` manages multiple Python *versions* on one machine, letting you switch interpreters per project without touching the system install.",
+      "summary": [
+        "Virtual environments isolate packages, but they all reuse whatever Python you happen to have. `pyenv` solves the orthogonal problem: having several Python *interpreters* installed at once (3.10, 3.11, 3.12, 3.13) and choosing which one a given shell or project uses. It works by installing each version into your home directory and inserting lightweight \"shim\" executables on your `PATH` that transparently dispatch `python` to the version you selected. Crucially, it never modifies your system Python, so you can experiment freely.",
+        "The mental model is three layers of precedence. `pyenv global 3.12.7` sets your default. `pyenv local 3.11.9` writes a `.python-version` file in the current directory, so any shell entering that folder automatically uses 3.11.9 — this is the per-project switch you will use most. `pyenv shell 3.13.1` overrides just the current shell session. `pyenv install --list` shows what you can install and `pyenv versions` shows what you have. It is a Unix-like (macOS/Linux) tool; on Windows people use the `pyenv-win` fork.",
+        "`pyenv` pairs naturally with virtual environments and is complementary to package managers, not a competitor: pyenv picks the interpreter, then `venv` (or the `pyenv-virtualenv` plugin) isolates packages for it. That said, the newer `uv` now also installs and pins Python versions (`uv python install`, `uv python pin`), so a uv-centric workflow can replace pyenv for many people. Reach for pyenv when you want a tool dedicated purely to juggling interpreter versions across many projects."
+      ],
+      "keyPoints": [
+        "`pyenv` installs and switches between multiple Python *versions*; it does not manage packages.",
+        "Shims on your `PATH` dispatch `python` to the selected version without touching system Python.",
+        "Precedence: `pyenv shell` (session) > `pyenv local` (writes `.python-version`) > `pyenv global` (default).",
+        "`.python-version` makes a directory auto-select its interpreter — the everyday per-project mechanism.",
+        "It is Unix-oriented; Windows users use the separate `pyenv-win` fork.",
+        "Complements venv (pick interpreter, then isolate packages); `uv python install/pin` can now cover the same ground."
+      ],
+      "code": [
+        {
+          "title": "Installing and switching Python versions",
+          "language": "python",
+          "code": "# See available and installed versions\n#   pyenv install --list\n#   pyenv versions\n#\n# Install a couple of interpreters\n#   pyenv install 3.12.7\n#   pyenv install 3.11.9\n#\n# Choose which one to use\n#   pyenv global 3.12.7     # machine-wide default\n#   pyenv local 3.11.9      # writes .python-version in this folder\n#   pyenv shell 3.13.1      # just this shell session\n#\n#   python --version        # reflects the active selection"
+        }
+      ],
+      "resources": [
+        { "title": "pyenv/pyenv (official repository)", "url": "https://github.com/pyenv/pyenv", "type": "opensource" },
+        { "title": "pyenv-win — pyenv for Windows", "url": "https://github.com/pyenv-win/pyenv-win", "type": "opensource" },
+        { "title": "Managing Multiple Python Versions With pyenv (Real Python)", "url": "https://realpython.com/intro-to-pyenv/", "type": "article" }
+      ]
+    },
+    {
+      "id": "conda",
+      "title": "conda",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "`conda` is a cross-language package and environment manager that installs Python itself plus compiled binaries — the backbone of the scientific Python world.",
+      "summary": [
+        "`conda` is the odd one out, and deliberately so. Where pip installs Python packages into an existing interpreter, conda manages the interpreter *and* the packages *and* non-Python dependencies (C/C++/Fortran libraries, CUDA toolkits, system tools) in one unified environment. That is why it dominates data science and scientific computing: getting NumPy, SciPy, or a GPU-enabled PyTorch working historically meant compiling thorny native code, and conda ships prebuilt, mutually-compatible binaries that just work across Windows, macOS, and Linux.",
+        "An environment is created and managed entirely through conda: `conda create -n myenv python=3.12 numpy pandas` builds an isolated environment with a specific Python and packages, `conda activate myenv` switches into it, and `conda install` adds more. Packages come from channels (repositories); the community-run `conda-forge` channel is the de facto standard for breadth and freshness. Because Anaconda's default channel has commercial licensing terms for larger organizations, most people use the lightweight `Miniforge` installer pointed at conda-forge, or the much faster `mamba`/`micromamba` drop-in replacements.",
+        "You can mix conda and pip — install what conda has via conda, then `pip install` the rest into the same environment — but do conda first and pip last to avoid the solver fighting you. For pure-Python projects with no heavy native dependencies, conda is overkill and the pip/venv or uv/poetry world is lighter. Reach for conda specifically when your stack needs the compiled scientific ecosystem or non-Python binaries managed alongside Python."
+      ],
+      "keyPoints": [
+        "conda manages Python itself plus packages *and* non-Python binaries (C/Fortran libs, CUDA) in one environment.",
+        "It is the default for data science / scientific computing where native dependencies are hard to build.",
+        "`conda create -n env python=3.12 ...`, `conda activate env`, and `conda install` are the core commands.",
+        "Packages come from channels; `conda-forge` (via the Miniforge installer) is the community standard.",
+        "`mamba` / `micromamba` are faster drop-in replacements for the conda solver.",
+        "Mixing with pip works if you do conda installs first and pip last; for pure-Python projects conda is overkill."
+      ],
+      "code": [
+        {
+          "title": "Creating and using a conda environment",
+          "language": "python",
+          "code": "# Create an environment with a chosen Python and scientific packages\n#   conda create -n sci python=3.12 numpy pandas scipy\n#\n# Activate / deactivate it\n#   conda activate sci\n#   conda deactivate\n#\n# Manage packages (prefer the conda-forge channel)\n#   conda install -c conda-forge scikit-learn\n#   conda list                      # what's installed\n#   conda env export > environment.yml   # reproducible spec\n#\n# Recreate elsewhere from the spec\n#   conda env create -f environment.yml"
+        }
+      ],
+      "resources": [
+        { "title": "conda documentation (official)", "url": "https://docs.conda.io/en/latest/", "type": "official" },
+        { "title": "conda-forge — the community channel", "url": "https://conda-forge.org/", "type": "official" },
+        { "title": "Miniforge — minimal conda installer (conda-forge default)", "url": "https://github.com/conda-forge/miniforge", "type": "opensource" }
+      ]
+    },
+    {
+      "id": "pipenv",
+      "title": "pipenv",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "`pipenv` combines pip and virtualenv behind one workflow, managing a `Pipfile` and a hash-locked `Pipfile.lock` for deterministic installs.",
+      "summary": [
+        "`pipenv` was the first widely-adopted tool to fuse the two halves of Python project setup — package installation and virtual-environment management — into a single command-line workflow. When you run `pipenv install requests`, it transparently creates a virtual environment for the project (if one doesn't exist), installs the package, records it in a human-edited `Pipfile`, and updates a `Pipfile.lock` with exact, hash-pinned versions of every dependency, direct and transitive. That lockfile is what makes builds deterministic across machines and CI.",
+        "The `Pipfile` replaces `requirements.txt` with a clearer TOML format that separates regular packages from development-only ones (`pipenv install --dev pytest`). You run commands inside the environment with `pipenv run <cmd>` or drop into a subshell with `pipenv shell`, and `pipenv install --ignore-pipfile` (or `pipenv sync`) reproduces the locked environment exactly. `pipenv requirements` can export back to a plain requirements file when a downstream tool needs one.",
+        "Historically pipenv had a reputation for slow, sometimes stalling dependency resolution, which pushed many teams toward poetry and now uv. It remains actively maintained and is a reasonable choice — especially in environments already standardized on it — but for new projects in 2026 the momentum is with `uv` (speed) and `poetry`/`pdm` (mature project management). Notably, pipenv predates and does not use `pyproject.toml`; it sticks with the `Pipfile`/`Pipfile.lock` pair, which is one reason newer tools are often preferred."
+      ],
+      "keyPoints": [
+        "pipenv unifies pip + virtualenv: one command installs a package and manages the project's environment.",
+        "`Pipfile` (human-edited TOML) declares dependencies; `Pipfile.lock` pins exact, hashed versions for determinism.",
+        "`--dev` separates development dependencies; `pipenv run` / `pipenv shell` execute inside the environment.",
+        "`pipenv sync` reproduces the locked environment exactly across machines and CI.",
+        "It uses `Pipfile`/`Pipfile.lock`, not `pyproject.toml`, which sets it apart from poetry/pdm/uv.",
+        "Still maintained, but new-project momentum has moved to uv (speed) and poetry/pdm (project management)."
+      ],
+      "code": [
+        {
+          "title": "A pipenv workflow",
+          "language": "python",
+          "code": "# Install a package — creates the venv + Pipfile + Pipfile.lock on first run\n#   pipenv install requests\n#   pipenv install --dev pytest        # dev-only dependency\n#\n# Work inside the managed environment\n#   pipenv run python app.py\n#   pipenv shell                       # subshell with the env activated\n#\n# Reproduce the locked environment exactly (e.g. in CI)\n#   pipenv sync\n#\n# Export to a plain requirements.txt when something needs it\n#   pipenv requirements > requirements.txt"
+        }
+      ],
+      "resources": [
+        { "title": "Pipenv documentation (official)", "url": "https://pipenv.pypa.io/en/latest/", "type": "official" },
+        { "title": "pypa/pipenv (official repository)", "url": "https://github.com/pypa/pipenv", "type": "opensource" },
+        { "title": "Pipenv: A Guide to the New Python Packaging Tool (Real Python)", "url": "https://realpython.com/pipenv-guide/", "type": "article" }
+      ]
+    },
+    {
+      "id": "poetry",
+      "title": "poetry",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "`poetry` is a mature, all-in-one project manager: dependency resolution, virtual environments, lockfiles, building, and publishing — all driven by `pyproject.toml`.",
+      "summary": [
+        "Poetry treats your project as a first-class thing, not just a pile of installed packages. A single `pyproject.toml` declares your metadata, dependencies, and dependency groups, while a `poetry.lock` file pins the entire resolved graph so every install across machines is identical. `poetry new myproject` scaffolds a sensible layout, `poetry add requests` adds and locks a dependency (and creates the project's virtual environment if needed), `poetry add --group dev pytest` adds a dev-only dependency, and `poetry install` materializes the locked environment. You run code inside it with `poetry run python app.py`.",
+        "Where poetry shines is its rigorous, deterministic dependency resolver and its coverage of the full lifecycle: it doesn't just install, it also `poetry build`s wheels and sdists and `poetry publish`es them to PyPI, replacing the old `setup.py`/`twine` dance. Version constraints use clear caret/tilde syntax (`requests = \"^2.32\"`), and the lockfile records exact versions plus hashes. Poetry 2.x aligned its configuration more closely with the standard PEP 621 `[project]` table, narrowing the gap between Poetry-specific config and the broader ecosystem.",
+        "Poetry's main historical drawback was speed — large dependency graphs could resolve slowly — which is the gap `uv` exploited. But poetry is battle-tested, enormously popular (tens of millions of downloads a month), and remains an excellent default for teams that want one stable, well-documented tool for the entire project lifecycle. If you value maturity and full lifecycle management over raw speed, poetry is the safe, established choice."
+      ],
+      "keyPoints": [
+        "One `pyproject.toml` holds metadata + dependencies; `poetry.lock` pins the whole resolved graph for reproducibility.",
+        "`poetry new/add/install/run` cover scaffolding, adding+locking deps, installing, and running inside the env.",
+        "`poetry add --group dev <pkg>` separates development dependencies from runtime ones.",
+        "Full lifecycle: `poetry build` and `poetry publish` replace `setup.py`/`twine` for shipping to PyPI.",
+        "Caret/tilde constraints (`^2.32`, `~3.1`) express allowed version ranges clearly.",
+        "Mature and hugely popular; slower than uv on big graphs but a stable, full-featured default."
+      ],
+      "code": [
+        {
+          "title": "A poetry project lifecycle",
+          "language": "python",
+          "code": "# Scaffold a new project (creates pyproject.toml + package layout)\n#   poetry new myapp && cd myapp\n#\n# Add dependencies — resolves, installs, and updates poetry.lock\n#   poetry add \"requests@^2.32\"\n#   poetry add --group dev pytest ruff\n#\n# Install the locked environment and run inside it\n#   poetry install\n#   poetry run python -m myapp\n#\n# Build and publish to PyPI\n#   poetry build           # dist/*.whl and dist/*.tar.gz\n#   poetry publish"
+        },
+        {
+          "title": "What poetry writes into pyproject.toml",
+          "language": "python",
+          "code": "# pyproject.toml (Poetry 2.x, PEP 621 [project] table)\n#\n# [project]\n# name = \"myapp\"\n# version = \"0.1.0\"\n# requires-python = \">=3.11\"\n# dependencies = [\n#     \"requests (>=2.32,<3.0)\",\n# ]\n#\n# [tool.poetry.group.dev.dependencies]\n# pytest = \"^8.0\"\n# ruff = \"^0.6\"\n#\n# [build-system]\n# requires = [\"poetry-core>=2.0\"]\n# build-backend = \"poetry.core.masonry.api\""
+        }
+      ],
+      "resources": [
+        { "title": "Poetry documentation (official)", "url": "https://python-poetry.org/docs/", "type": "official" },
+        { "title": "Poetry — Basic usage (official)", "url": "https://python-poetry.org/docs/basic-usage/", "type": "official" },
+        { "title": "Dependency Management With Python Poetry (Real Python)", "url": "https://realpython.com/dependency-management-python-poetry/", "type": "article" },
+        { "title": "Python Poetry - Basics (video)", "url": "https://www.youtube.com/watch?v=Ji2XDxmXSOM", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "Scaffold a real Poetry project, add runtime and dev dependencies, lock them, and run code inside the managed virtual environment.",
+        "steps": [
+          {
+            "title": "Install Poetry and scaffold a project",
+            "explanation": "Install Poetry with its official installer (or `pipx install poetry`), then create a new project. Poetry generates a `pyproject.toml` and a package directory for you.",
+            "python": "# install once (official installer):\n#   curl -sSL https://install.python-poetry.org | python3 -\n# or: pipx install poetry\n\npoetry new weather && cd weather\nls               # pyproject.toml, weather/, tests/\ncat pyproject.toml",
+            "javascript": null
+          },
+          {
+            "title": "Add a runtime dependency",
+            "explanation": "`poetry add` resolves a compatible version, installs it into the project's auto-created virtual environment, and records it in both `pyproject.toml` and `poetry.lock`.",
+            "python": "poetry add \"requests@^2.32\"\ngrep -A2 dependencies pyproject.toml     # requests now listed\nls poetry.lock                            # lockfile created with exact versions",
+            "javascript": null
+          },
+          {
+            "title": "Add a development-only dependency",
+            "explanation": "Test and lint tools belong in a dev group so they install for developers but are not shipped to consumers of your package.",
+            "python": "poetry add --group dev pytest\npoetry install          # installs runtime + dev deps from the lockfile\npoetry show --tree      # see the resolved dependency graph",
+            "javascript": null
+          },
+          {
+            "title": "Run code inside the environment",
+            "explanation": "`poetry run` executes a command inside the project's virtual environment without you having to activate it manually.",
+            "python": "# weather/main.py\necho 'import requests\\nprint(\"requests\", requests.__version__)' > weather/main.py\npoetry run python weather/main.py        # prints the resolved requests version\npoetry env info --path                   # path to the managed virtualenv",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Run `poetry add --group dev ruff` and then `poetry run ruff check .` to lint the scaffolded project.",
+          "Pin a tighter constraint with `poetry add \"requests@~2.32.0\"` and inspect how the line in pyproject.toml changes.",
+          "Delete `poetry.lock`, run `poetry lock`, and diff the regenerated file against the old one.",
+          "Run `poetry build` and inspect the wheel and sdist produced in the `dist/` directory.",
+          "Export the lock to a requirements file with `poetry export -f requirements.txt --output requirements.txt` (install the export plugin if prompted)."
+        ]
+      }
+    },
+    {
+      "id": "pdm",
+      "title": "pdm",
+      "subsection": null,
+      "minutes": 4,
+      "intro": "`pdm` is a modern, standards-first project manager that tracks the latest PEPs and can manage environments with or without a traditional virtualenv.",
+      "summary": [
+        "PDM (Python Development Master) is a project and dependency manager built around staying close to official packaging standards. It uses the PEP 621 `[project]` table in `pyproject.toml` for metadata and dependencies, supports the PEP 735 `[dependency-groups]` table for dev/optional groups, and produces a `pdm.lock` for reproducible installs. The everyday commands mirror its peers: `pdm init` scaffolds a project, `pdm add requests` adds and locks a dependency, `pdm install` syncs the environment, and `pdm run` executes inside it.",
+        "PDM's original claim to fame was PEP 582, which let packages live in a project-local `__pypackages__` directory and be imported with no virtual environment at all. Since PEP 582 was ultimately rejected by the Python steering council, PDM made that mode opt-in and now defaults to managing an ordinary virtual environment like everyone else — but the standards-tracking ethos remains its identity. PDM also supports pluggable build backends and a plugin system for extending its behavior.",
+        "In the current landscape, PDM occupies a thoughtful middle ground: more standards-aligned and flexible than older tools, while `uv` wins on raw speed and `poetry` on sheer ubiquity. It is an excellent choice if you specifically want a manager that maps cleanly onto evolving PEP standards and gives you control over the build backend. For most newcomers, though, it is one of several good modern options rather than a must-learn."
+      ],
+      "keyPoints": [
+        "PDM is standards-first: PEP 621 `[project]` metadata, PEP 735 dependency groups, and a `pdm.lock` lockfile.",
+        "Core commands: `pdm init`, `pdm add`, `pdm install`, `pdm run` — parallel to poetry/uv.",
+        "It pioneered PEP 582 `__pypackages__` (no venv); that PEP was rejected, so the mode is now opt-in.",
+        "Defaults to managing a normal virtual environment today, while keeping its standards-tracking philosophy.",
+        "Supports pluggable build backends and a plugin ecosystem for customization.",
+        "A strong middle-ground choice; uv leads on speed and poetry on popularity for most teams."
+      ],
+      "code": [
+        {
+          "title": "A pdm workflow",
+          "language": "python",
+          "code": "# Scaffold a project interactively\n#   pdm init\n#\n# Add dependencies (writes pyproject.toml + pdm.lock)\n#   pdm add requests\n#   pdm add --dev pytest ruff        # dev dependency group\n#\n# Install / sync the environment and run inside it\n#   pdm install\n#   pdm run python app.py\n#\n# Inspect resolved dependencies\n#   pdm list --tree"
+        }
+      ],
+      "resources": [
+        { "title": "PDM documentation (official)", "url": "https://pdm-project.org/en/latest/", "type": "official" },
+        { "title": "pdm-project/pdm (official repository)", "url": "https://github.com/pdm-project/pdm", "type": "opensource" },
+        { "title": "Introduction to PDM: A Python Project and Dependency Manager", "url": "https://betterstack.com/community/guides/scaling-python/pdm-explained/", "type": "article" }
+      ]
+    },
+    {
+      "id": "uv",
+      "title": "uv",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "`uv` is an extremely fast, Rust-built all-in-one tool from Astral that replaces pip, virtualenv, pyenv, and pip-tools with one cohesive workflow.",
+      "summary": [
+        "`uv` is the tool reshaping Python packaging in 2026. Written in Rust by Astral (the makers of the `ruff` linter), it is 10–100x faster than pip thanks to a parallel resolver and an aggressive global cache, and it deliberately consolidates a stack of older tools: it installs and pins Python versions (replacing pyenv), creates virtual environments (replacing virtualenv), resolves and locks dependencies (replacing pip-tools and much of poetry/pdm), and runs your code — all behind one binary. For most new projects it is now the fastest way to go from zero to a working, reproducible environment.",
+        "The project workflow is the headline: `uv init myapp` scaffolds a `pyproject.toml`, `uv add requests` resolves the dependency, writes it to `pyproject.toml`, updates the cross-platform `uv.lock`, and installs it into an auto-managed `.venv` — all in one fast step. `uv run python app.py` executes your code inside that environment without manual activation, transparently syncing first if anything changed. `uv sync` reproduces the locked environment exactly, `uv lock` regenerates the lockfile, and `uv add --dev pytest` manages dependency groups. Because the lockfile is platform-independent, the same `uv.lock` works across macOS, Linux, and Windows.",
+        "uv also covers the surrounding ecosystem. `uv python install 3.12` downloads a managed Python and `uv python pin` writes a `.python-version` — no separate pyenv needed. `uvx ruff check` (alias for `uv tool run`) runs a CLI tool in a throwaway environment, like pipx. And `uv pip install ...` offers a drop-in, faster pip-compatible interface for when you just want pip's behavior. For a modern course, uv is the recommended default: learn pip to understand the fundamentals, then use uv for real work."
+      ],
+      "keyPoints": [
+        "uv is a Rust-built, 10–100x-faster all-in-one tool that replaces pip, virtualenv, pyenv, and pip-tools.",
+        "`uv init / add / sync / run / lock` is the core project loop; `.venv` and `uv.lock` are created and managed for you.",
+        "`uv.lock` is platform-independent, so one lockfile reproduces the environment on macOS, Linux, and Windows.",
+        "`uv python install`/`pin` manage Python versions themselves, removing the need for pyenv.",
+        "`uvx <tool>` runs CLI tools in throwaway environments (pipx-style); `uv pip ...` is a fast drop-in pip interface.",
+        "Recommended modern default for new projects: learn pip for fundamentals, then reach for uv for speed and cohesion."
+      ],
+      "code": [
+        {
+          "title": "The core uv project loop",
+          "language": "python",
+          "code": "# Start a project (creates pyproject.toml, .venv, and pins a Python)\n#   uv init myapp && cd myapp\n#\n# Add dependencies — resolves, writes pyproject.toml, updates uv.lock, installs\n#   uv add requests\n#   uv add --dev pytest ruff\n#\n# Run code inside the managed environment (auto-syncs first)\n#   uv run python app.py\n#\n# Reproduce the locked environment exactly (e.g. in CI)\n#   uv sync\n#   uv lock          # regenerate the lockfile on demand"
+        },
+        {
+          "title": "Python versions, tools, and the pip interface",
+          "language": "python",
+          "code": "# Manage Python versions (no pyenv needed)\n#   uv python install 3.12 3.13\n#   uv python pin 3.12        # writes .python-version\n#\n# Run a CLI tool in a throwaway env (pipx-style)\n#   uvx ruff check .\n#\n# Drop-in, faster pip interface when you want plain pip behavior\n#   uv venv\n#   uv pip install requests\n#   uv pip compile requirements.in -o requirements.txt"
+        }
+      ],
+      "resources": [
+        { "title": "uv documentation (official, Astral)", "url": "https://docs.astral.sh/uv/", "type": "official" },
+        { "title": "uv — Features overview (official)", "url": "https://docs.astral.sh/uv/getting-started/features/", "type": "official" },
+        { "title": "astral-sh/uv (official repository)", "url": "https://github.com/astral-sh/uv", "type": "opensource" },
+        { "title": "Python UV: The Ultimate Guide to the Fastest Python Package Manager", "url": "https://www.datacamp.com/tutorial/python-uv", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Build a project end-to-end with uv: scaffold it, add runtime and dev dependencies, run code in the managed venv, and reproduce the locked environment from scratch.",
+        "steps": [
+          {
+            "title": "Install uv and start a project",
+            "explanation": "Install uv with the official one-line installer, then scaffold a project. `uv init` writes a `pyproject.toml`, pins a Python version, and prepares an environment lazily.",
+            "python": "# install once:\n#   curl -LsSf https://astral.sh/uv/install.sh | sh   (macOS/Linux)\n#   or: pipx install uv\n\nuv init weather && cd weather\nls                 # pyproject.toml, .python-version, main.py, README.md\ncat pyproject.toml",
+            "javascript": null
+          },
+          {
+            "title": "Add dependencies and watch the lockfile appear",
+            "explanation": "`uv add` resolves the package, records it in `pyproject.toml`, writes a platform-independent `uv.lock`, and installs it into an auto-created `.venv` — all in one fast command.",
+            "python": "uv add requests\nuv add --dev pytest ruff      # dev dependency group\nls                            # uv.lock and .venv now exist\ngrep -A3 dependencies pyproject.toml",
+            "javascript": null
+          },
+          {
+            "title": "Run code inside the managed environment",
+            "explanation": "`uv run` executes a command in the project environment, transparently syncing it first if the lockfile changed — no manual activation needed.",
+            "python": "echo 'import requests\\nprint(\"requests\", requests.__version__)' > main.py\nuv run python main.py         # prints the resolved requests version\nuv run pytest -q || true      # dev tool runs inside the same env",
+            "javascript": null
+          },
+          {
+            "title": "Reproduce the environment from the lockfile",
+            "explanation": "Delete the environment and rebuild it from `uv.lock` alone. `uv sync` installs the exact locked versions — this is what CI and teammates do for a deterministic build.",
+            "python": "rm -rf .venv\nuv sync                       # rebuilds .venv from uv.lock exactly\nuv run python -c \"import requests; print('reproduced', requests.__version__)\"\nuv pip list                   # inspect the installed set via the pip interface",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Run `uv python install 3.12` then `uv python pin 3.12`, and confirm `.python-version` updated and `uv run python --version` reflects it.",
+          "Add a version constraint with `uv add \"requests>=2.32,<3\"` and inspect how the line in pyproject.toml is written.",
+          "Use `uvx ruff check .` to lint the project without installing ruff into the environment.",
+          "Run `uv lock --upgrade` and diff `uv.lock` to see which transitive versions moved.",
+          "Create a standalone script with inline dependencies using `uv add --script app.py requests` and run it with `uv run app.py`."
+        ]
+      }
+    },
+    {
+      "id": "pyproject-toml",
+      "title": "pyproject.toml",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "`pyproject.toml` is the single, standardized config file that declares a project's metadata, dependencies, build system, and tool settings.",
+      "summary": [
+        "`pyproject.toml` is the one config file the modern Python ecosystem agreed on, replacing the scattered `setup.py`, `setup.cfg`, `requirements.txt`, and `MANIFEST.in` of the past. It is TOML (a simple, readable key-value format) and is organized into a few standardized tables. The `[build-system]` table (PEP 517/518) declares which build backend turns your source into installable artifacts. The `[project]` table (PEP 621) holds your metadata: `name`, `version`, `requires-python`, the `dependencies` list, optional extras, and entry points. The `[tool.*]` namespace is where individual tools (ruff, pytest, mypy, poetry, pdm) keep their own settings, so all configuration lives in one file.",
+        "A minimal package is just a `[build-system]` and a `[project]` table. Dependencies are PEP 508 strings like `\"requests>=2.32,<3\"`; optional features go in `[project.optional-dependencies]` as named extras that ship to PyPI (users install them with `pip install yourpkg[pdf]`). For development-only dependencies that should *not* ship, the newer PEP 735 `[dependency-groups]` table is the standard answer — uv, pdm, and pip (25.1+) all read it. This separation between published extras and local dev groups is a frequent point of confusion worth getting right.",
+        "Because it is a standard rather than a tool, `pyproject.toml` is what every modern manager reads and writes: `uv add`, `poetry add`, and `pdm add` all edit this same file. You can write it by hand for a small project, but in practice you let your tool maintain the `[project]` dependencies while you hand-edit `[tool.*]` sections for your linter and test runner. Knowing the file's anatomy lets you read any modern Python repo at a glance."
+      ],
+      "keyPoints": [
+        "`pyproject.toml` is the standardized, TOML-based config that replaced setup.py/setup.cfg/requirements.txt.",
+        "`[build-system]` (PEP 517/518) names the build backend; `[project]` (PEP 621) holds metadata and dependencies.",
+        "Dependencies are PEP 508 strings; `[project.optional-dependencies]` are *extras* that ship to PyPI.",
+        "`[dependency-groups]` (PEP 735) is the standard place for dev-only deps that should not ship — read by uv, pdm, pip 25.1+.",
+        "`[tool.<name>]` sections centralize per-tool config (ruff, pytest, mypy) in the same file.",
+        "Every modern manager (uv, poetry, pdm) reads/writes this one file, so it is the universal project description."
+      ],
+      "code": [
+        {
+          "title": "A minimal, standards-based pyproject.toml",
+          "language": "python",
+          "code": "# pyproject.toml\n#\n# [build-system]\n# requires = [\"hatchling\"]\n# build-backend = \"hatchling.build\"\n#\n# [project]\n# name = \"weather\"\n# version = \"0.1.0\"\n# description = \"A tiny weather CLI\"\n# requires-python = \">=3.11\"\n# dependencies = [\n#     \"requests>=2.32,<3\",\n#     \"rich>=13\",\n# ]\n#\n# [project.optional-dependencies]      # extras that ship to PyPI\n# pdf = [\"reportlab>=4\"]\n#\n# [dependency-groups]                  # PEP 735 dev-only deps (do not ship)\n# dev = [\"pytest>=8\", \"ruff>=0.6\"]\n#\n# [project.scripts]\n# weather = \"weather.cli:main\"         # creates a `weather` command\n#\n# [tool.ruff]\n# line-length = 100"
+        },
+        {
+          "title": "Read pyproject.toml from Python (stdlib tomllib)",
+          "language": "python",
+          "code": "# tomllib is in the standard library since Python 3.11 (read-only).\nimport tomllib\nfrom pathlib import Path\n\ndata = tomllib.loads(Path(\"pyproject.toml\").read_text())\nproject = data[\"project\"]\nprint(\"name:\", project[\"name\"])\nprint(\"python:\", project[\"requires-python\"])\nfor dep in project.get(\"dependencies\", []):\n    print(\"  dep:\", dep)\n\n# dev group (PEP 735)\nfor dep in data.get(\"dependency-groups\", {}).get(\"dev\", []):\n    print(\"  dev:\", dep)"
+        }
+      ],
+      "resources": [
+        { "title": "Writing your pyproject.toml (Python Packaging User Guide)", "url": "https://packaging.python.org/en/latest/guides/writing-pyproject-toml/", "type": "official" },
+        { "title": "pyproject.toml specification (Packaging User Guide)", "url": "https://packaging.python.org/en/latest/specifications/pyproject-toml/", "type": "official" },
+        { "title": "PEP 735 — Dependency Groups in pyproject.toml", "url": "https://peps.python.org/pep-0735/", "type": "official" }
+      ],
+      "handsOn": {
+        "goal": "Hand-write a minimal pyproject.toml, install your own project from it in editable mode, then parse the file back with the stdlib tomllib.",
+        "steps": [
+          {
+            "title": "Create a tiny package and pyproject.toml",
+            "explanation": "Lay out a minimal package directory and write a standards-based `pyproject.toml` with a build backend, project metadata, and one dependency.",
+            "python": "mkdir -p weather/weather && cd weather\ncat > weather/__init__.py <<'PY'\n__version__ = \"0.1.0\"\ndef greet():\n    return \"weather online\"\nPY\ncat > pyproject.toml <<'TOML'\n[build-system]\nrequires = [\"hatchling\"]\nbuild-backend = \"hatchling.build\"\n\n[project]\nname = \"weather\"\nversion = \"0.1.0\"\nrequires-python = \">=3.11\"\ndependencies = [\"requests>=2.32,<3\"]\n\n[dependency-groups]\ndev = [\"pytest>=8\"]\nTOML",
+            "javascript": null
+          },
+          {
+            "title": "Install the project in editable mode",
+            "explanation": "An editable install reads `pyproject.toml`, installs your declared dependencies, and links your package so source edits take effect immediately.",
+            "python": "python3 -m venv .venv && source .venv/bin/activate\npython -m pip install --upgrade pip\npython -m pip install -e .          # reads pyproject.toml, pulls requests\npython -c \"import weather, requests; print(weather.greet(), requests.__version__)\"",
+            "javascript": null
+          },
+          {
+            "title": "Install a dependency group",
+            "explanation": "Dev dependencies declared under PEP 735 `[dependency-groups]` install with pip's `--group` flag (pip 25.1+) but do not ship to consumers of the package.",
+            "python": "python -m pip install --group dev    # installs pytest from [dependency-groups]\npython -c \"import pytest; print('pytest', pytest.__version__)\"\npython -m pip show weather           # your package, version 0.1.0",
+            "javascript": null
+          },
+          {
+            "title": "Parse pyproject.toml with tomllib",
+            "explanation": "Python 3.11+ ships `tomllib` in the standard library, so any tool can read the same standardized file you just wrote.",
+            "python": "python - <<'PY'\nimport tomllib\nfrom pathlib import Path\ndata = tomllib.loads(Path(\"pyproject.toml\").read_text())\nprint(\"name   :\", data[\"project\"][\"name\"])\nprint(\"python :\", data[\"project\"][\"requires-python\"])\nprint(\"deps   :\", data[\"project\"][\"dependencies\"])\nprint(\"dev    :\", data[\"dependency-groups\"][\"dev\"])\nPY",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `[project.scripts]` entry mapping a command to a function, reinstall with `pip install -e .`, and run the new command.",
+          "Add an extra under `[project.optional-dependencies]` (e.g. `pdf = [\"reportlab\"]`) and install it with `pip install -e \".[pdf]\"`.",
+          "Add a `description`, `authors`, and `readme` field to `[project]` and confirm they appear in `pip show weather`.",
+          "Recreate the same project with `uv init` and compare the pyproject.toml uv generates against your hand-written one.",
+          "Tighten `requires-python` to `>=3.12` and observe pip's error if you try to install under 3.11."
+        ]
+      }
+    },
+    {
+      "id": "common-packages",
+      "title": "Common Packages",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "A handful of packages — some standard-library, some third-party — show up in nearly every Python project, so it pays to know them by name.",
+      "summary": [
+        "Python's \"batteries included\" philosophy means a lot of what you need is already in the standard library — no install required. `pathlib` gives you object-oriented filesystem paths (`Path(\"data\") / \"file.txt\"`) that work cross-platform and largely replace the old string-based `os.path`. `dataclasses` removes the boilerplate of writing `__init__`/`__repr__` for simple data-holding classes with a single `@dataclass` decorator. `asyncio` provides the event loop and `async/await` machinery for concurrent I/O. And since 3.11, `tomllib` reads TOML (like `pyproject.toml`) out of the box. Reaching for the standard library first keeps dependencies lean.",
+        "Beyond the stdlib, a small set of third-party packages are ubiquitous enough to feel standard. `requests` is the de facto HTTP client for talking to web APIs with a clean, readable API. `python-dotenv` loads configuration and secrets from a `.env` file into the environment so they stay out of your code. In the data and scientific world, `numpy` provides fast N-dimensional arrays and is the foundation almost everything numeric is built on, while `pandas` adds labeled DataFrames for tabular data wrangling and analysis. Recognizing these by name lets you read most real-world Python at a glance.",
+        "The broader point is fluency in the ecosystem, not memorizing APIs. When you have a task, the instinct should be: is it in the standard library? If not, what is the well-maintained, popular package for it? PyPI's project pages, download counts, and recent release dates are quick signals of a healthy dependency. Pin these in your `pyproject.toml`, keep them current, and let the package manager handle the rest."
+      ],
+      "keyPoints": [
+        "`pathlib` (stdlib) gives cross-platform, object-oriented paths; prefer it over string `os.path` manipulation.",
+        "`dataclasses` (stdlib) auto-generates `__init__`/`__repr__`/`__eq__` for data-holding classes via `@dataclass`.",
+        "`asyncio` (stdlib) powers `async`/`await` concurrency; `tomllib` (3.11+) reads TOML with no install.",
+        "`requests` is the go-to third-party HTTP client; `python-dotenv` loads `.env` config into the environment.",
+        "`numpy` (N-dimensional arrays) underpins the numeric stack; `pandas` (DataFrames) handles tabular data analysis.",
+        "Check the standard library first; for third-party deps, weigh popularity, maintenance, and recent releases on PyPI."
+      ],
+      "code": [
+        {
+          "title": "Standard-library staples: pathlib and dataclasses",
+          "language": "python",
+          "code": "from pathlib import Path\nfrom dataclasses import dataclass, field\n\n# pathlib: build and inspect paths without string juggling\nbase = Path(\"data\")\nfile = base / \"report.txt\"           # cross-platform join with /\nfile.parent.mkdir(parents=True, exist_ok=True)\nfile.write_text(\"hello\")\nprint(file.exists(), file.suffix)    # True .txt\n\n# dataclasses: a data class with no boilerplate\n@dataclass\nclass Task:\n    title: str\n    done: bool = False\n    tags: list[str] = field(default_factory=list)\n\nt = Task(\"write docs\", tags=[\"py\"])\nprint(t)                              # Task(title='write docs', done=False, tags=['py'])"
+        },
+        {
+          "title": "Third-party staples: requests and dotenv",
+          "language": "python",
+          "code": "# pip install requests python-dotenv\nimport os\nimport requests\nfrom dotenv import load_dotenv\n\nload_dotenv()                         # read variables from a .env file\nbase_url = os.environ.get(\"API_BASE\", \"https://httpbin.org\")\n\nresp = requests.get(f\"{base_url}/json\", timeout=10)\nresp.raise_for_status()               # raise on 4xx/5xx\ndata = resp.json()\nprint(type(data), list(data)[:3])"
+        },
+        {
+          "title": "The numeric stack: numpy and pandas",
+          "language": "python",
+          "code": "# pip install numpy pandas\nimport numpy as np\nimport pandas as pd\n\n# numpy: vectorized array math (no Python loops)\narr = np.arange(1, 6)\nprint(arr.mean(), (arr ** 2).sum())   # 3.0 55\n\n# pandas: labeled tabular data\ndf = pd.DataFrame(\n    {\"city\": [\"NYC\", \"LA\", \"NYC\"], \"temp\": [70, 85, 73]}\n)\nprint(df.groupby(\"city\")[\"temp\"].mean())"
+        }
+      ],
+      "resources": [
+        { "title": "pathlib — Object-oriented filesystem paths (stdlib)", "url": "https://docs.python.org/3/library/pathlib.html", "type": "official" },
+        { "title": "dataclasses — Data Classes (stdlib)", "url": "https://docs.python.org/3/library/dataclasses.html", "type": "official" },
+        { "title": "requests — HTTP for Humans (official docs)", "url": "https://requests.readthedocs.io/en/latest/", "type": "official" },
+        { "title": "pandas documentation (official)", "url": "https://pandas.pydata.org/docs/", "type": "official" }
+      ],
+      "handsOn": {
+        "goal": "Combine common packages in one small script: read config with dotenv, fetch JSON with requests, model it with a dataclass, and summarize it with pandas — using pathlib throughout.",
+        "steps": [
+          {
+            "title": "Set up the environment and config file",
+            "explanation": "Install the third-party packages into a venv and create a `.env` file so configuration stays out of your source code.",
+            "python": "python3 -m venv .venv && source .venv/bin/activate\npython -m pip install requests python-dotenv pandas\ncat > .env <<'ENV'\nAPI_BASE=https://jsonplaceholder.typicode.com\nENV",
+            "javascript": null
+          },
+          {
+            "title": "Load config and fetch data",
+            "explanation": "`load_dotenv()` reads `.env` into the environment; `requests` calls the API; `raise_for_status()` turns HTTP errors into exceptions you can catch.",
+            "python": "# fetch.py\nimport os\nimport requests\nfrom dotenv import load_dotenv\n\nload_dotenv()\nbase = os.environ[\"API_BASE\"]\nresp = requests.get(f\"{base}/users\", timeout=10)\nresp.raise_for_status()\nusers = resp.json()\nprint(f\"fetched {len(users)} users\")",
+            "javascript": null
+          },
+          {
+            "title": "Model records with a dataclass",
+            "explanation": "A `@dataclass` gives each record a clean, typed shape with a readable repr — far nicer than passing raw dicts around.",
+            "python": "from dataclasses import dataclass\n\n@dataclass\nclass User:\n    name: str\n    city: str\n    company: str\n\npeople = [\n    User(u[\"name\"], u[\"address\"][\"city\"], u[\"company\"][\"name\"])\n    for u in users\n]\nprint(people[0])",
+            "javascript": null
+          },
+          {
+            "title": "Summarize with pandas and save via pathlib",
+            "explanation": "Turn the dataclasses into a DataFrame for a quick summary, then write the result to disk using a `pathlib.Path`.",
+            "python": "import pandas as pd\nfrom dataclasses import asdict\nfrom pathlib import Path\n\ndf = pd.DataFrame(asdict(p) for p in people)\nprint(df[[\"name\", \"city\"]].head())\nprint(\"\\nusers per company:\")\nprint(df.groupby(\"company\").size())\n\nout = Path(\"out\") / \"users.csv\"\nout.parent.mkdir(exist_ok=True)\ndf.to_csv(out, index=False)\nprint(\"wrote\", out.resolve())",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `timeout` and wrap the `requests.get` in a try/except for `requests.RequestException` to handle network failures gracefully.",
+          "Add a computed field to the `User` dataclass (e.g. `domain` parsed from the email) and include it in the DataFrame.",
+          "Use `pathlib` to glob all `*.csv` files in the `out/` directory and print their sizes.",
+          "Replace the manual dict-to-dataclass mapping with `numpy` to compute a numeric summary of any numeric field.",
+          "Move the API base URL out of `.env` into a `[tool.myapp]` section of a pyproject.toml and read it with `tomllib`."
+        ]
+      }
+    }
+  ]
+}

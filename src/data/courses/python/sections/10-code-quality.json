@@ -1,0 +1,802 @@
+{
+  "id": "code-quality",
+  "title": "Code Quality",
+  "description": "Typing, formatting, testing, and documentation.",
+  "topics": [
+    {
+      "id": "static-typing",
+      "title": "Static Typing",
+      "subsection": "Typing",
+      "minutes": 5,
+      "intro": "Type hints are optional annotations that a separate checker reads to catch whole classes of bugs before your program ever runs.",
+      "summary": [
+        "Python is dynamically typed: a name can hold an `int` now and a `str` a moment later, and the interpreter only discovers a type mismatch when the offending line actually executes. Static typing adds an opt-in layer on top of this. You annotate variables, parameters, and return values with their expected types, and a static type checker (mypy, pyright, pyrefly) reads the annotations and flags inconsistencies without running the code. Crucially, these hints are not enforced at runtime — `def add(a: int, b: int) -> int` will still happily run with strings if you call it that way; the value comes entirely from the checker and your editor reading the annotations.",
+        "The payoff grows with the codebase. Annotations document intent right next to the code, so a reader sees that a function expects a `list[str]` and returns a `dict[str, int]` without spelunking through the body. Editors use the same hints for accurate autocompletion, go-to-definition, and inline error squiggles, and checkers catch the boring-but-common bugs: passing `None` where a value is required, typoing an attribute, returning the wrong type, or forgetting to handle a branch. Refactoring becomes far safer because a type error surfaces every call site that a signature change would break.",
+        "Adoption is gradual by design (this is called gradual typing). You can add hints to one function, one module, or one package at a time; un-annotated code is treated as `Any` and simply not checked. Modern Python (3.9+) lets you write builtin generics directly — `list[int]`, `dict[str, float]`, `tuple[int, ...]` — and 3.10+ adds the `X | Y` union syntax, so most everyday code needs no imports from `typing` at all. The standard playbook is: turn on a checker in CI, start permissive, and ratchet strictness up over time."
+      ],
+      "keyPoints": [
+        "Type hints are optional annotations; they are NOT enforced at runtime — a separate checker reads them.",
+        "Static checking catches bugs (None handling, wrong return types, typos) before the code runs, unlike pure dynamic typing.",
+        "Python supports gradual typing: annotate code incrementally; unannotated code is treated as `Any` and skipped.",
+        "Modern syntax needs no imports for common cases: `list[int]`, `dict[str, float]`, and `X | Y` unions (3.10+).",
+        "Annotations double as living documentation and power editor autocompletion, navigation, and inline errors.",
+        "Best practice: run a type checker in CI and ratchet strictness up over time rather than typing everything at once."
+      ],
+      "code": [
+        {
+          "title": "Annotated vs unannotated",
+          "language": "python",
+          "code": "# A checker (mypy/pyright) reads these hints; Python itself ignores them at runtime.\ndef greet(name: str, times: int = 1) -> str:\n    return (f\"Hello, {name}! \" * times).strip()\n\n# Modern builtin generics — no `from typing import ...` needed on 3.9+\ndef total(prices: list[float]) -> float:\n    return sum(prices)\n\nprint(greet(\"Ada\", 2))\nprint(total([9.99, 4.50, 1.00]))\n\n# A checker flags this line; running it still crashes only when executed:\n# greet(\"Ada\", \"twice\")  # error: Argument 2 has incompatible type \"str\""
+        },
+        {
+          "title": "Optional values and unions (3.10+ syntax)",
+          "language": "python",
+          "code": "def find_user(user_id: int) -> str | None:\n    users = {1: \"ada\", 2: \"grace\"}\n    return users.get(user_id)  # may be None\n\nname = find_user(1)\n# A checker forces you to handle the None case before using .upper()\nif name is not None:\n    print(name.upper())\nelse:\n    print(\"not found\")"
+        }
+      ],
+      "resources": [
+        { "title": "Static Typing with Python (typing docs)", "url": "https://typing.readthedocs.io/en/latest/index.html", "type": "official" },
+        { "title": "Support for type hints — typing module", "url": "https://docs.python.org/3/library/typing.html", "type": "official" },
+        { "title": "Python Type Checking (Guide) — Real Python", "url": "https://realpython.com/python-type-checking/", "type": "article" }
+      ]
+    },
+    {
+      "id": "typing-module",
+      "title": "The typing Module",
+      "subsection": "Typing",
+      "minutes": 6,
+      "intro": "The `typing` module supplies the special forms — Optional, Union, generics, Protocol, TypedDict, and more — that let you express precise types beyond plain builtins.",
+      "summary": [
+        "The `typing` module is the standard library's vocabulary for type hints. While simple types use builtins (`int`, `str`, `list[int]`), `typing` provides the special constructs you reach for when you need precision: `Optional[X]` (shorthand for `X | None`), `Union[A, B]`, `Any` (opt out of checking), `Callable[[int], str]` for function types, `Literal[\"read\", \"write\"]` for fixed value sets, and `Final` for constants. Most of these now have lighter modern equivalents — `X | None` instead of `Optional[X]`, builtin generics instead of `typing.List` — but you will still see and use the explicit forms constantly.",
+        "Beyond annotating values, `typing` lets you describe *shapes* and *contracts*. `TypedDict` types a dictionary by its keys so `{\"name\": str, \"age\": int}` is checked field by field. `Protocol` enables structural (\"duck\") typing: any object with the right methods satisfies the protocol without inheriting from it, which is how you type \"anything with a `.read()` method\". `TypeVar` and `Generic` let you write functions and classes that preserve the caller's type — a `first(items: list[T]) -> T` returns the element type, not `Any`. `NewType` creates distinct types from existing ones (a `UserId` that is an `int` but not interchangeable with a raw `int`).",
+        "Two ergonomic features matter in modern code. `from __future__ import annotations` makes all annotations strings at runtime, so you can reference types before they are defined and avoid import cycles. And as of Python 3.12 the new `type` statement and PEP 695 generic syntax (`def first[T](xs: list[T]) -> T`) let you declare type parameters inline without importing `TypeVar`. When in doubt, prefer the simplest annotation that the checker accepts, and reach into `typing` only when builtins cannot express what you mean."
+      ],
+      "keyPoints": [
+        "Use builtins (`list[int]`, `dict[str, int]`) for the common cases; reach into `typing` for special forms.",
+        "`Optional[X]` == `X | None`; `Union[A, B]` == `A | B` — the `|` syntax (3.10+) is now preferred.",
+        "`Protocol` gives structural typing: match by methods present, no inheritance required.",
+        "`TypedDict` types dict shapes by key; `Literal` restricts to a fixed set of values; `Final` marks constants.",
+        "`TypeVar`/`Generic` (or PEP 695 `def f[T](...)` on 3.12+) preserve the caller's type instead of widening to `Any`.",
+        "`from __future__ import annotations` defers annotation evaluation, dodging forward references and import cycles."
+      ],
+      "code": [
+        {
+          "title": "Common special forms",
+          "language": "python",
+          "code": "from typing import Literal, Final, Callable\n\nMODE: Final = \"r\"                       # constant; reassignment is flagged\n\ndef open_file(path: str, mode: Literal[\"r\", \"w\", \"a\"]) -> str:\n    return f\"opened {path!r} in mode {mode}\"\n\n# Callable[[arg types], return type]\ndef apply(fn: Callable[[int], int], value: int) -> int:\n    return fn(value)\n\nprint(open_file(\"data.txt\", \"r\"))\nprint(apply(lambda x: x * 2, 21))      # 42\n# open_file(\"x\", \"rw\")  # checker error: \"rw\" not a valid Literal"
+        },
+        {
+          "title": "TypedDict and Protocol",
+          "language": "python",
+          "code": "from typing import TypedDict, Protocol\n\nclass User(TypedDict):\n    name: str\n    age: int\n\ndef describe(u: User) -> str:\n    return f\"{u['name']} ({u['age']})\"\n\nclass Readable(Protocol):\n    def read(self) -> str: ...\n\n# Anything with a matching .read() satisfies Readable — no inheritance.\ndef load(src: Readable) -> str:\n    return src.read()\n\nprint(describe({\"name\": \"Ada\", \"age\": 36}))"
+        },
+        {
+          "title": "Generics that preserve the element type",
+          "language": "python",
+          "code": "# PEP 695 syntax (Python 3.12+): inline type parameter, no TypeVar import\ndef first[T](items: list[T]) -> T:\n    return items[0]\n\nn: int = first([1, 2, 3])      # checker knows this is int\ns: str = first([\"a\", \"b\"])     # and this is str\nprint(n, s)\n\n# Pre-3.12 equivalent:\n# from typing import TypeVar\n# T = TypeVar(\"T\")\n# def first(items: list[T]) -> T: ..."
+        }
+      ],
+      "resources": [
+        { "title": "typing — Support for type hints", "url": "https://docs.python.org/3/library/typing.html", "type": "official" },
+        { "title": "Type hints cheat sheet — mypy docs", "url": "https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html", "type": "official" },
+        { "title": "Protocols and structural subtyping (typing docs)", "url": "https://typing.readthedocs.io/en/latest/spec/protocol.html", "type": "official" }
+      ]
+    },
+    {
+      "id": "mypy",
+      "title": "mypy",
+      "subsection": "Typing",
+      "minutes": 6,
+      "intro": "mypy is the original and de-facto-standard static type checker for Python, run from the command line with effectively zero runtime overhead.",
+      "summary": [
+        "mypy is the reference implementation of Python static type checking, maintained under the Python organization and the project that drove the language's typing PEPs. You install it from PyPI, run `mypy your_package/`, and it reports type errors without executing a line of your program — so it is safe on code with side effects and adds no runtime cost. It understands the full typing vocabulary (generics, protocols, `TypedDict`, overloads) and ships with thousands of typed stubs for the standard library; stubs for third-party packages come from the package itself or from `types-*` packages on PyPI (e.g. `types-requests`).",
+        "Configuration lives in `pyproject.toml` under `[tool.mypy]` (or `mypy.ini`/`setup.cfg`). The single most important knob is `strict = true`, which turns on a curated bundle of stricter checks — most notably `disallow_untyped_defs` (every function must be annotated), `disallow_any_generics`, `warn_return_any`, and `no_implicit_optional`. On an existing untyped codebase, flipping `strict` on everywhere at once produces a wall of errors, so the standard adoption path is to start lax, add `# type: ignore[error-code]` comments sparingly, and enable strict per-module via `[[tool.mypy.overrides]]` as you clean each module up.",
+        "mypy fits naturally into CI and pre-commit: a failing check blocks the merge the same way a failing test does. Its error messages carry stable error codes (e.g. `[arg-type]`, `[union-attr]`) you can target in ignore comments or globally disable. Compared to the newer Rust-based checkers it is slower on huge codebases, but it remains the most widely deployed and best-documented checker, and its behavior is the closest thing to a canonical interpretation of Python's typing spec."
+      ],
+      "keyPoints": [
+        "mypy checks types statically with no runtime overhead — it never executes your program.",
+        "Configure it in `pyproject.toml` under `[tool.mypy]`; `strict = true` is the key flag to aim for.",
+        "`strict` bundles checks like `disallow_untyped_defs` and `warn_return_any`; adopt it module by module via overrides.",
+        "Third-party type stubs ship as `types-*` packages (e.g. `pip install types-requests`) when a library is untyped.",
+        "Silence individual lines with `# type: ignore[error-code]`, targeting the specific stable error code.",
+        "Wire mypy into CI/pre-commit so type errors block merges like failing tests do."
+      ],
+      "code": [
+        {
+          "title": "Install and run",
+          "language": "python",
+          "code": "# install (use uv, pip, or pipx)\n#   pip install mypy\n#   pip install types-requests   # stubs for an untyped dependency\n\n# check a package or module\n#   mypy src/\n#   mypy app.py\n\n# example output:\n#   app.py:12: error: Argument 1 to \"len\" has incompatible type \"int\"  [arg-type]\n#   Found 1 error in 1 file (checked 1 source file)"
+        },
+        {
+          "title": "pyproject.toml configuration",
+          "language": "python",
+          "code": "# pyproject.toml\n[tool.mypy]\npython_version = \"3.12\"\nstrict = true                 # turns on the recommended strict bundle\nwarn_unused_ignores = true    # flag `# type: ignore` that no longer applies\nwarn_redundant_casts = true\n\n# Relax strictness for a messy module while you migrate it:\n[[tool.mypy.overrides]]\nmodule = \"legacy.*\"\ndisallow_untyped_defs = false"
+        }
+      ],
+      "resources": [
+        { "title": "mypy — Optional Static Typing for Python", "url": "https://mypy-lang.org/", "type": "official" },
+        { "title": "mypy documentation (getting started, config, strict)", "url": "https://mypy.readthedocs.io/en/stable/", "type": "official" },
+        { "title": "python/mypy on GitHub", "url": "https://github.com/python/mypy", "type": "opensource" }
+      ],
+      "handsOn": {
+        "goal": "Install mypy, catch a real type bug in a small module, fix it, then turn on strict mode and resolve the new errors.",
+        "steps": [
+          {
+            "title": "Install mypy and write a buggy module",
+            "explanation": "Install mypy into your environment, then create a small file with a deliberate type bug — passing a value of the wrong type — that runs without crashing but is logically wrong.",
+            "python": "# terminal\n#   pip install mypy   (or: uv add --dev mypy)\n\n# bank.py\ndef apply_discount(price: float, percent: float) -> float:\n    return price * (1 - percent / 100)\n\n# Bug: passing a string where a float is expected.\nfinal = apply_discount(\"100\", 10)\nprint(final)",
+            "javascript": null
+          },
+          {
+            "title": "Run mypy and read the error",
+            "explanation": "Run mypy on the file. It reports the incompatible argument with a stable error code, pointing at the exact line — without ever running the code.",
+            "python": "# terminal\n#   mypy bank.py\n#\n# bank.py:6: error: Argument 1 to \"apply_discount\" has incompatible\n#   type \"str\"; expected \"float\"  [arg-type]\n# Found 1 error in 1 file (checked 1 source file)",
+            "javascript": null
+          },
+          {
+            "title": "Fix the bug and confirm a clean run",
+            "explanation": "Pass a real number instead of a string. mypy should now report success, and the program produces the correct result.",
+            "python": "# bank.py (fixed)\ndef apply_discount(price: float, percent: float) -> float:\n    return price * (1 - percent / 100)\n\nfinal = apply_discount(100.0, 10)\nprint(final)   # 90.0\n\n# terminal\n#   mypy bank.py\n#   Success: no issues found in 1 source file",
+            "javascript": null
+          },
+          {
+            "title": "Turn on strict mode",
+            "explanation": "Add a config file enabling strict mode. Now mypy demands annotations on every function. Add a new unannotated helper to see strict reject it, then annotate it to pass.",
+            "python": "# pyproject.toml\n[tool.mypy]\nstrict = true\n\n# bank.py — add an UNannotated helper; strict will flag it\ndef format_money(amount):           # error under strict: [no-untyped-def]\n    return f\"${amount:.2f}\"\n\n# terminal: mypy .  ->\n#   error: Function is missing a type annotation  [no-untyped-def]\n\n# Fix by annotating:\ndef format_money(amount: float) -> str:\n    return f\"${amount:.2f}\"",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a function that returns `int | None` and call `.bit_length()` on the result without checking for None — watch mypy flag `[union-attr]`, then guard it.",
+          "Introduce a typo'd attribute access on an object and confirm mypy reports `[attr-defined]`.",
+          "Add `# type: ignore[arg-type]` to silence one error, then set `warn_unused_ignores = true` and fix the bug so mypy reports the ignore is now unnecessary.",
+          "Install an untyped dependency (or simulate one) and add its `types-*` stub package so mypy can check calls into it.",
+          "Use a `[[tool.mypy.overrides]]` block to relax `disallow_untyped_defs` for a single 'legacy' module while keeping strict everywhere else."
+        ]
+      }
+    },
+    {
+      "id": "pyright",
+      "title": "pyright",
+      "subsection": "Typing",
+      "minutes": 5,
+      "intro": "Pyright is Microsoft's fast, standards-based type checker written in TypeScript — and the engine that powers Pylance, the default Python experience in VS Code.",
+      "summary": [
+        "Pyright is a high-performance static type checker and language server built by Microsoft. Most VS Code users already run it indirectly: the Pylance extension is Pyright under the hood, which is why you get instant inline type errors, hovers, and autocompletion as you type. You can also run it standalone from the command line (`pyright` via the `pyright` PyPI wrapper or the npm package) so the exact same analysis runs in CI as in your editor. Being a language server, it is incremental and fast on large monorepos, and it tracks the typing spec closely with particularly strong type narrowing and inference.",
+        "Pyright has four type-checking modes — `off`, `basic`, `standard` (the default), and `strict` — set globally or per-file. `basic` reports clear mistakes while staying quiet about missing annotations; `strict` requires complete annotations and flags `Unknown`/`Any` leakage, much like mypy's strict bundle. Configuration goes in `pyrightconfig.json` or in `pyproject.toml` under `[tool.pyright]`, where you can set `typeCheckingMode`, list `include`/`exclude` paths, point at the right `venvPath`/`pythonVersion`, and tune individual diagnostics (e.g. `reportMissingImports = \"error\"`). You can also flip the mode for a single file with a `# pyright: strict` comment.",
+        "Pyright and mypy mostly agree but differ at the edges: Pyright tends to do more aggressive type narrowing and reports some things mypy ignores, so teams pick one as the source of truth for CI rather than running both and chasing conflicts. The pragmatic split many teams use is Pyright/Pylance in the editor for speed and great UX, with whichever checker they trust most enforced in CI. Pyright is a strong default when your team lives in VS Code and wants editor and CI checks to be literally the same tool."
+      ],
+      "keyPoints": [
+        "Pyright is Microsoft's type checker and language server; Pylance in VS Code is Pyright under the hood.",
+        "Four modes: `off`, `basic`, `standard` (default), `strict` — set globally, per-file, or via a `# pyright: strict` comment.",
+        "Configure in `pyrightconfig.json` or `pyproject.toml` `[tool.pyright]`; tune individual `report*` diagnostics.",
+        "It is fast and incremental, with notably strong type narrowing — ideal for large codebases and monorepos.",
+        "Run the same `pyright` binary in CI that powers your editor so local and pipeline results match.",
+        "Pyright and mypy disagree at the margins; pick one as the CI source of truth rather than running both."
+      ],
+      "code": [
+        {
+          "title": "Install and run",
+          "language": "python",
+          "code": "# Python wrapper (bundles the right Node build):\n#   pip install pyright\n#   pyright            # checks the whole project\n#   pyright app.py     # check one file\n\n# example output:\n#   app.py:9:13 - error: Argument of type \"str\" cannot be assigned to\n#     parameter \"n\" of type \"int\" (reportArgumentType)\n#   1 error, 0 warnings, 0 informations"
+        },
+        {
+          "title": "Configure in pyproject.toml",
+          "language": "python",
+          "code": "# pyproject.toml\n[tool.pyright]\ninclude = [\"src\"]\nexclude = [\"**/node_modules\", \"build\"]\npythonVersion = \"3.12\"\ntypeCheckingMode = \"strict\"        # off | basic | standard | strict\nreportMissingImports = \"error\"\nreportUnusedImport = \"warning\""
+        },
+        {
+          "title": "Per-file mode override",
+          "language": "python",
+          "code": "# pyright: strict\n# ^ this comment forces strict checking for THIS file only,\n#   regardless of the project-wide typeCheckingMode.\n\ndef area(width: float, height: float) -> float:\n    return width * height"
+        }
+      ],
+      "resources": [
+        { "title": "Pyright documentation", "url": "https://microsoft.github.io/pyright/", "type": "official" },
+        { "title": "Pyright configuration reference", "url": "https://microsoft.github.io/pyright/#/configuration", "type": "official" },
+        { "title": "microsoft/pyright on GitHub", "url": "https://github.com/microsoft/pyright", "type": "opensource" }
+      ]
+    },
+    {
+      "id": "pyre",
+      "title": "pyrefly",
+      "subsection": "Typing",
+      "minutes": 4,
+      "intro": "Pyrefly is Meta's new Rust-based type checker — a clean-slate successor to Pyre that checks well over a million lines of code per second.",
+      "summary": [
+        "Pyrefly is Meta's modern Python type checker, open-sourced in 2025 and reaching a stable 1.0 in May 2026. It is a clean-slate rewrite in Rust that replaces Meta's older OCaml-based Pyre, built around a new inference engine and an incremental computation model. The headline is speed: Pyrefly checks well over a million lines of code per second and type-checks huge codebases (Meta runs it on Instagram's ~20M-line codebase) in seconds, which makes a tight edit-check loop feasible at a scale where older checkers struggle. It also ships as a language server, so the same engine drives editor diagnostics in VS Code, PyCharm, Neovim, and others.",
+        "Getting started is deliberately simple: `pip install pyrefly`, then `pyrefly init` to scaffold configuration in `pyproject.toml` (under `[tool.pyrefly]`) and `pyrefly check` to run it. A standout feature is automatic inference — Pyrefly infers types even for unannotated code, so it surfaces useful errors on a codebase that has few or no hints, and an `pyrefly init` migration path can help convert an existing mypy/pyright setup. Like the other checkers it follows Python's typing specification, so your annotations are portable across tools.",
+        "Pyrefly is one of two Rust-based newcomers; the other is Astral's `ty` (from the makers of Ruff and uv). Both are dramatically faster than mypy and pyright and are maturing quickly, but as relatively new tools they may lag the established checkers on some edge cases and ecosystem stubs. The reasonable stance in 2026: mypy and pyright remain the safe defaults for production CI, while Pyrefly and ty are excellent to evaluate, especially if checker speed on a large codebase is a real bottleneck."
+      ],
+      "keyPoints": [
+        "Pyrefly is Meta's Rust-based type checker, a clean-slate successor to the older OCaml Pyre; stable 1.0 landed in 2026.",
+        "It is extremely fast (1M+ lines/second) and scales to multi-million-line codebases in seconds.",
+        "Install with `pip install pyrefly`; scaffold with `pyrefly init` and run with `pyrefly check`.",
+        "It infers types even for unannotated code, so it finds bugs in codebases with few hints.",
+        "Configuration lives in `pyproject.toml` under `[tool.pyrefly]`; it also runs as a language server in major editors.",
+        "Pyrefly and Astral's `ty` are the fast Rust newcomers; mypy/pyright are still the conservative CI defaults in 2026."
+      ],
+      "code": [
+        {
+          "title": "Install, initialize, and run",
+          "language": "python",
+          "code": "# install and scaffold config\n#   pip install pyrefly\n#   pyrefly init          # writes [tool.pyrefly] into pyproject.toml\n\n# type-check the project\n#   pyrefly check\n#   pyrefly check src/\n\n# example output:\n#   ERROR app.py:7:5  Argument `str` is not assignable to parameter `n: int`\n#   1 error"
+        },
+        {
+          "title": "Configuration in pyproject.toml",
+          "language": "python",
+          "code": "# pyproject.toml\n[tool.pyrefly]\nproject-includes = [\"src\"]\nproject-excludes = [\"**/node_modules\", \"build\"]\npython-version = \"3.12\""
+        }
+      ],
+      "resources": [
+        { "title": "Pyrefly — official site & docs", "url": "https://pyrefly.org/", "type": "official" },
+        { "title": "facebook/pyrefly on GitHub", "url": "https://github.com/facebook/pyrefly", "type": "opensource" },
+        { "title": "Introducing Pyrefly — Engineering at Meta", "url": "https://engineering.fb.com/2025/05/15/developer-tools/introducing-pyrefly-a-new-type-checker-and-ide-experience-for-python/", "type": "article" }
+      ]
+    },
+    {
+      "id": "custom-type-checkers",
+      "title": "Custom Type Checkers & Plugins",
+      "subsection": "Typing",
+      "minutes": 5,
+      "intro": "When the standard type system can't express your library's magic, plugins and runtime validators extend type checking to fit your code.",
+      "summary": [
+        "Off-the-shelf checkers cover ordinary Python, but some libraries do things the static type system cannot model on its own — dynamically generated attributes, decorators that change a function's signature, or ORM fields that become real attributes at runtime. The escape hatch is the plugin system. mypy supports plugins that hook into its analysis to teach it about these patterns; the canonical examples are `pydantic.mypy` and the SQLAlchemy/Django plugins, which make those frameworks' dynamic models type-check correctly. You enable a plugin in config (`plugins = [\"pydantic.mypy\"]`) rather than writing one yourself in most cases — and writing a custom plugin is an advanced task reserved for library authors.",
+        "Often the better tool is not a checker plugin but a *runtime* validator. Static checkers verify your own source; they cannot vouch for data arriving from JSON payloads, environment variables, or user input at runtime. Pydantic closes that gap: you declare a model with type-annotated fields and Pydantic validates and coerces incoming data against it at runtime, raising a clear `ValidationError` when it does not conform. The same annotations both type-check statically and enforce shape dynamically — the best of both worlds for API boundaries.",
+        "Two related building blocks let you extend typing without a full plugin. `typing.TYPE_CHECKING` is a constant that is `False` at runtime but `True` to checkers, so you can import heavy or cycle-causing modules only for type analysis. And libraries like `typeguard` or `beartype` enforce your existing annotations at runtime via a decorator, turning hints into actual contracts. The practical rule: use plugins for framework magic, Pydantic for validating external data, and runtime enforcers when you need annotations to fail loudly during execution."
+      ],
+      "keyPoints": [
+        "mypy supports plugins that teach it about dynamic patterns; enable framework ones (`pydantic.mypy`, SQLAlchemy, Django) in config.",
+        "Writing a custom mypy plugin is an advanced, library-author task — most teams only ever consume existing plugins.",
+        "Static checkers can't validate runtime data (JSON, env vars, user input) — that's what runtime validators are for.",
+        "Pydantic uses the same type annotations to validate and coerce external data at runtime, raising `ValidationError` on bad input.",
+        "`if TYPE_CHECKING:` imports modules only for the checker (False at runtime), avoiding import cycles and heavy imports.",
+        "Runtime enforcers like `typeguard`/`beartype` turn existing annotations into checked contracts via a decorator."
+      ],
+      "code": [
+        {
+          "title": "Enable a checker plugin",
+          "language": "python",
+          "code": "# pyproject.toml — let mypy understand Pydantic's dynamic models\n[tool.mypy]\nplugins = [\"pydantic.mypy\"]\n\n# Now mypy correctly types model fields generated at runtime,\n# e.g. constructor arguments and `.model_dump()` results."
+        },
+        {
+          "title": "Runtime validation with Pydantic",
+          "language": "python",
+          "code": "# pip install pydantic\nfrom pydantic import BaseModel, ValidationError\n\nclass User(BaseModel):\n    name: str\n    age: int            # incoming \"36\" is coerced to int 36\n\n# Valid (and coerced) input:\nu = User(name=\"Ada\", age=\"36\")\nprint(u.age, type(u.age))     # 36 <class 'int'>\n\n# Invalid input fails LOUDLY at runtime, unlike a static checker:\ntry:\n    User(name=\"Ada\", age=\"not-a-number\")\nexcept ValidationError as e:\n    print(\"rejected:\", e.error_count(), \"error(s)\")"
+        },
+        {
+          "title": "TYPE_CHECKING to avoid runtime imports",
+          "language": "python",
+          "code": "from __future__ import annotations\nfrom typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    # Only imported by the type checker, never at runtime.\n    from expensive_module import HeavyClient\n\ndef build(client: HeavyClient) -> str:\n    return client.name"
+        }
+      ],
+      "resources": [
+        { "title": "Extending mypy with plugins", "url": "https://mypy.readthedocs.io/en/stable/extending_mypy.html", "type": "official" },
+        { "title": "Pydantic documentation", "url": "https://docs.pydantic.dev/latest/", "type": "official" },
+        { "title": "typing.TYPE_CHECKING — typing docs", "url": "https://docs.python.org/3/library/typing.html#typing.TYPE_CHECKING", "type": "official" }
+      ]
+    },
+    {
+      "id": "code-formatting",
+      "title": "Code Formatting",
+      "subsection": "Formatting",
+      "minutes": 4,
+      "intro": "Automated formatters reformat your code to one consistent style so nobody ever argues about whitespace in a code review again.",
+      "summary": [
+        "Code formatting is the mechanical layout of source — line length, indentation, quote style, where to break long expressions. Python's community standard is PEP 8, but applying it by hand is tedious and inconsistent. An automated formatter reads your code's syntax tree and rewrites it to one canonical style, so two developers writing the same logic end up with byte-for-byte identical output. The payoff is twofold: diffs shrink to real logic changes (no noise from someone's editor reflowing a block), and code review stops wasting time on subjective whitespace debates.",
+        "It helps to separate three related but distinct tools. A *formatter* (Black, Ruff's formatter, YAPF) rewrites layout but never changes behavior. A *linter* (Ruff, Pylint, Flake8) flags likely bugs and style problems — unused imports, undefined names, shadowed variables — and may auto-fix some of them. An *import sorter* (isort, or Ruff's `I` rules) groups and orders imports. Modern practice consolidates these: Ruff now does linting, import sorting, and formatting in one extremely fast tool, so many new projects use Ruff alone where they once stacked Black + isort + Flake8.",
+        "The real win comes from automation, not from running tools by hand. Configure the formatter once in `pyproject.toml`, run it on save in your editor, enforce it in a pre-commit hook so unformatted code never gets committed, and add a CI check (`ruff format --check` or `black --check`) that fails the build if anything is off. Because the formatter is deterministic, this is a one-time setup that pays off on every commit for the life of the project."
+      ],
+      "keyPoints": [
+        "Formatting is purely about layout (line length, quotes, breaks); it never changes what the code does.",
+        "PEP 8 is the style standard — automate it with a formatter instead of applying it by hand.",
+        "Distinguish roles: formatter (Black/Ruff) rewrites layout, linter (Ruff/Pylint) finds bugs, import sorter orders imports.",
+        "Ruff now combines linting, import sorting, and formatting, replacing the older Black + isort + Flake8 stack for many.",
+        "Consistent formatting shrinks diffs to real changes and removes whitespace debates from code review.",
+        "Enforce it automatically: format-on-save in the editor, a pre-commit hook, and a `--check` gate in CI."
+      ],
+      "code": [
+        {
+          "title": "Before and after formatting",
+          "language": "python",
+          "code": "# BEFORE (inconsistent spacing, quotes, line breaks)\ndef total(items ):\n  return sum( [i['price']*i[\"qty\"] for i in items] )\n\n# AFTER a formatter (Black / Ruff) reflows it deterministically\ndef total(items):\n    return sum([i[\"price\"] * i[\"qty\"] for i in items])"
+        },
+        {
+          "title": "Check vs apply in CI and locally",
+          "language": "python",
+          "code": "# Apply formatting locally (rewrites files in place):\n#   ruff format .\n#   black .\n\n# Verify formatting in CI WITHOUT changing files (non-zero exit if unformatted):\n#   ruff format --check .\n#   black --check .\n\n# Run the linter (and auto-fix what it safely can):\n#   ruff check --fix ."
+        }
+      ],
+      "resources": [
+        { "title": "PEP 8 — Style Guide for Python Code", "url": "https://peps.python.org/pep-0008/", "type": "official" },
+        { "title": "Black — The uncompromising code formatter (docs)", "url": "https://black.readthedocs.io/en/stable/", "type": "official" },
+        { "title": "Ruff documentation", "url": "https://docs.astral.sh/ruff/", "type": "official" }
+      ]
+    },
+    {
+      "id": "black",
+      "title": "black",
+      "subsection": "Formatting",
+      "minutes": 5,
+      "intro": "Black is the uncompromising, near-configuration-free formatter that ends style debates by giving you exactly one way to lay out Python.",
+      "summary": [
+        "Black is a deterministic Python code formatter whose entire philosophy is to remove choices. It deliberately exposes very few options — essentially just line length — so every Black-formatted codebase looks the same: 88-character lines, four-space indentation, double quotes, and a consistent strategy for breaking long calls and collections. Black calls itself 'uncompromising' precisely because it does not let you bikeshed; you give up fine control in exchange for never discussing formatting again. It parses your code to an AST, reformats it, and verifies the AST is unchanged, so reformatting is guaranteed safe and behavior-preserving.",
+        "You run `black .` to format in place and `black --check .` (often with `--diff`) to verify without writing, which is what you wire into CI. The little configuration there is lives in `pyproject.toml` under `[tool.black]` — mainly `line-length` and `target-version`. Black uses a yearly stable-style release scheme (e.g. the 2026 style shipped in the 26.x line), and it offers a `--preview` flag to opt into formatting changes slated for a future stable style, so teams can adopt changes deliberately rather than having them appear unannounced.",
+        "Black pairs naturally with an import sorter (isort, configured with `profile = \"black\"` so the two agree) and a linter. In 2026 many projects have replaced Black with Ruff's formatter, which is Black-compatible by design but dramatically faster and bundles linting too — but Black remains a rock-solid, ubiquitous choice and the style that Ruff's formatter intentionally mirrors. Either way, the recommended setup is identical: format on save, enforce in pre-commit, and gate with `--check` in CI."
+      ],
+      "keyPoints": [
+        "Black is opinionated and nearly config-free: 88-char lines, 4-space indent, double quotes, one canonical layout.",
+        "`black .` formats in place; `black --check --diff .` verifies without writing — use the check form in CI.",
+        "Configure the few options (`line-length`, `target-version`) in `pyproject.toml` under `[tool.black]`.",
+        "It reformats via the AST and verifies the AST is unchanged, so formatting never alters behavior.",
+        "Yearly stable styles (e.g. the 26.x line carries the 2026 style); `--preview` opts into upcoming changes early.",
+        "Pair with isort (`profile = \"black\"`); Ruff's formatter is a faster, Black-compatible drop-in many now prefer."
+      ],
+      "code": [
+        {
+          "title": "Run Black",
+          "language": "python",
+          "code": "# install\n#   pip install black\n\n# format every file in the project, in place\n#   black .\n\n# CI-friendly: report (and exit non-zero) without modifying files\n#   black --check --diff .\n\n# format a single file or just standard input\n#   black app.py\n#   echo 'x={1:2}' | black -"
+        },
+        {
+          "title": "Configure in pyproject.toml",
+          "language": "python",
+          "code": "# pyproject.toml\n[tool.black]\nline-length = 88                 # the one knob most teams touch\ntarget-version = [\"py312\"]\n# preview = true                 # opt into next year's style changes early\n\n# Keep isort consistent with Black:\n[tool.isort]\nprofile = \"black\""
+        }
+      ],
+      "resources": [
+        { "title": "Getting Started with Black", "url": "https://black.readthedocs.io/en/stable/getting_started.html", "type": "official" },
+        { "title": "Black documentation", "url": "https://black.readthedocs.io/en/stable/", "type": "official" },
+        { "title": "psf/black on GitHub", "url": "https://github.com/psf/black", "type": "opensource" }
+      ]
+    },
+    {
+      "id": "yapf",
+      "title": "yapf",
+      "subsection": "Formatting",
+      "minutes": 4,
+      "intro": "YAPF is Google's clang-format-inspired formatter for teams that want more control over style than Black's take-it-or-leave-it defaults.",
+      "summary": [
+        "YAPF (Yet Another Python Formatter) is a formatter from Google built on a different premise than Black. Where Black insists on one canonical style, YAPF is highly configurable: it treats formatting as an optimization problem (inspired by clang-format) and searches for the layout that best satisfies a large set of tunable 'knobs.' It ships with predefined style presets — `pep8` (the default), `google`, `yapf`, and `facebook` — and exposes dozens of individual settings such as `COLUMN_LIMIT`, `INDENT_WIDTH`, `DEDENT_CLOSING_BRACKETS`, and `SPLIT_BEFORE_LOGICAL_OPERATOR` for teams that want their code to match a specific house style.",
+        "Usage mirrors other formatters: `yapf -i file.py` rewrites in place, `yapf -d file.py` shows a diff, and `-r` recurses into directories. Configuration can live in a `.style.yapf` file, in `setup.cfg` under `[yapf]`, or in `pyproject.toml` under `[tool.yapf]`. You typically start from a base style and override specific knobs, e.g. `based_on_style = google` plus `column_limit = 100`. Because the configuration surface is large, YAPF can reproduce niche conventions that Black simply will not let you express.",
+        "The trade-off is the flip side of that flexibility: more options mean more to agree on and configure, which is exactly the debate Black was designed to end. In 2026 the ecosystem has consolidated heavily around Black and Ruff's Black-compatible formatter, and YAPF is the less common choice. Reach for it when you genuinely need a specific style that the opinionated formatters cannot produce; otherwise the lower-maintenance, faster-converging path is Black or Ruff."
+      ],
+      "keyPoints": [
+        "YAPF is Google's configurable formatter, inspired by clang-format — it searches for an optimal layout under your settings.",
+        "It is highly tunable via presets (`pep8`, `google`, `yapf`, `facebook`) and dozens of knobs like `COLUMN_LIMIT`.",
+        "Run `yapf -i` to format in place, `yapf -d` for a diff, `-r` to recurse into directories.",
+        "Configure in `.style.yapf`, `setup.cfg` `[yapf]`, or `pyproject.toml` `[tool.yapf]`, usually via `based_on_style` + overrides.",
+        "More configurability is the opposite of Black's philosophy — it brings back the style decisions Black removes.",
+        "Choose YAPF when you need a specific house style; otherwise Black/Ruff are the lower-maintenance modern default."
+      ],
+      "code": [
+        {
+          "title": "Run YAPF",
+          "language": "python",
+          "code": "# install\n#   pip install yapf\n\n# format in place / show a diff / recurse a directory\n#   yapf -i app.py\n#   yapf -d app.py\n#   yapf -i -r src/\n\n# start from a preset on the command line\n#   yapf --style='{based_on_style: google, column_limit: 100}' -i app.py"
+        },
+        {
+          "title": "Configure in pyproject.toml",
+          "language": "python",
+          "code": "# pyproject.toml\n[tool.yapf]\nbased_on_style = \"google\"\ncolumn_limit = 100\ndedent_closing_brackets = true\nsplit_before_logical_operator = true"
+        }
+      ],
+      "resources": [
+        { "title": "google/yapf on GitHub (README & knobs)", "url": "https://github.com/google/yapf", "type": "opensource" },
+        { "title": "PEP 8 — Style Guide for Python Code", "url": "https://peps.python.org/pep-0008/", "type": "official" }
+      ]
+    },
+    {
+      "id": "ruff",
+      "title": "ruff",
+      "subsection": "Formatting",
+      "minutes": 6,
+      "intro": "Ruff is an extremely fast, Rust-written linter and formatter that replaces Flake8, isort, Black, and more with a single tool 10-100x faster than the alternatives.",
+      "summary": [
+        "Ruff, from Astral (the team behind uv), is a Python linter and formatter written in Rust that has become the default code-quality tool in modern projects. Its appeal is consolidation plus speed: it reimplements 900+ lint rules drawn from Flake8 and its plugin ecosystem, isort's import sorting, pyupgrade's modernization fixes, and a Black-compatible formatter — all in one binary that runs 10-100x faster than the Python tools it replaces. A whole repository lints in milliseconds, which makes running it on every keystroke and on every commit painless.",
+        "There are two subcommands. `ruff check` is the linter: it reports violations and, with `--fix`, auto-corrects the safe ones (removing unused imports, sorting imports, rewriting deprecated idioms). `ruff format` is the formatter, intentionally near-identical to Black so migration is a no-op. Everything is configured in `pyproject.toml` under `[tool.ruff]`: set `line-length` and `target-version`, then under `[tool.ruff.lint]` choose your rule sets by code prefix — `E`/`W` (pycodestyle), `F` (pyflakes), `I` (isort), `B` (flake8-bugbear), `UP` (pyupgrade), and many more. You enable rules by family and `ignore` specific ones, rather than configuring a dozen separate tools.",
+        "In practice Ruff has replaced the classic Black + isort + Flake8 stack for a large share of new projects, and Astral keeps it on a rapid release cadence (the formatter tracks a yearly style guide much like Black). The standard setup is: `ruff check --fix` and `ruff format` on save and in pre-commit, then `ruff check` and `ruff format --check` as CI gates. Because both subcommands share one config file and one fast binary, the entire lint-and-format toolchain becomes a single dependency."
+      ],
+      "keyPoints": [
+        "Ruff is a Rust-based linter + formatter from Astral, 10-100x faster than Flake8/Black/isort.",
+        "It consolidates 900+ rules, import sorting, modernization fixes, and a Black-compatible formatter into one tool.",
+        "`ruff check` lints (with `--fix` to auto-correct safe issues); `ruff format` formats like Black.",
+        "Configure in `pyproject.toml` `[tool.ruff]`; pick lint rules by prefix family (`E`, `F`, `I`, `B`, `UP`, ...) under `[tool.ruff.lint]`.",
+        "It replaces the Black + isort + Flake8 stack for many projects with a single dependency and config file.",
+        "Typical workflow: `ruff check --fix` + `ruff format` on save/pre-commit, and `--check` variants as CI gates."
+      ],
+      "code": [
+        {
+          "title": "Lint and format",
+          "language": "python",
+          "code": "# install\n#   pip install ruff      (or: uv add --dev ruff)\n\n# lint, and auto-fix what is safe (unused imports, import order, ...)\n#   ruff check --fix .\n\n# format the code (Black-compatible)\n#   ruff format .\n\n# CI gates (exit non-zero on any problem, change nothing):\n#   ruff check .\n#   ruff format --check ."
+        },
+        {
+          "title": "Configure in pyproject.toml",
+          "language": "python",
+          "code": "# pyproject.toml\n[tool.ruff]\nline-length = 88\ntarget-version = \"py312\"\n\n[tool.ruff.lint]\n# Enable rule families by their code prefix:\nselect = [\"E\", \"W\", \"F\", \"I\", \"B\", \"UP\", \"SIM\"]\nignore = [\"E501\"]              # let the formatter own line length\n\n[tool.ruff.lint.per-file-ignores]\n\"tests/*\" = [\"S101\"]           # allow asserts in tests"
+        },
+        {
+          "title": "What --fix actually changes",
+          "language": "python",
+          "code": "# BEFORE — `ruff check --fix .` will clean this up:\nimport sys\nimport os          # F401: imported but unused -> removed\nfrom collections import OrderedDict   # I001: out of import order\n\ndef pick(d: dict) -> int:\n    return d.get(\"x\")          # F811/typing issues surface here too\n\n# AFTER --fix: unused `os` removed, imports sorted, and a diff printed."
+        }
+      ],
+      "resources": [
+        { "title": "Ruff documentation", "url": "https://docs.astral.sh/ruff/", "type": "official" },
+        { "title": "The Ruff Formatter", "url": "https://docs.astral.sh/ruff/formatter/", "type": "official" },
+        { "title": "astral-sh/ruff on GitHub", "url": "https://github.com/astral-sh/ruff", "type": "opensource" }
+      ],
+      "handsOn": {
+        "goal": "Set up Ruff on a messy file, auto-fix lint problems, format the code, and lock both in as CI-style checks.",
+        "steps": [
+          {
+            "title": "Install Ruff and write a messy file",
+            "explanation": "Install Ruff, then create a file with unused imports, out-of-order imports, and ragged formatting — all problems Ruff can fix or report.",
+            "python": "# terminal\n#   pip install ruff        (or: uv add --dev ruff)\n\n# messy.py\nimport os\nimport sys\nfrom math import sqrt\n\n\ndef areas( radii ):\n    return [ 3.14159*r*r for r in radii ]\n\nprint(areas([1,2,3]))",
+            "javascript": null
+          },
+          {
+            "title": "Lint and auto-fix",
+            "explanation": "Run the linter with `--fix`. Ruff removes the unused `os`/`sys`/`sqrt` imports and reorders what remains, printing what it changed. Anything it cannot safely fix is reported for you to address.",
+            "python": "# terminal\n#   ruff check --fix messy.py\n#\n# Found 3 errors (3 fixed, 0 remaining).\n#   - F401 `os` imported but unused        (removed)\n#   - F401 `sys` imported but unused       (removed)\n#   - F401 `math.sqrt` imported but unused (removed)",
+            "javascript": null
+          },
+          {
+            "title": "Format the code",
+            "explanation": "Run the formatter to fix the spacing and layout. The result is Black-compatible: clean argument spacing, normalized list literals, consistent style.",
+            "python": "# terminal\n#   ruff format messy.py\n#   1 file reformatted\n\n# messy.py is now:\ndef areas(radii):\n    return [3.14159 * r * r for r in radii]\n\n\nprint(areas([1, 2, 3]))",
+            "javascript": null
+          },
+          {
+            "title": "Add config and CI-style checks",
+            "explanation": "Pin your rules and line length in `pyproject.toml`, then run the read-only check commands that a CI pipeline would use — they exit non-zero if anything is wrong but never modify files.",
+            "python": "# pyproject.toml\n[tool.ruff]\nline-length = 88\ntarget-version = \"py312\"\n\n[tool.ruff.lint]\nselect = [\"E\", \"F\", \"I\", \"B\", \"UP\"]\n\n# terminal (what CI runs):\n#   ruff check .            # fails the build on any lint error\n#   ruff format --check .   # fails the build if anything is unformatted",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add `select = [\"UP\"]` rules and write old-style code (`Dict[str, int]`, `%`-formatting) — run `ruff check --fix` and watch it modernize to `dict[str, int]` and f-strings.",
+          "Introduce an unused variable inside a function and confirm Ruff reports `F841`.",
+          "Add a `# noqa: F401` comment to one intentional unused import and verify Ruff stops reporting just that line.",
+          "Set up `[tool.ruff.lint.per-file-ignores]` so `tests/*` may use bare `assert` (ignore `S101`) while the rest of the code may not.",
+          "Add Ruff to a `.pre-commit-config.yaml` with both the `ruff` (check) and `ruff-format` hooks so unformatted code can never be committed."
+        ]
+      }
+    },
+    {
+      "id": "testing",
+      "title": "Testing",
+      "subsection": "Testing",
+      "minutes": 5,
+      "intro": "Testing is writing code that automatically verifies your code does what you expect — your safety net for shipping and refactoring with confidence.",
+      "summary": [
+        "A test is just code that exercises your code and asserts the result is correct. Instead of manually re-checking that a function still works after every change, you write the check once and run it on demand — in seconds, automatically, every time. Tests pin down behavior: they document what a function is supposed to do, catch regressions when a change breaks something elsewhere, and let you refactor aggressively because a green test suite tells you nothing observable changed. Without tests, every change is a gamble; with them, the suite is the contract.",
+        "Tests are usually organized in a pyramid. *Unit tests* exercise one function or class in isolation and are fast and numerous — the bulk of your suite. *Integration tests* check that several pieces work together (your code plus a database, or two modules cooperating). *End-to-end tests* drive the whole system like a user would; they catch the most but are slow and brittle, so you keep them few. A healthy suite is mostly fast unit tests with a thinner layer of integration and a handful of end-to-end checks. The common structure for each test is Arrange-Act-Assert: set up inputs, call the code, assert on the output.",
+        "Python gives you two main frameworks. The standard library's `unittest` is always available and class-based. `pytest`, a third-party package, has become the community default because it uses plain `assert` statements, has powerful fixtures, and a rich plugin ecosystem. Either way you organize tests in a `tests/` directory with files named `test_*.py`, run them with one command, and wire that command into CI so every push is verified. A useful companion metric is coverage (which lines ran during the tests), but treat it as a guide, not a goal — 100% coverage of trivial assertions is worth less than fewer tests that check the behavior that matters."
+      ],
+      "keyPoints": [
+        "A test is code that runs your code and asserts the result — automated, repeatable verification instead of manual checking.",
+        "Tests catch regressions and make refactoring safe: a green suite says observable behavior is unchanged.",
+        "The test pyramid: many fast unit tests, fewer integration tests, a few slow end-to-end tests.",
+        "Structure each test as Arrange-Act-Assert: set up inputs, call the code, assert on the result.",
+        "Python's two frameworks: stdlib `unittest` (class-based) and `pytest` (the plain-`assert`, plugin-rich community default).",
+        "Coverage shows which lines ran; use it as a guide, not a target — meaningful assertions beat a high percentage."
+      ],
+      "code": [
+        {
+          "title": "Code under test plus a test",
+          "language": "python",
+          "code": "# calc.py\ndef add(a: int, b: int) -> int:\n    return a + b\n\ndef divide(a: float, b: float) -> float:\n    if b == 0:\n        raise ValueError(\"cannot divide by zero\")\n    return a / b"
+        },
+        {
+          "title": "Arrange-Act-Assert with pytest",
+          "language": "python",
+          "code": "# test_calc.py  (run with: pytest)\nimport pytest\nfrom calc import add, divide\n\ndef test_add():\n    # Arrange\n    a, b = 2, 3\n    # Act\n    result = add(a, b)\n    # Assert\n    assert result == 5\n\ndef test_divide_by_zero_raises():\n    with pytest.raises(ValueError):\n        divide(1, 0)"
+        }
+      ],
+      "resources": [
+        { "title": "unittest — Unit testing framework (stdlib)", "url": "https://docs.python.org/3/library/unittest.html", "type": "official" },
+        { "title": "Getting Started With Testing in Python — Real Python", "url": "https://realpython.com/python-testing/", "type": "article" },
+        { "title": "pytest documentation", "url": "https://docs.pytest.org/", "type": "official" }
+      ]
+    },
+    {
+      "id": "pytest",
+      "title": "pytest",
+      "subsection": "Testing",
+      "minutes": 6,
+      "intro": "pytest is the de-facto Python testing framework: plain `assert`, powerful fixtures, easy parametrization, and a huge plugin ecosystem.",
+      "summary": [
+        "pytest is the testing tool most Python projects reach for. Its first win is ergonomics: a test is just a function named `test_*` that uses plain `assert`, and pytest rewrites those asserts to print rich failure output (it shows you the actual and expected values, not a bare `AssertionError`). You drop test files into a `tests/` directory, run `pytest`, and it auto-discovers everything. No boilerplate base classes, no special assert methods — which is why teams migrate to it from `unittest`.",
+        "Its two power features are fixtures and parametrization. A *fixture* is a function decorated with `@pytest.fixture` that provides setup (a database connection, a temp directory, a sample object); a test simply lists the fixture name as a parameter and pytest injects it. Fixtures have scopes (`function`, `class`, `module`, `session`) so expensive setup runs only as often as needed, and shared fixtures live in `conftest.py` where every test can use them without importing. *Parametrization* with `@pytest.mark.parametrize` runs one test body across many inputs, each reported as a separate test — the highest-leverage way to get broad coverage from little code. pytest also ships handy builtins like the `tmp_path` fixture, `pytest.raises` for exceptions, and `monkeypatch` for patching.",
+        "Around that core is a deep plugin ecosystem: `pytest-cov` for coverage, `pytest-xdist` to run tests in parallel across CPU cores, `pytest-mock` for a cleaner mocking API, and many more. Configuration lives in `pyproject.toml` under `[tool.pytest.ini_options]`, where the recommended baseline is `--strict-markers` (typos in marker names become errors) and registering any custom markers. The standard workflow is to keep tests fast and isolated, run `pytest` locally and in CI, and let parametrization and fixtures keep the suite small but thorough."
+      ],
+      "keyPoints": [
+        "Tests are plain functions named `test_*` using bare `assert`; pytest auto-discovers and rewrites asserts for rich failures.",
+        "Fixtures (`@pytest.fixture`) provide reusable setup injected by name; scopes (`function`...`session`) control how often they run.",
+        "Put shared fixtures in `conftest.py` so any test can use them without importing.",
+        "`@pytest.mark.parametrize` runs one test across many inputs as separate cases — the best coverage-per-line lever.",
+        "Use builtins: `tmp_path` for temp files, `pytest.raises` for expected exceptions, `monkeypatch` for patching.",
+        "Configure in `pyproject.toml` `[tool.pytest.ini_options]` with `--strict-markers`; extend via plugins like pytest-cov and pytest-xdist."
+      ],
+      "code": [
+        {
+          "title": "Fixtures and parametrize",
+          "language": "python",
+          "code": "# test_shop.py  (run with: pytest -v)\nimport pytest\n\ndef apply_tax(price: float, rate: float) -> float:\n    return round(price * (1 + rate), 2)\n\n@pytest.fixture\ndef cart() -> list[float]:\n    return [10.0, 20.0, 4.99]   # shared setup, injected by name\n\ndef test_cart_total(cart):\n    assert sum(cart) == 34.99\n\n@pytest.mark.parametrize(\"price, rate, expected\", [\n    (100.0, 0.10, 110.0),\n    (50.0, 0.20, 60.0),\n    (0.0, 0.10, 0.0),\n])\ndef test_apply_tax(price, rate, expected):\n    assert apply_tax(price, rate) == expected"
+        },
+        {
+          "title": "Exceptions, tmp_path, and config",
+          "language": "python",
+          "code": "import pytest\n\ndef read_count(path) -> int:\n    return int(path.read_text())\n\ndef test_reads_a_temp_file(tmp_path):\n    f = tmp_path / \"count.txt\"     # tmp_path is a unique temp dir per test\n    f.write_text(\"42\")\n    assert read_count(f) == 42\n\ndef test_bad_content_raises(tmp_path):\n    f = tmp_path / \"bad.txt\"\n    f.write_text(\"not-a-number\")\n    with pytest.raises(ValueError):\n        read_count(f)\n\n# pyproject.toml\n#   [tool.pytest.ini_options]\n#   addopts = \"--strict-markers\"\n#   testpaths = [\"tests\"]"
+        }
+      ],
+      "resources": [
+        { "title": "pytest documentation", "url": "https://docs.pytest.org/", "type": "official" },
+        { "title": "How to use fixtures — pytest docs", "url": "https://docs.pytest.org/en/stable/how-to/fixtures.html", "type": "official" },
+        { "title": "Effective Python Testing With Pytest — Real Python", "url": "https://realpython.com/pytest-python-testing/", "type": "article" },
+        { "title": "Pytest Tutorial – How to Test Python Code (video)", "url": "https://www.youtube.com/watch?v=cHYq1MRoyI0", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "Write and run a pytest suite for a small module using fixtures, parametrization, exception testing, and the tmp_path fixture.",
+        "steps": [
+          {
+            "title": "Install pytest and write the code under test",
+            "explanation": "Install pytest, then create a tiny module. Keeping the code separate from its tests mirrors a real project layout.",
+            "python": "# terminal\n#   pip install pytest        (or: uv add --dev pytest)\n\n# inventory.py\ndef restock(counts: dict[str, int], item: str, qty: int) -> dict[str, int]:\n    if qty <= 0:\n        raise ValueError(\"qty must be positive\")\n    counts[item] = counts.get(item, 0) + qty\n    return counts",
+            "javascript": null
+          },
+          {
+            "title": "Write a fixture and a basic test",
+            "explanation": "A fixture supplies a fresh starting inventory to each test that asks for it, so tests never share mutable state. The test lists `stock` as a parameter and pytest injects the fixture's return value.",
+            "python": "# test_inventory.py\nimport pytest\nfrom inventory import restock\n\n@pytest.fixture\ndef stock() -> dict[str, int]:\n    return {\"apples\": 3}\n\ndef test_restock_adds_quantity(stock):\n    result = restock(stock, \"apples\", 2)\n    assert result[\"apples\"] == 5\n\ndef test_restock_new_item(stock):\n    result = restock(stock, \"pears\", 4)\n    assert result[\"pears\"] == 4",
+            "javascript": null
+          },
+          {
+            "title": "Parametrize and test the error path",
+            "explanation": "Parametrization runs one test body over several inputs as distinct cases. A separate test uses `pytest.raises` to assert the function rejects invalid quantities.",
+            "python": "# add to test_inventory.py\n@pytest.mark.parametrize(\"qty, expected\", [(1, 4), (5, 8), (10, 13)])\ndef test_restock_amounts(stock, qty, expected):\n    assert restock(stock, \"apples\", qty)[\"apples\"] == expected\n\n@pytest.mark.parametrize(\"bad_qty\", [0, -1, -100])\ndef test_restock_rejects_nonpositive(stock, bad_qty):\n    with pytest.raises(ValueError):\n        restock(stock, \"apples\", bad_qty)",
+            "javascript": null
+          },
+          {
+            "title": "Run the suite and read the report",
+            "explanation": "Run pytest with `-v` to see each test (and each parametrized case) listed individually. Configure pytest so the settings travel with the project.",
+            "python": "# pyproject.toml\n[tool.pytest.ini_options]\naddopts = \"-v --strict-markers\"\ntestpaths = [\"tests\", \".\"]\n\n# terminal\n#   pytest\n#\n# test_inventory.py::test_restock_adds_quantity PASSED\n# test_inventory.py::test_restock_amounts[1-4] PASSED\n# test_inventory.py::test_restock_rejects_nonpositive[0] PASSED\n# ...\n# ====== 8 passed in 0.02s ======",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `tmp_path` test that writes inventory to a file and reads it back, asserting the round-trip is correct.",
+          "Give the `stock` fixture `scope=\"module\"`, add a test that mutates it, and observe how shared state changes results — then revert to the default function scope.",
+          "Move the `stock` fixture into a `conftest.py` and confirm both test files can use it without importing.",
+          "Install `pytest-cov` and run `pytest --cov=inventory` to see line coverage; add a test for any uncovered branch.",
+          "Mark one slow test with a custom `@pytest.mark.slow`, register the marker in config, and run `pytest -m 'not slow'` to skip it."
+        ]
+      }
+    },
+    {
+      "id": "unittest-pyunit",
+      "title": "unittest / PyUnit",
+      "subsection": "Testing",
+      "minutes": 5,
+      "intro": "`unittest` (a.k.a. PyUnit) is Python's built-in, xUnit-style testing framework — always available, class-based, and zero extra dependencies.",
+      "summary": [
+        "`unittest` is Python's standard-library testing framework, sometimes called PyUnit because it follows the classic xUnit design (the same lineage as JUnit). Because it ships with Python, it needs no installation, which makes it the natural choice for the standard library itself, for environments where you cannot add dependencies, and for anyone who prefers an explicit, class-based structure. You write tests as methods on a class that subclasses `unittest.TestCase`, where each method name starts with `test`, and you make assertions with the `TestCase` helper methods: `assertEqual`, `assertTrue`, `assertRaises`, `assertIn`, and friends.",
+        "Setup and teardown are explicit. `setUp`/`tearDown` run before and after every test method, and `setUpClass`/`tearDownClass` (class methods) run once per class for expensive shared resources. You run the suite with `python -m unittest` (which discovers `test*.py` files) or target a specific module/class/method. `unittest` also includes `unittest.mock` — the standard library's mocking toolkit with `Mock`, `MagicMock`, and the `@patch` decorator — which is widely used even by projects that otherwise run pytest.",
+        "Compared to pytest, `unittest` is more verbose: you inherit from `TestCase` and call assertion methods instead of using bare `assert`, and parametrization is clunkier (you reach for `subTest` or loops). Its advantages are zero dependencies and familiarity to anyone coming from Java/C# xUnit frameworks. A practical and common middle path: write tests in `unittest` style when you want no dependencies, but run them with the `pytest` command — pytest fully supports and discovers `unittest.TestCase` classes, so you get pytest's nicer output over your `unittest` tests."
+      ],
+      "keyPoints": [
+        "`unittest` (PyUnit) is the stdlib xUnit-style framework — built in, no installation, class-based.",
+        "Tests are `test*` methods on a `unittest.TestCase` subclass, using assertion methods like `assertEqual`/`assertRaises`.",
+        "`setUp`/`tearDown` run per test; `setUpClass`/`tearDownClass` run once per class for shared setup.",
+        "Run with `python -m unittest` (auto-discovers `test*.py`) or target a specific module/class/method.",
+        "It bundles `unittest.mock` (`Mock`, `MagicMock`, `@patch`) — the standard mocking toolkit used across the ecosystem.",
+        "pytest can run `unittest.TestCase` classes directly, so you can keep zero-dependency tests but enjoy pytest's output."
+      ],
+      "code": [
+        {
+          "title": "A TestCase with setUp and assertions",
+          "language": "python",
+          "code": "# test_account.py  (run with: python -m unittest)\nimport unittest\n\nclass Account:\n    def __init__(self, balance: float = 0.0) -> None:\n        self.balance = balance\n    def withdraw(self, amount: float) -> None:\n        if amount > self.balance:\n            raise ValueError(\"insufficient funds\")\n        self.balance -= amount\n\nclass TestAccount(unittest.TestCase):\n    def setUp(self) -> None:           # runs before EACH test\n        self.acct = Account(100.0)\n\n    def test_withdraw_ok(self) -> None:\n        self.acct.withdraw(40)\n        self.assertEqual(self.acct.balance, 60.0)\n\n    def test_overdraw_raises(self) -> None:\n        with self.assertRaises(ValueError):\n            self.acct.withdraw(999)\n\nif __name__ == \"__main__\":\n    unittest.main()"
+        },
+        {
+          "title": "Mocking with unittest.mock",
+          "language": "python",
+          "code": "import unittest\nfrom unittest.mock import Mock\n\ndef get_user_name(client) -> str:\n    return client.fetch()[\"name\"].upper()\n\nclass TestUser(unittest.TestCase):\n    def test_uses_client(self) -> None:\n        # Replace the real client with a Mock that returns canned data\n        client = Mock()\n        client.fetch.return_value = {\"name\": \"ada\"}\n\n        self.assertEqual(get_user_name(client), \"ADA\")\n        client.fetch.assert_called_once()   # verify the call happened\n\nif __name__ == \"__main__\":\n    unittest.main()"
+        }
+      ],
+      "resources": [
+        { "title": "unittest — Unit testing framework", "url": "https://docs.python.org/3/library/unittest.html", "type": "official" },
+        { "title": "unittest.mock — mock object library", "url": "https://docs.python.org/3/library/unittest.mock.html", "type": "official" },
+        { "title": "How To Use unittest to Write a Test Case — DigitalOcean", "url": "https://www.digitalocean.com/community/tutorials/how-to-use-unittest-to-write-a-test-case-for-a-function-in-python", "type": "article" }
+      ]
+    },
+    {
+      "id": "doctest",
+      "title": "doctest",
+      "subsection": "Testing",
+      "minutes": 4,
+      "intro": "`doctest` runs the example interactive sessions embedded in your docstrings as tests, keeping documentation and behavior provably in sync.",
+      "summary": [
+        "`doctest` is a standard-library module that finds snippets in your docstrings that look like interactive Python sessions — lines starting with `>>>` followed by their expected output — and runs them, checking that the real output matches what the docstring claims. Its purpose is unusual and valuable: it turns your documentation into tests. If you write a usage example in a function's docstring and the function later changes, doctest fails, so your examples can never silently drift out of date. It is the lightest-weight testing tool in Python because the tests *are* the documentation.",
+        "You run doctests with `python -m doctest yourfile.py` (add `-v` for a report of every example), or you add `doctest.testmod()` under an `if __name__ == \"__main__\":` guard so running the module checks its own examples. pytest can also collect doctests with `--doctest-modules`. The matching is literal string comparison, which is doctest's main gotcha: output must match exactly, so dictionaries (unordered repr in older Pythons), floating-point results, object addresses, and exception tracebacks need care. Directives like `# doctest: +SKIP`, `+ELLIPSIS` (use `...` to match variable text), and `+NORMALIZE_WHITESPACE` handle these cases.",
+        "doctest is best used for small, deterministic, illustrative examples that double as documentation — the kind of 'here's how you call it' snippet a reader wants anyway. It is not a substitute for a real test suite: complex setup, fixtures, parametrized cases, and anything with nondeterministic output belong in pytest or unittest. The sweet spot is library code where clear, verified usage examples in the docstrings both teach users and guard against regressions, with the heavier behavioral testing living alongside in a proper test framework."
+      ],
+      "keyPoints": [
+        "doctest runs `>>>` example sessions embedded in docstrings and checks their output — documentation that tests itself.",
+        "Examples can never silently go stale: if behavior changes, the docstring example fails.",
+        "Run via `python -m doctest file.py -v`, `doctest.testmod()`, or pytest's `--doctest-modules`.",
+        "Matching is exact string comparison — watch out for floats, dict ordering, object addresses, and tracebacks.",
+        "Directives `+ELLIPSIS` (`...`), `+NORMALIZE_WHITESPACE`, and `+SKIP` handle variable or nondeterministic output.",
+        "Use it for small illustrative examples; keep complex/nondeterministic tests in pytest or unittest."
+      ],
+      "code": [
+        {
+          "title": "Docstrings that double as tests",
+          "language": "python",
+          "code": "# mathy.py  — run with: python -m doctest mathy.py -v\ndef factorial(n: int) -> int:\n    \"\"\"Return n! for a non-negative integer.\n\n    >>> factorial(0)\n    1\n    >>> factorial(5)\n    120\n    >>> factorial(-1)\n    Traceback (most recent call last):\n        ...\n    ValueError: n must be non-negative\n    \"\"\"\n    if n < 0:\n        raise ValueError(\"n must be non-negative\")\n    result = 1\n    for i in range(2, n + 1):\n        result *= i\n    return result\n\n\nif __name__ == \"__main__\":\n    import doctest\n    doctest.testmod()   # running the file checks its own examples"
+        },
+        {
+          "title": "Handling variable output with ELLIPSIS",
+          "language": "python",
+          "code": "def make_user(name: str) -> dict:\n    \"\"\"Build a user record.\n\n    Use +ELLIPSIS so the variable id can be matched with ...\n\n    >>> make_user(\"ada\")  # doctest: +ELLIPSIS\n    {'name': 'ada', 'id': ...}\n    \"\"\"\n    import random\n    return {\"name\": name, \"id\": random.randint(1, 9999)}"
+        }
+      ],
+      "resources": [
+        { "title": "doctest — Test interactive Python examples", "url": "https://docs.python.org/3/library/doctest.html", "type": "official" },
+        { "title": "How To Write Doctests in Python — DigitalOcean", "url": "https://www.digitalocean.com/community/tutorials/how-to-write-doctests-in-python", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Add doctest examples to a function, run them, watch one fail when behavior drifts, fix it, and handle nondeterministic output with a directive.",
+        "steps": [
+          {
+            "title": "Write a function with docstring examples",
+            "explanation": "Add `>>>` examples to a docstring showing exactly how the function is called and what it returns. These examples are both documentation and tests.",
+            "python": "# strings.py\ndef titlecase(text: str) -> str:\n    \"\"\"Capitalize each word in a string.\n\n    >>> titlecase(\"hello world\")\n    'Hello World'\n    >>> titlecase(\"PYTHON\")\n    'Python'\n    \"\"\"\n    return text.title()",
+            "javascript": null
+          },
+          {
+            "title": "Run the doctests",
+            "explanation": "Run doctest on the file with `-v` to see each example checked. With everything matching, doctest reports all examples passed.",
+            "python": "# terminal\n#   python -m doctest strings.py -v\n#\n# Trying:\n#     titlecase(\"hello world\")\n# Expecting:\n#     'Hello World'\n# ok\n# ...\n# 2 passed and 0 failed.",
+            "javascript": null
+          },
+          {
+            "title": "Break behavior and watch the example fail",
+            "explanation": "Change the implementation so it no longer matches the documented example. doctest fails loudly, showing expected vs actual — proving your docs and code stay in sync.",
+            "python": "# strings.py (intentionally wrong)\ndef titlecase(text: str) -> str:\n    \"\"\"\n    >>> titlecase(\"hello world\")\n    'Hello World'\n    \"\"\"\n    return text.upper()   # BUG: returns 'HELLO WORLD'\n\n# terminal: python -m doctest strings.py  ->\n# Failed example:\n#     titlecase(\"hello world\")\n# Expected:\n#     'Hello World'\n# Got:\n#     'HELLO WORLD'",
+            "javascript": null
+          },
+          {
+            "title": "Handle nondeterministic output",
+            "explanation": "Fix the bug, then add a function whose output varies (a timestamp/random id) and use the `+ELLIPSIS` directive with `...` to match the variable part so the example stays stable.",
+            "python": "# strings.py (fixed) + a variable-output example\ndef titlecase(text: str) -> str:\n    \"\"\"\n    >>> titlecase(\"hello world\")\n    'Hello World'\n    \"\"\"\n    return text.title()\n\ndef token(prefix: str) -> str:\n    \"\"\"\n    >>> token(\"id\")  # doctest: +ELLIPSIS\n    'id-...'\n    \"\"\"\n    import random\n    return f\"{prefix}-{random.randint(1000, 9999)}\"\n\n# python -m doctest strings.py  -> all examples pass again",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a doctest that documents an exception with `Traceback (most recent call last):` and `...` then the error line, and confirm it passes.",
+          "Add `doctest.testmod()` under `if __name__ == '__main__':` and run the file directly to check its own examples.",
+          "Write an example whose output is a dict with two keys and add `# doctest: +NORMALIZE_WHITESPACE` to make spacing-insensitive.",
+          "Run your doctests through pytest with `pytest --doctest-modules` and confirm they appear as collected tests.",
+          "Add a float-returning function and observe how exact-match comparison can fail; round the result in the example to make it deterministic."
+        ]
+      }
+    },
+    {
+      "id": "tox",
+      "title": "tox",
+      "subsection": "Testing",
+      "minutes": 5,
+      "intro": "tox automates testing your project against multiple Python versions and dependency sets in isolated virtual environments, with one command.",
+      "summary": [
+        "tox is a test automation and environment-management tool. Its core job: take your project, build a clean, isolated virtual environment, install your package and its test dependencies into it, and run your test command — and do that across many configurations at once. The classic use case is a library that must support several Python versions: tox can create a `py310`, `py311`, `py312`, and `py313` environment, install into each, and run `pytest` in all of them with a single `tox` invocation, so you catch version-specific breakage before your users do. Because each environment is fresh, it also verifies your package actually installs correctly, not just that it runs from your working tree.",
+        "Configuration historically lives in `tox.ini`, and tox 4 also supports `pyproject.toml` under `[tool.tox]`. You declare an `env_list` (the environments to run) and a base test environment with its `deps` and `commands`. tox's factor syntax expands compactly: `py3{10,11,12}-django{42,50}` generates the full matrix of Python-by-Django combinations. Useful options include `skip_missing_interpreters = true` (don't fail on Python versions you don't have installed locally) and defining extra non-test environments for `lint`, `type`, or `docs` so one tool runs your whole quality pipeline.",
+        "tox shines in CI and for package maintainers; it is the standard way to prove a published package works across the versions it claims to support, and CI matrices often just call `tox`. A close alternative, `nox`, does the same job but configures environments in a Python file (`noxfile.py`) instead of INI/TOML, which some prefer for its flexibility. For an application (rather than a distributable library) targeting a single Python version, tox is often overkill — a plain `pytest` run is enough. Reach for tox when 'works on my machine and my Python version' is not a strong enough guarantee."
+      ],
+      "keyPoints": [
+        "tox builds isolated virtualenvs, installs your package + test deps, and runs your test command in each — one command, many configs.",
+        "Its headline use: test a library across multiple Python versions (`py310`...`py313`) to catch version-specific bugs.",
+        "Because it installs your package fresh, it verifies packaging/installation, not just that the code runs in place.",
+        "Configure in `tox.ini` or (tox 4) `pyproject.toml`; factor syntax `py3{10,11,12}-django{42,50}` expands a full matrix.",
+        "Add non-test environments (`lint`, `type`, `docs`) so one `tox` run drives your whole quality pipeline; `nox` is the Python-config alternative.",
+        "tox is essential for distributable libraries and CI matrices; for a single-version application, a plain `pytest` run is usually enough."
+      ],
+      "code": [
+        {
+          "title": "tox.ini for a multi-version library",
+          "language": "python",
+          "code": "# tox.ini\n[tox]\nenv_list = py310, py311, py312, py313, lint, type\nskip_missing_interpreters = true\n\n[testenv]\ndeps =\n    pytest\n    pytest-cov\ncommands = pytest {posargs}\n\n[testenv:lint]\ndeps = ruff\ncommands = ruff check .\n\n[testenv:type]\ndeps = mypy\ncommands = mypy src/"
+        },
+        {
+          "title": "Equivalent config in pyproject.toml (tox 4)",
+          "language": "python",
+          "code": "# pyproject.toml\n[tool.tox]\nenv_list = [\"py310\", \"py311\", \"py312\", \"py313\"]\nskip_missing_interpreters = true\n\n[tool.tox.env_run_base]\ndeps = [\"pytest\"]\ncommands = [[\"pytest\"]]\n\n# run everything:        tox\n# run one environment:   tox -e py312\n# run in parallel:       tox -p"
+        }
+      ],
+      "resources": [
+        { "title": "tox documentation", "url": "https://tox.wiki/en/latest/", "type": "official" },
+        { "title": "tox configuration reference", "url": "https://tox.wiki/en/latest/config.html", "type": "official" }
+      ],
+      "handsOn": {
+        "goal": "Configure tox for a tiny package, run its tests in an isolated environment, then add lint and type-check environments to one quality pipeline.",
+        "steps": [
+          {
+            "title": "Create a minimal installable package",
+            "explanation": "tox installs your package into each environment, so it needs a `pyproject.toml` with build metadata. Create a small package plus a test.",
+            "python": "# pyproject.toml\n[project]\nname = \"greeter\"\nversion = \"0.1.0\"\nrequires-python = \">=3.10\"\n\n[build-system]\nrequires = [\"hatchling\"]\nbuild-backend = \"hatchling.build\"\n\n# src/greeter/__init__.py\ndef greet(name: str) -> str:\n    return f\"Hello, {name}!\"\n\n# tests/test_greet.py\nfrom greeter import greet\ndef test_greet():\n    assert greet(\"Ada\") == \"Hello, Ada!\"",
+            "javascript": null
+          },
+          {
+            "title": "Add a tox.ini and run it",
+            "explanation": "Declare the environments and the test command. Running `tox` builds a clean venv per Python version found, installs the package, and runs pytest in each.",
+            "python": "# tox.ini\n[tox]\nenv_list = py311, py312\nskip_missing_interpreters = true\n\n[testenv]\ndeps = pytest\ncommands = pytest\n\n# terminal\n#   pip install tox\n#   tox\n#   ...\n#   py311: OK\n#   py312: OK\n#   congratulations :) (2 passed)",
+            "javascript": null
+          },
+          {
+            "title": "Add lint and type environments",
+            "explanation": "Extra `[testenv:NAME]` sections define non-test jobs. Now `tox` runs tests across versions AND lints AND type-checks — the whole quality gate in one command.",
+            "python": "# add to tox.ini\n[tox]\nenv_list = py311, py312, lint, type\n\n[testenv:lint]\ndeps = ruff\ncommands = ruff check .\n\n[testenv:type]\ndeps = mypy\ncommands = mypy src/",
+            "javascript": null
+          },
+          {
+            "title": "Target and parallelize environments",
+            "explanation": "Run a single environment by name with `-e`, and run independent environments in parallel with `-p` to cut wall-clock time in CI.",
+            "python": "# terminal\n#   tox -e py312        # just one Python version\n#   tox -e lint         # just the linter\n#   tox -p              # run all environments in parallel\n#   tox -e py312 -- -k greet   # pass args after -- to pytest",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add `py310` and `py313` to `env_list` and run `tox` — note that `skip_missing_interpreters` quietly skips versions you don't have installed.",
+          "Use factor syntax: change `env_list` to `py3{11,12,13}` and confirm tox expands it into three environments.",
+          "Add a `docs` environment that installs sphinx and runs `sphinx-build`, so docs build in the same pipeline.",
+          "Break the test, run `tox`, and confirm the offending environment reports failure while others may still pass.",
+          "Compare with nox: write an equivalent `noxfile.py` with a `@nox.session` that runs pytest, and run `nox`."
+        ]
+      }
+    },
+    {
+      "id": "sphinx",
+      "title": "Sphinx",
+      "subsection": "Documentation",
+      "minutes": 5,
+      "intro": "Sphinx is Python's standard documentation generator: it turns reStructuredText or Markdown plus your docstrings into polished HTML, PDF, and more.",
+      "summary": [
+        "Sphinx is the de-facto tool for documenting Python projects — it produces the docs you read for Python itself, and for most major libraries. You write content in reStructuredText (`.rst`) or, increasingly, in Markdown via the MyST parser, and Sphinx renders it to multiple output formats (HTML, PDF via LaTeX, ePub, man pages) from one source. Its real superpower for code projects is `sphinx.ext.autodoc`: it imports your modules, reads the docstrings off your functions, classes, and methods, and generates API reference pages automatically — so your reference documentation is extracted from the source of truth rather than maintained by hand.",
+        "A Sphinx project centers on a `conf.py` configuration file (created by the `sphinx-quickstart` scaffolder) that sets the project metadata, enabled extensions, and HTML theme. You build docs with `sphinx-build -b html source/ build/` (or the generated `make html`). The ecosystem is large: themes like `furo` and `sphinx_rtd_theme` give a modern look, `autodoc` plus `napoleon` lets you write readable Google- or NumPy-style docstrings, `intersphinx` cross-links to other projects' docs, and `autosummary` builds summary tables of your API. Many open-source projects host the resulting HTML for free on Read the Docs, which builds Sphinx docs automatically on each push.",
+        "The main alternative is MkDocs (with the Material theme), which is Markdown-only and simpler to set up; it is popular for project/handbook-style docs. Sphinx wins when you need rich autodoc-driven API references, multiple output formats, or cross-project linking — i.e. serious library documentation. A practical 2026 setup is Sphinx with MyST so authors write Markdown, plus autodoc/napoleon for API docs (autodoc still parses reStructuredText, so API directives use an `eval-rst` block or `sphinx-autodoc2`), themed with furo and published on Read the Docs."
+      ],
+      "keyPoints": [
+        "Sphinx is the standard Python documentation generator — it builds the official Python and library docs.",
+        "Author in reStructuredText or Markdown (via the MyST parser); render to HTML, PDF, ePub, and more from one source.",
+        "`sphinx.ext.autodoc` extracts API reference pages directly from your docstrings, keeping docs in sync with code.",
+        "A project has a `conf.py` (from `sphinx-quickstart`); build with `sphinx-build -b html source build` or `make html`.",
+        "Key extensions: `napoleon` (Google/NumPy docstrings), `intersphinx` (cross-project links), `autosummary`; themes like furo.",
+        "Host free on Read the Docs; MkDocs+Material is the simpler Markdown-only alternative when you don't need autodoc."
+      ],
+      "code": [
+        {
+          "title": "Scaffold and build",
+          "language": "python",
+          "code": "# install and scaffold a docs project\n#   pip install sphinx furo myst-parser\n#   sphinx-quickstart docs      # creates docs/conf.py, index.rst, etc.\n\n# build HTML\n#   sphinx-build -b html docs/ docs/_build/html\n# or, with the generated Makefile:\n#   cd docs && make html\n\n# open docs/_build/html/index.html in a browser"
+        },
+        {
+          "title": "conf.py with autodoc, napoleon, and MyST",
+          "language": "python",
+          "code": "# docs/conf.py\nproject = \"Greeter\"\nauthor = \"Ada Lovelace\"\nrelease = \"0.1.0\"\n\nextensions = [\n    \"sphinx.ext.autodoc\",     # pull docs from docstrings\n    \"sphinx.ext.napoleon\",    # support Google/NumPy-style docstrings\n    \"sphinx.ext.intersphinx\", # cross-link other projects' docs\n    \"myst_parser\",            # author pages in Markdown\n]\n\nhtml_theme = \"furo\"\nintersphinx_mapping = {\"python\": (\"https://docs.python.org/3\", None)}"
+        },
+        {
+          "title": "A docstring autodoc turns into reference docs",
+          "language": "python",
+          "code": "# greeter.py — napoleon understands this Google-style docstring\ndef greet(name: str, *, loud: bool = False) -> str:\n    \"\"\"Build a greeting for a person.\n\n    Args:\n        name: The person's name.\n        loud: If True, shout the greeting.\n\n    Returns:\n        The formatted greeting string.\n    \"\"\"\n    msg = f\"Hello, {name}!\"\n    return msg.upper() if loud else msg\n\n# In a .rst page, `.. autofunction:: greeter.greet` renders the\n# signature + this docstring as polished API reference."
+        }
+      ],
+      "resources": [
+        { "title": "Sphinx documentation", "url": "https://www.sphinx-doc.org/en/master/", "type": "official" },
+        { "title": "sphinx.ext.autodoc — include docs from docstrings", "url": "https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html", "type": "official" },
+        { "title": "MyST — Markdown for Sphinx", "url": "https://myst-parser.readthedocs.io/en/latest/", "type": "official" }
+      ]
+    }
+  ]
+}

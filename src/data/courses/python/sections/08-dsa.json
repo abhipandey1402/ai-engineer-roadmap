@@ -1,0 +1,489 @@
+{
+  "id": "dsa",
+  "title": "Data Structures & Algorithms",
+  "description": "Core data structures and algorithms in Python.",
+  "topics": [
+    {
+      "id": "dsa-overview",
+      "title": "Data Structures & Algorithms Overview",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "A data structure is how you organize data in memory; an algorithm is the recipe that operates on it — together they decide whether your program is fast or slow.",
+      "summary": [
+        "A data structure is a named way of storing and organizing data so it can be used efficiently; an algorithm is a finite sequence of steps that transforms input into output. The two are inseparable: the data structure you pick determines which algorithms are cheap and which are expensive. Looking up a value by key is instant in a `dict` but linear in a `list`; appending is fast on a `list` but inserting at the front is fast only on a `collections.deque`. Most of the craft of writing efficient code is choosing the structure whose strengths match the operations you perform most.",
+        "We compare algorithms with Big-O notation, which describes how running time (or memory) grows as the input size `n` grows, ignoring constant factors and hardware. The common classes, from best to worst, are O(1) constant, O(log n) logarithmic (binary search), O(n) linear (a single scan), O(n log n) (good sorting), O(n^2) quadratic (nested loops), and O(2^n) or O(n!) exponential (brute-force combinatorics). The point is not to memorize formulas but to recognize that an O(n^2) approach that is fine for 100 items will hang on 100,000, while an O(log n) approach barely notices the difference.",
+        "Python's strength here is that the most important structures are built in and battle-tested: `list`, `tuple`, `dict`, and `set` cover the vast majority of real work, and the standard library adds `collections.deque`, `collections.Counter`, `heapq`, `bisect`, and `array` for the rest. You rarely implement a hash table or a balanced tree from scratch in production — you reach for the built-in. But understanding how they work under the hood (why `dict` lookup is O(1), why `list.insert(0, x)` is O(n)) is what lets you choose correctly and reason about performance. This section builds that intuition by both using the built-ins and hand-rolling the classics."
+      ],
+      "keyPoints": [
+        "Data structure = how data is organized; algorithm = the steps that operate on it; the choice of one constrains the cost of the other.",
+        "Big-O describes growth as input size grows: O(1) < O(log n) < O(n) < O(n log n) < O(n^2) < O(2^n).",
+        "An O(n^2) solution fine for 100 items can be unusable at 100,000 — complexity matters most at scale.",
+        "Python's built-in `list`, `dict`, `set`, and `tuple` cover most needs; `collections`, `heapq`, and `bisect` cover the rest.",
+        "`dict`/`set` give O(1) average lookup; `list` indexing is O(1) but membership tests and front-inserts are O(n).",
+        "You usually use built-ins rather than implement structures yourself, but knowing their internals is what lets you pick the right one."
+      ],
+      "code": [
+        {
+          "title": "The same task, three complexities",
+          "language": "python",
+          "code": "# Membership test: O(n) in a list, O(1) average in a set\nnums_list = list(range(1_000_000))\nnums_set = set(nums_list)\n\n999_999 in nums_list   # scans up to a million items  -> O(n)\n999_999 in nums_set    # one hash lookup             -> O(1)\n\n# Inserting at the front: O(n) for list, O(1) for deque\nfrom collections import deque\nq = deque(range(1_000_000))\nq.appendleft(-1)       # O(1) — deque is a doubly linked block list\n# [0, 1, 2].insert(0, -1) would shift every element  -> O(n)"
+        },
+        {
+          "title": "Timing two approaches to feel Big-O",
+          "language": "python",
+          "code": "import timeit\n\n# Build a frequency count two ways and compare\nsetup = \"data = list(range(20000))\"\n\nlist_way = \"\"\"\nseen = []\nfor x in data:\n    if x not in seen:   # O(n) membership each iteration -> O(n^2) total\n        seen.append(x)\n\"\"\"\n\nset_way = \"\"\"\nseen = set()\nfor x in data:\n    seen.add(x)         # O(1) membership/add            -> O(n) total\n\"\"\"\n\nprint(\"list:\", timeit.timeit(list_way, setup, number=1))\nprint(\"set: \", timeit.timeit(set_way, setup, number=1))\n# The set version is dramatically faster as the data grows."
+        }
+      ],
+      "resources": [
+        { "title": "Python Tutorial — Data Structures (official docs)", "url": "https://docs.python.org/3/tutorial/datastructures.html", "type": "official" },
+        { "title": "TimeComplexity of Python operations (official wiki)", "url": "https://wiki.python.org/moin/TimeComplexity", "type": "official" },
+        { "title": "Roadmap.sh — Data Structures & Algorithms Roadmap", "url": "https://roadmap.sh/datastructures-and-algorithms", "type": "article" },
+        { "title": "Learn Data Structures and Algorithms (Programiz)", "url": "https://www.programiz.com/dsa", "type": "article" }
+      ]
+    },
+    {
+      "id": "arrays-and-linked-lists",
+      "title": "Arrays & Linked Lists",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Arrays store elements in one contiguous block for instant indexing; linked lists scatter nodes that point to one another for cheap insertion — and Python's `list` is really a dynamic array.",
+      "summary": [
+        "An array stores its elements side by side in one contiguous block of memory. Because every element is the same size and the block starts at a known address, the location of element `i` is computed with simple arithmetic, so indexing is O(1) — instant, regardless of size. The trade-off is that inserting or deleting anywhere except the end forces every later element to shift over, which is O(n). Python's built-in `list` is a dynamic array: it over-allocates spare capacity so that `append` is amortized O(1), but `insert(0, x)` and `pop(0)` are O(n) because everything must slide. For a truly compact array of one numeric type, the `array` module stores raw C values instead of Python objects.",
+        "A linked list takes the opposite approach: each element lives in its own `Node` object that holds a value plus a reference to the next node (a singly linked list) or to both neighbors (a doubly linked list). Nodes can sit anywhere in memory, so inserting or removing a node is O(1) once you hold a reference to the spot — you just rewire a couple of pointers, no shifting. The cost is that you lose random access: reaching the i-th element means walking the chain from the head, which is O(n), and each node also pays the memory overhead of storing pointers and being a separate object.",
+        "The practical takeaway for Python programmers is that you almost never write your own linked list in application code — `list` covers random-access needs and `collections.deque` (a doubly linked list of blocks) covers fast appends and pops at both ends in O(1). You implement linked lists to learn pointer manipulation and because the patterns (reversing a list, detecting a cycle, merging two sorted lists, finding the middle with fast/slow pointers) are classic interview and algorithm exercises. Knowing when contiguous storage beats pointer-chasing — and that real CPUs love the cache-friendly contiguous layout of arrays — is the durable lesson."
+      ],
+      "keyPoints": [
+        "Arrays use contiguous memory: O(1) indexing by position, but O(n) to insert/delete anywhere but the end.",
+        "Python's `list` is a dynamic array — `append` is amortized O(1), while `insert(0, x)` and `pop(0)` are O(n).",
+        "Linked lists store value-plus-pointer nodes: O(1) insert/delete at a known node, but O(n) to reach the i-th element.",
+        "Use `collections.deque` for O(1) appends/pops at both ends instead of hand-writing a linked list.",
+        "The `array` module gives a compact, single-type C array when you need to save memory over a `list` of ints/floats.",
+        "Arrays are cache-friendly (contiguous) and usually win in practice unless you need many mid-sequence insertions."
+      ],
+      "code": [
+        {
+          "title": "Python list (dynamic array) vs the array module",
+          "language": "python",
+          "code": "# list: a general-purpose dynamic array of Python objects\nnums = [10, 20, 30]\nnums[1]            # 20  -> O(1) random access\nnums.append(40)    # amortized O(1)\nnums.insert(0, 5)  # O(n): shifts 10, 20, 30, 40 right\nnums.pop(0)        # O(n): shifts everything left again\n\n# array: a compact, single C-type array (here 'i' = signed int)\nfrom array import array\ncompact = array(\"i\", [1, 2, 3])\ncompact.append(4)\nprint(compact)            # array('i', [1, 2, 3, 4])\nprint(compact.itemsize)   # bytes per element (4 for 'i')"
+        },
+        {
+          "title": "A singly linked list with a few classic operations",
+          "language": "python",
+          "code": "from dataclasses import dataclass\nfrom typing import Optional\n\n@dataclass\nclass Node:\n    value: int\n    next: Optional[\"Node\"] = None\n\nclass LinkedList:\n    def __init__(self) -> None:\n        self.head: Optional[Node] = None\n\n    def push_front(self, value: int) -> None:   # O(1) insert at head\n        self.head = Node(value, self.head)\n\n    def __iter__(self):                          # walk the chain: O(n)\n        node = self.head\n        while node is not None:\n            yield node.value\n            node = node.next\n\n    def reverse(self) -> None:                   # in-place pointer rewiring\n        prev, cur = None, self.head\n        while cur is not None:\n            cur.next, prev, cur = prev, cur, cur.next\n        self.head = prev\n\nll = LinkedList()\nfor x in (3, 2, 1):\n    ll.push_front(x)\nprint(list(ll))     # [1, 2, 3]\nll.reverse()\nprint(list(ll))     # [3, 2, 1]"
+        }
+      ],
+      "resources": [
+        { "title": "array — Efficient arrays of numeric values (official docs)", "url": "https://docs.python.org/3/library/array.html", "type": "official" },
+        { "title": "Python Tutorial — More on Lists (official docs)", "url": "https://docs.python.org/3/tutorial/datastructures.html", "type": "official" },
+        { "title": "Linked Lists in Python: An Introduction (Real Python)", "url": "https://realpython.com/linked-lists-python/", "type": "article" },
+        { "title": "Linked List Data Structure | Illustrated Data Structures", "url": "https://www.youtube.com/watch?v=odW9FU8jPRQ", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "Build a singly linked list class, implement the classic reverse and find-middle operations, and measure why front-insertion is O(1) on a linked list but O(n) on a Python list.",
+        "steps": [
+          {
+            "title": "Define the Node and list skeleton",
+            "explanation": "Each node holds a value and a reference to the next node. The list itself only needs to remember its `head`; everything else is reachable by following `next` pointers. Using a dataclass keeps the node tiny and readable.",
+            "python": "# linked_list.py\nfrom dataclasses import dataclass\nfrom typing import Optional\n\n@dataclass\nclass Node:\n    value: int\n    next: Optional[\"Node\"] = None\n\nclass LinkedList:\n    def __init__(self) -> None:\n        self.head: Optional[Node] = None\n\n    def push_front(self, value: int) -> None:\n        # New node points at the old head, then becomes the head -> O(1)\n        self.head = Node(value, self.head)\n\n    def __iter__(self):\n        node = self.head\n        while node is not None:\n            yield node.value\n            node = node.next\n\nll = LinkedList()\nfor x in (3, 2, 1):\n    ll.push_front(x)\nprint(list(ll))   # [1, 2, 3]",
+            "javascript": null
+          },
+          {
+            "title": "Reverse the list in place",
+            "explanation": "Reversal is the canonical pointer exercise: walk the chain once, flipping each node's `next` to point backwards. The three-way tuple assignment captures `cur.next` before you overwrite it, so no temporary variable is needed. It runs in O(n) time and O(1) extra space.",
+            "python": "def reverse(self) -> None:\n    prev, cur = None, self.head\n    while cur is not None:\n        cur.next, prev, cur = prev, cur, cur.next\n    self.head = prev\n\nLinkedList.reverse = reverse   # attach to the class for this lab\n\nll.reverse()\nprint(list(ll))   # [3, 2, 1]",
+            "javascript": null
+          },
+          {
+            "title": "Find the middle with fast/slow pointers",
+            "explanation": "Move one pointer one step at a time and another two steps at a time. When the fast pointer reaches the end, the slow pointer sits at the middle — a single O(n) pass with no length counting. This 'tortoise and hare' pattern also detects cycles.",
+            "python": "def middle(self) -> Optional[int]:\n    slow = fast = self.head\n    while fast is not None and fast.next is not None:\n        slow = slow.next\n        fast = fast.next.next\n    return slow.value if slow else None\n\nLinkedList.middle = middle\n\nnums = LinkedList()\nfor x in (5, 4, 3, 2, 1):\n    nums.push_front(x)      # list is 1,2,3,4,5\nprint(nums.middle())        # 3",
+            "javascript": null
+          },
+          {
+            "title": "Measure front-insertion: linked list vs Python list",
+            "explanation": "Inserting at the front is O(1) on a linked list (just rewire the head) but O(n) on a Python list (every element shifts right). Timing both at increasing sizes makes the difference impossible to ignore.",
+            "python": "import timeit\n\nfor n in (10_000, 40_000):\n    ll_time = timeit.timeit(\n        \"ll.push_front(0)\",\n        setup=f\"from linked_list import LinkedList; ll = LinkedList()\\n\"\n              f\"[ll.push_front(i) for i in range({n})]\",\n        number=2000,\n    )\n    list_time = timeit.timeit(\n        \"data.insert(0, 0)\",\n        setup=f\"data = list(range({n}))\",\n        number=2000,\n    )\n    print(f\"n={n:>6}  linked={ll_time:.4f}s  list.insert(0)={list_time:.4f}s\")",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add an `append(value)` method that inserts at the tail; note it is O(n) unless you also track a `tail` pointer — add the tail pointer and make it O(1).",
+          "Write `find(value)` that returns the 0-based index of the first matching node, or -1, and explain why it is O(n).",
+          "Implement `merge_sorted(a, b)` that merges two sorted linked lists into one sorted list without creating new node values.",
+          "Add cycle detection: link the tail back to the middle node, then use fast/slow pointers to return True when a cycle exists.",
+          "Re-run the timing comparison but compare `push_front` against `collections.deque.appendleft` — both should stay flat as n grows."
+        ]
+      }
+    },
+    {
+      "id": "heaps-stacks-and-queues",
+      "title": "Heaps, Stacks & Queues",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Stacks are last-in-first-out, queues are first-in-first-out, and heaps always hand you the smallest (or largest) item next — three ordering disciplines that power countless algorithms.",
+      "summary": [
+        "A stack is a LIFO (last-in, first-out) structure: the last item pushed is the first one popped, like a stack of plates. In Python you simply use a `list` — `append` to push and `pop()` (no index) to pop, both O(1). Stacks model anything with nesting or backtracking: the call stack of function invocations, matching brackets in a parser, undo history, and depth-first search. A queue is a FIFO (first-in, first-out) structure: items leave in the order they arrived, like a line at a checkout. Never use `list.pop(0)` for a queue because it is O(n); reach for `collections.deque`, whose `append` and `popleft` are both O(1).",
+        "A heap is a tree-based priority structure where the parent always compares favorably to its children, so the extreme element is always at the root and retrievable in O(1), while inserting and removing are O(log n). Python's `heapq` module implements a binary min-heap directly on top of an ordinary `list`: `heapq.heappush` and `heapq.heappop` maintain the invariant, `heapq.heapify` turns an existing list into a heap in O(n), and `heapq.nlargest`/`nsmallest` are handy shortcuts. Because `heapq` is a min-heap, the smallest element pops first; to get a max-heap you push negated values, and to build a priority queue you push `(priority, item)` tuples so they sort by priority.",
+        "These three structures show up constantly in real algorithms. Heaps power Dijkstra's shortest-path search, the merge step of external sorting, scheduling the next task by priority, and 'top-k' queries (the n largest log lines, the k closest points). Stacks and queues drive graph and tree traversal — a stack gives depth-first order, a queue gives breadth-first order. For thread-safe producer/consumer pipelines, the `queue` module wraps these same ideas with locking via `Queue`, `LifoQueue`, and `PriorityQueue`, but for single-threaded algorithm code, `list` and `deque` and `heapq` are the fast, idiomatic choices."
+      ],
+      "keyPoints": [
+        "Stack = LIFO: use a `list` with `append` to push and `pop()` to pop, both O(1); models recursion, backtracking, DFS.",
+        "Queue = FIFO: use `collections.deque` with `append` and `popleft` (O(1)); never `list.pop(0)` (O(n)).",
+        "Heap = priority structure: `heapq` keeps the smallest at index 0 in O(1), with O(log n) push/pop.",
+        "`heapq` is always a min-heap; push `-x` for a max-heap, and push `(priority, item)` tuples for a priority queue.",
+        "`heapq.heapify(list)` builds a heap in O(n); `nlargest`/`nsmallest` answer top-k queries directly.",
+        "Use `queue.Queue`/`LifoQueue`/`PriorityQueue` only when you need thread-safe locking across threads."
+      ],
+      "code": [
+        {
+          "title": "Stack and queue the idiomatic way",
+          "language": "python",
+          "code": "# Stack (LIFO) — a plain list is perfect\nstack = []\nstack.append(\"a\")      # push\nstack.append(\"b\")\nprint(stack.pop())     # 'b'  (last in, first out)  -> O(1)\n\n# Queue (FIFO) — use deque, NOT list.pop(0)\nfrom collections import deque\nqueue = deque()\nqueue.append(\"first\")  # enqueue\nqueue.append(\"second\")\nprint(queue.popleft()) # 'first' (first in, first out) -> O(1)\n\n# Balanced-brackets check: the classic stack use case\ndef balanced(s: str) -> bool:\n    pairs = {\")\": \"(\", \"]\": \"[\", \"}\": \"{\"}\n    stack = []\n    for ch in s:\n        if ch in \"([{\":\n            stack.append(ch)\n        elif ch in pairs:\n            if not stack or stack.pop() != pairs[ch]:\n                return False\n    return not stack\n\nprint(balanced(\"([]{})\"))  # True\nprint(balanced(\"([)]\"))    # False"
+        },
+        {
+          "title": "Heaps with heapq: min-heap, max-heap, and priority queue",
+          "language": "python",
+          "code": "import heapq\n\n# A heap is just a list maintained with heapq functions\nnums = [5, 1, 8, 3, 2]\nheapq.heapify(nums)         # O(n) -> nums[0] is now the smallest\nprint(nums[0])              # 1   (peek the minimum in O(1))\nheapq.heappush(nums, 0)     # O(log n)\nprint(heapq.heappop(nums))  # 0   (pop the smallest)\n\n# Top-k without a full sort\nprint(heapq.nlargest(3, [5, 1, 8, 3, 2]))   # [8, 5, 3]\n\n# Max-heap: negate on the way in, negate on the way out\nmax_heap = []\nfor x in (5, 1, 8, 3):\n    heapq.heappush(max_heap, -x)\nprint(-heapq.heappop(max_heap))  # 8\n\n# Priority queue: (priority, item) tuples sort by priority\npq = []\nheapq.heappush(pq, (2, \"clean inbox\"))\nheapq.heappush(pq, (1, \"fix outage\"))\nheapq.heappush(pq, (3, \"write docs\"))\nprint(heapq.heappop(pq))    # (1, 'fix outage') — highest priority first"
+        }
+      ],
+      "resources": [
+        { "title": "heapq — Heap queue algorithm (official docs)", "url": "https://docs.python.org/3/library/heapq.html", "type": "official" },
+        { "title": "collections.deque (official docs)", "url": "https://docs.python.org/3/library/collections.html#collections.deque", "type": "official" },
+        { "title": "queue — A synchronized queue class (official docs)", "url": "https://docs.python.org/3/library/queue.html", "type": "official" },
+        { "title": "Python Stacks, Queues, and Priority Queues in Practice (Real Python)", "url": "https://realpython.com/queue-in-python/", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Use a stack to evaluate bracket nesting, build a FIFO queue with deque, and use a heap to run a priority task scheduler and answer a top-k query.",
+        "steps": [
+          {
+            "title": "A stack that validates nested brackets",
+            "explanation": "Push every opening bracket; on a closing bracket, the top of the stack must be its matching opener. If the stack is empty or mismatched, the string is unbalanced; if anything is left over at the end, an opener was never closed. This is the textbook stack application.",
+            "python": "# stack_queue_heap.py\ndef balanced(s: str) -> bool:\n    pairs = {\")\": \"(\", \"]\": \"[\", \"}\": \"{\"}\n    stack = []\n    for ch in s:\n        if ch in \"([{\":\n            stack.append(ch)\n        elif ch in pairs:\n            if not stack or stack.pop() != pairs[ch]:\n                return False\n    return not stack\n\nfor test in [\"([]{})\", \"([)]\", \"(((\", \"\"]:\n    print(f\"{test!r:10} -> {balanced(test)}\")",
+            "javascript": null
+          },
+          {
+            "title": "A FIFO queue with deque",
+            "explanation": "A queue processes items in arrival order. `deque.append` enqueues at the right and `deque.popleft` dequeues from the left, both in O(1). Simulating a small print queue makes the first-in-first-out behavior concrete.",
+            "python": "from collections import deque\n\nprint_queue = deque()\nfor job in [\"report.pdf\", \"photo.png\", \"invoice.pdf\"]:\n    print_queue.append(job)\n    print(f\"queued: {job}\")\n\nwhile print_queue:\n    print(f\"printing: {print_queue.popleft()}\")\n# Jobs print in the exact order they were queued.",
+            "javascript": null
+          },
+          {
+            "title": "A priority queue with heapq",
+            "explanation": "Push `(priority, tie_breaker, task)` tuples so the heap orders by priority, then by an incrementing counter to keep insertion order stable when priorities tie (and to avoid comparing un-orderable task objects). `heappop` always returns the most urgent task in O(log n).",
+            "python": "import heapq\nfrom itertools import count\n\nscheduler = []\ncounter = count()            # unique, increasing tie-breaker\n\ndef add_task(priority: int, task: str) -> None:\n    heapq.heappush(scheduler, (priority, next(counter), task))\n\nadd_task(2, \"clean inbox\")\nadd_task(1, \"fix outage\")\nadd_task(2, \"reply to email\")\nadd_task(0, \"page on-call\")\n\nwhile scheduler:\n    priority, _, task = heapq.heappop(scheduler)\n    print(f\"[p{priority}] {task}\")",
+            "javascript": null
+          },
+          {
+            "title": "Answer a top-k query without sorting everything",
+            "explanation": "To find the k largest items you do not need to sort all n elements (O(n log n)). `heapq.nlargest` keeps a heap of size k for an O(n log k) scan — much cheaper when k is small and n is large.",
+            "python": "import heapq\nimport random\n\nrandom.seed(0)\nlatencies = [random.randint(1, 1000) for _ in range(100_000)]\n\nslowest = heapq.nlargest(5, latencies)\nfastest = heapq.nsmallest(5, latencies)\nprint(\"5 slowest:\", slowest)\nprint(\"5 fastest:\", fastest)",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Extend `balanced` to ignore brackets that appear inside double-quoted strings in the input.",
+          "Implement a `Stack` and a `Queue` class wrapping `list` and `deque` with `push`/`pop`/`peek`/`is_empty` methods.",
+          "Use a stack to reverse the words in a sentence, then use a queue to confirm the original order is recoverable.",
+          "Build a max-heap of `(score, player)` tuples by negating the score, and pop the top 3 players.",
+          "Compare the wall-clock time of `heapq.nlargest(5, data)` against `sorted(data, reverse=True)[:5]` for one million items."
+        ]
+      }
+    },
+    {
+      "id": "hashmaps",
+      "title": "Hashmaps",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "A hashmap maps keys to values with O(1) average lookup by hashing the key into an array slot — and in Python it is simply the everyday `dict`.",
+      "summary": [
+        "A hashmap (also called a hash table, map, dictionary, or associative array) stores key-value pairs and lets you look up a value by its key in O(1) average time. The trick is a hash function: it turns a key into an integer that is reduced (modulo the table size) to an index in an underlying array, so the value is found by direct addressing rather than scanning. When two different keys land in the same slot — a collision — the table resolves it, classically by chaining (each slot holds a small list of pairs) or open addressing (probe nearby slots). As the table fills past a load-factor threshold it resizes and rehashes everything, which keeps the average operation O(1) even though a single insert can occasionally be O(n).",
+        "In Python the hashmap is the built-in `dict`, and it is exceptionally well optimized — it underpins objects, namespaces, and keyword arguments throughout the language. Keys must be hashable, meaning immutable enough to have a stable `hash()`: strings, numbers, and tuples of hashables work; lists and other dicts do not. Reach for `dict` methods that make code clean and correct: `.get(key, default)` avoids `KeyError`, `.setdefault`, `collections.defaultdict(list)` for grouping, and `collections.Counter` for tallying. Since Python 3.7, `dict` also guarantees insertion order, so iteration is predictable. The `set` type is the same machinery without values — O(1) membership tests and deduplication.",
+        "Hashmaps are the workhorse of efficient algorithms because they convert 'have I seen this before?' and 'what is associated with this key?' from O(n) scans into O(1) lookups. That single move turns many O(n^2) brute-force solutions into O(n) ones: the two-sum problem, counting frequencies, deduplicating a stream, grouping records by a field, caching/memoizing function results, and building indexes. The cost is memory overhead and that ordering by value (rather than by key) is not free. When you find yourself writing a nested loop to check membership, a `dict` or `set` is almost always the fix."
+      ],
+      "keyPoints": [
+        "A hashmap hashes a key to an array index for O(1) average get/set/delete; collisions are handled by chaining or probing.",
+        "Python's `dict` is the hashmap; `set` is the same structure without values, giving O(1) membership and dedup.",
+        "Keys must be hashable (immutable): strings, numbers, and tuples work; lists and dicts cannot be keys.",
+        "Use `.get(k, default)`, `defaultdict`, `Counter`, and `setdefault` to write clean, KeyError-free code.",
+        "`dict` preserves insertion order (guaranteed since Python 3.7) but is not sorted by key or value.",
+        "Swapping a nested-loop membership check for a `dict`/`set` lookup often turns O(n^2) into O(n)."
+      ],
+      "code": [
+        {
+          "title": "dict idioms: get, group, and count",
+          "language": "python",
+          "code": "from collections import defaultdict, Counter\n\n# Safe lookups with a default instead of KeyError\nprices = {\"apple\": 1.0, \"banana\": 0.5}\nprint(prices.get(\"cherry\", 0.0))   # 0.0 (no KeyError)\n\n# Group items by a key with defaultdict(list)\nwords = [\"apple\", \"banana\", \"avocado\", \"blueberry\"]\nby_letter = defaultdict(list)\nfor w in words:\n    by_letter[w[0]].append(w)\nprint(dict(by_letter))   # {'a': ['apple', 'avocado'], 'b': ['banana', 'blueberry']}\n\n# Count frequencies with Counter\nletters = Counter(\"mississippi\")\nprint(letters.most_common(2))   # [('i', 4), ('s', 4)]\n\n# Two-sum in O(n) using a dict of value -> index\ndef two_sum(nums, target):\n    seen = {}\n    for i, x in enumerate(nums):\n        if target - x in seen:\n            return (seen[target - x], i)\n        seen[x] = i\n    return None\n\nprint(two_sum([2, 7, 11, 15], 9))   # (0, 1)"
+        },
+        {
+          "title": "A tiny hash table from scratch (chaining)",
+          "language": "python",
+          "code": "class HashTable:\n    \"\"\"Educational hash table using separate chaining.\"\"\"\n\n    def __init__(self, size: int = 8) -> None:\n        self.size = size\n        self.buckets: list[list[tuple]] = [[] for _ in range(size)]\n\n    def _index(self, key) -> int:\n        return hash(key) % self.size          # hash -> slot\n\n    def put(self, key, value) -> None:\n        bucket = self.buckets[self._index(key)]\n        for i, (k, _) in enumerate(bucket):   # update if key exists\n            if k == key:\n                bucket[i] = (key, value)\n                return\n        bucket.append((key, value))           # else append (collision -> chain)\n\n    def get(self, key):\n        for k, v in self.buckets[self._index(key)]:\n            if k == key:\n                return v\n        raise KeyError(key)\n\nht = HashTable()\nht.put(\"a\", 1)\nht.put(\"b\", 2)\nht.put(\"a\", 99)        # same key -> overwrite, not duplicate\nprint(ht.get(\"a\"))     # 99\nprint(ht.get(\"b\"))     # 2"
+        }
+      ],
+      "resources": [
+        { "title": "Mapping Types — dict (official docs)", "url": "https://docs.python.org/3/library/stdtypes.html#mapping-types-dict", "type": "official" },
+        { "title": "collections — Counter and defaultdict (official docs)", "url": "https://docs.python.org/3/library/collections.html", "type": "official" },
+        { "title": "Build a Hash Table in Python With TDD (Real Python)", "url": "https://realpython.com/python-hash-table/", "type": "article" },
+        { "title": "Hash Table Data Structure | Illustrated Data Structures", "url": "https://www.youtube.com/watch?v=jalSiaIi8j4", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "Master dict idioms (get, group, count) on real-ish data, then implement a hash table from scratch with chaining so you understand exactly what `dict` does under the hood.",
+        "steps": [
+          {
+            "title": "Group records with defaultdict",
+            "explanation": "Grouping is the most common dict pattern: build a map from a key to a list of items. `defaultdict(list)` removes the need to check whether the key exists yet — the empty list is created automatically on first access.",
+            "python": "# hashmap_lab.py\nfrom collections import defaultdict\n\norders = [\n    (\"alice\", 30), (\"bob\", 12), (\"alice\", 8),\n    (\"carol\", 45), (\"bob\", 20),\n]\n\nby_customer = defaultdict(list)\nfor name, amount in orders:\n    by_customer[name].append(amount)\n\nfor name, amounts in by_customer.items():\n    print(f\"{name}: {amounts} -> total ${sum(amounts)}\")",
+            "javascript": null
+          },
+          {
+            "title": "Count and rank with Counter",
+            "explanation": "`Counter` is a dict subclass purpose-built for tallying. Feed it any iterable and it counts occurrences; `most_common(n)` returns the top n by count, already sorted — no manual sorting needed.",
+            "python": "from collections import Counter\n\ntext = \"the quick brown fox the lazy dog the end\"\nword_counts = Counter(text.split())\n\nprint(word_counts)                 # Counter({'the': 3, ...})\nprint(word_counts.most_common(2))  # [('the', 3), ...]\nprint(word_counts[\"fox\"])          # 1\nprint(word_counts[\"missing\"])      # 0  (no KeyError for absent keys)",
+            "javascript": null
+          },
+          {
+            "title": "Solve two-sum in O(n) with a dict",
+            "explanation": "The brute-force two-sum checks every pair in O(n^2). A dict mapping value->index lets you ask 'have I already seen the complement I need?' in O(1), collapsing the whole problem to a single O(n) pass.",
+            "python": "def two_sum(nums, target):\n    seen = {}                       # value -> index\n    for i, x in enumerate(nums):\n        complement = target - x\n        if complement in seen:      # O(1) lookup\n            return (seen[complement], i)\n        seen[x] = i\n    return None\n\nprint(two_sum([2, 7, 11, 15], 9))   # (0, 1)\nprint(two_sum([3, 2, 4], 6))        # (1, 2)\nprint(two_sum([1, 2, 3], 99))       # None",
+            "javascript": null
+          },
+          {
+            "title": "Implement a hash table with chaining",
+            "explanation": "Now build the structure yourself. `hash(key) % size` picks a bucket; each bucket is a list of (key, value) pairs so that colliding keys coexist (chaining). `put` overwrites an existing key or appends a new pair; `get` scans only the one short bucket. This is exactly the model `dict` optimizes.",
+            "python": "class HashTable:\n    def __init__(self, size: int = 8) -> None:\n        self.size = size\n        self.buckets = [[] for _ in range(size)]\n\n    def _index(self, key) -> int:\n        return hash(key) % self.size\n\n    def put(self, key, value) -> None:\n        bucket = self.buckets[self._index(key)]\n        for i, (k, _) in enumerate(bucket):\n            if k == key:\n                bucket[i] = (key, value)\n                return\n        bucket.append((key, value))\n\n    def get(self, key, default=None):\n        for k, v in self.buckets[self._index(key)]:\n            if k == key:\n                return v\n        return default\n\nht = HashTable(size=4)\nfor i, name in enumerate([\"red\", \"green\", \"blue\", \"cyan\", \"magenta\"]):\n    ht.put(name, i)\nht.put(\"red\", 99)            # overwrite\nprint(ht.get(\"red\"))         # 99\nprint(ht.get(\"blue\"))        # 2\nprint(ht.get(\"absent\", -1))  # -1\nprint([len(b) for b in ht.buckets])  # bucket sizes show collisions",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `__len__` and a `keys()` method to `HashTable`, and a `delete(key)` that removes a pair from its bucket.",
+          "Track item count and automatically resize+rehash to a larger table when the load factor (count/size) exceeds 0.75.",
+          "Use a plain `dict` to find the first non-repeating character in a string in a single pass.",
+          "Group a list of words into anagram buckets by using the sorted-letters tuple as the dict key.",
+          "Build a tiny in-memory cache: memoize a slow function by storing computed results in a dict keyed by the arguments."
+        ]
+      }
+    },
+    {
+      "id": "binary-search-tree",
+      "title": "Binary Search Tree",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "A binary search tree keeps keys ordered so that search, insert, and delete each cost O(log n) on a balanced tree — and an in-order walk yields the keys already sorted.",
+      "summary": [
+        "A binary search tree (BST) is a binary tree with an ordering invariant: for every node, all keys in its left subtree are smaller and all keys in its right subtree are larger. That single rule turns search into a guided descent — compare the target to the current node and go left or right, halving the remaining candidates at each step — so search, insertion, and deletion all run in O(h) where h is the tree's height. On a balanced tree the height is about log n, giving the prized O(log n) operations; the bonus is that an in-order traversal (left, node, right) visits the keys in sorted order for free.",
+        "The catch is balance. A BST built by inserting already-sorted data degenerates into a glorified linked list of height n, and every operation drops to O(n). Real systems solve this with self-balancing variants — red-black trees, AVL trees, B-trees — that rotate nodes during inserts and deletes to keep the height logarithmic. Python's standard library does not ship a balanced BST: the `dict`/`set` (hashmaps) handle most lookup needs in O(1), and for the ordered-iteration and range-query use cases that trees are good at, programmers reach for `bisect` over a sorted list or third-party libraries such as `sortedcontainers`.",
+        "So why learn BSTs at all? They teach the recursive shape that dominates tree and graph algorithms, they are the conceptual backbone of database indexes and filesystem structures (which use B-trees, BST cousins), and they remain frequent interview material. The traversals you practice on a BST — in-order for sorted output, pre-order to copy/serialize, post-order to free/aggregate from the leaves up, and level-order (BFS) using a queue — are the same traversals you will apply to expression trees, DOM trees, directory trees, and game-state trees. Understanding when a tree's ordered structure beats a hashmap's raw speed (ranges, nearest-neighbor, sorted iteration) is the durable skill."
+      ],
+      "keyPoints": [
+        "BST invariant: left subtree keys < node key < right subtree keys, enabling a binary-search-style descent.",
+        "Balanced trees give O(log n) search/insert/delete; in-order traversal yields keys in sorted order.",
+        "Inserting sorted data unbalances a plain BST into an O(n) chain — production uses self-balancing trees (red-black, AVL, B-tree).",
+        "Python ships no balanced BST; use `dict`/`set` for lookups and `bisect` or `sortedcontainers` for ordered/range needs.",
+        "Four traversals matter: in-order (sorted), pre-order (copy), post-order (aggregate from leaves), level-order/BFS (by depth).",
+        "Trees win over hashmaps when you need ordered iteration, range queries, or nearest-key — not raw point lookups."
+      ],
+      "code": [
+        {
+          "title": "A binary search tree with insert, search, and in-order walk",
+          "language": "python",
+          "code": "from dataclasses import dataclass\nfrom typing import Optional\n\n@dataclass\nclass TreeNode:\n    key: int\n    left: Optional[\"TreeNode\"] = None\n    right: Optional[\"TreeNode\"] = None\n\nclass BST:\n    def __init__(self) -> None:\n        self.root: Optional[TreeNode] = None\n\n    def insert(self, key: int) -> None:\n        self.root = self._insert(self.root, key)\n\n    def _insert(self, node, key):\n        if node is None:\n            return TreeNode(key)\n        if key < node.key:\n            node.left = self._insert(node.left, key)\n        elif key > node.key:\n            node.right = self._insert(node.right, key)\n        return node                      # duplicates ignored\n\n    def search(self, key: int) -> bool:\n        node = self.root\n        while node is not None:           # iterative descent: O(h)\n            if key == node.key:\n                return True\n            node = node.left if key < node.key else node.right\n        return False\n\n    def inorder(self) -> list[int]:\n        out: list[int] = []\n        def walk(node):\n            if node:\n                walk(node.left)\n                out.append(node.key)\n                walk(node.right)\n        walk(self.root)\n        return out\n\ntree = BST()\nfor k in (5, 3, 8, 1, 4, 7, 9):\n    tree.insert(k)\nprint(tree.inorder())   # [1, 3, 4, 5, 7, 8, 9] — sorted for free\nprint(tree.search(7))   # True\nprint(tree.search(6))   # False"
+        },
+        {
+          "title": "Level-order (breadth-first) traversal with a queue",
+          "language": "python",
+          "code": "from collections import deque\n\ndef level_order(root) -> list[list[int]]:\n    \"\"\"Return keys grouped by depth, top-down, left-to-right.\"\"\"\n    if root is None:\n        return []\n    levels, queue = [], deque([root])\n    while queue:\n        level = []\n        for _ in range(len(queue)):       # one full level per outer pass\n            node = queue.popleft()\n            level.append(node.key)\n            if node.left:\n                queue.append(node.left)\n            if node.right:\n                queue.append(node.right)\n        levels.append(level)\n    return levels\n\n# Reusing the `tree` from the snippet above:\nprint(level_order(tree.root))\n# [[5], [3, 8], [1, 4, 7, 9]]"
+        }
+      ],
+      "resources": [
+        { "title": "Binary search tree (Wikipedia)", "url": "https://en.wikipedia.org/wiki/Binary_search_tree", "type": "article" },
+        { "title": "Binary Search Tree in Python (PythonForBeginners)", "url": "https://www.pythonforbeginners.com/data-structures/binary-search-tree-in-python", "type": "article" },
+        { "title": "VisuAlgo — Binary Search Tree visualization", "url": "https://visualgo.net/en/bst", "type": "opensource" },
+        { "title": "Tree Data Structure | Illustrated Data Structures", "url": "https://www.youtube.com/watch?v=S2W3SXGPVyU", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "Build a binary search tree with recursive insert and search, implement all four traversals, and observe how inserting sorted data degenerates the tree into an O(n) chain.",
+        "steps": [
+          {
+            "title": "Define the node and recursive insert",
+            "explanation": "Each node stores a key and optional left/right children. Insertion recurses down comparing keys: smaller keys go left, larger go right, and reaching a `None` slot is where the new node is created. Returning the (possibly new) node lets the parent re-link its child cleanly.",
+            "python": "# bst_lab.py\nfrom dataclasses import dataclass\nfrom typing import Optional\n\n@dataclass\nclass TreeNode:\n    key: int\n    left: Optional[\"TreeNode\"] = None\n    right: Optional[\"TreeNode\"] = None\n\nclass BST:\n    def __init__(self) -> None:\n        self.root: Optional[TreeNode] = None\n\n    def insert(self, key: int) -> None:\n        self.root = self._insert(self.root, key)\n\n    def _insert(self, node, key):\n        if node is None:\n            return TreeNode(key)\n        if key < node.key:\n            node.left = self._insert(node.left, key)\n        elif key > node.key:\n            node.right = self._insert(node.right, key)\n        return node\n\ntree = BST()\nfor k in (5, 3, 8, 1, 4, 7, 9):\n    tree.insert(k)\nprint(\"root:\", tree.root.key)   # 5",
+            "javascript": null
+          },
+          {
+            "title": "Search by descending the tree",
+            "explanation": "Search exploits the ordering invariant: at each node, if the target is smaller go left, if larger go right, halving the search space each step. On a balanced tree this is O(log n). Doing it iteratively avoids recursion overhead.",
+            "python": "def search(self, key: int) -> bool:\n    node = self.root\n    while node is not None:\n        if key == node.key:\n            return True\n        node = node.left if key < node.key else node.right\n    return False\n\nBST.search = search\n\nprint(tree.search(7))   # True\nprint(tree.search(6))   # False",
+            "javascript": null
+          },
+          {
+            "title": "Implement all four traversals",
+            "explanation": "In-order (left, node, right) yields sorted keys; pre-order (node, left, right) is useful for copying/serializing; post-order (left, right, node) processes children before parents (freeing, aggregating); level-order uses a queue for breadth-first, depth-by-depth output.",
+            "python": "from collections import deque\n\ndef inorder(node, out):\n    if node:\n        inorder(node.left, out); out.append(node.key); inorder(node.right, out)\n\ndef preorder(node, out):\n    if node:\n        out.append(node.key); preorder(node.left, out); preorder(node.right, out)\n\ndef postorder(node, out):\n    if node:\n        postorder(node.left, out); postorder(node.right, out); out.append(node.key)\n\ndef level_order(root):\n    out, q = [], deque([root] if root else [])\n    while q:\n        node = q.popleft()\n        out.append(node.key)\n        if node.left: q.append(node.left)\n        if node.right: q.append(node.right)\n    return out\n\nfor name, fn in [(\"in\", inorder), (\"pre\", preorder), (\"post\", postorder)]:\n    acc = []\n    fn(tree.root, acc)\n    print(f\"{name:>5}-order: {acc}\")\nprint(\"level-order:\", level_order(tree.root))",
+            "javascript": null
+          },
+          {
+            "title": "Watch a sorted insert order destroy balance",
+            "explanation": "Insert 1..7 in increasing order and the tree becomes a right-leaning chain of height 7 — every node has only a right child. Measuring the height shows why unbalanced BSTs degrade to O(n) and why real systems use self-balancing trees.",
+            "python": "def height(node) -> int:\n    if node is None:\n        return 0\n    return 1 + max(height(node.left), height(node.right))\n\nbalanced = BST()\nfor k in (4, 2, 6, 1, 3, 5, 7):     # inserted to balance\n    balanced.insert(k)\n\ndegenerate = BST()\nfor k in range(1, 8):                # already sorted -> chain\n    degenerate.insert(k)\n\nprint(\"balanced height:\", height(balanced.root))     # 3\nprint(\"degenerate height:\", height(degenerate.root)) # 7 (a linked list!)",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add a `min()` and `max()` method (leftmost and rightmost nodes) and explain why each is O(h).",
+          "Implement `delete(key)` handling all three cases: a leaf, a node with one child, and a node with two children (replace with its in-order successor).",
+          "Write `range_query(low, high)` that returns all keys in [low, high] in sorted order using an in-order walk that prunes subtrees out of range.",
+          "Add a `height()` and an `is_balanced()` check that returns True only when every node's subtree heights differ by at most one.",
+          "Solve the same membership problem with a Python `set` and time both — confirm the BST is slower for point lookups, then explain what the tree offers that the set does not."
+        ]
+      }
+    },
+    {
+      "id": "recursion",
+      "title": "Recursion",
+      "subsection": null,
+      "minutes": 5,
+      "intro": "Recursion solves a problem by having a function call itself on smaller inputs until it reaches a base case it can answer directly.",
+      "summary": [
+        "Recursion is a problem-solving technique where a function calls itself on a smaller version of the same problem until it hits a base case — a trivially small input that is answered without further recursion. Every correct recursive function needs two ingredients: one or more base cases that stop the descent, and a recursive case that makes progress toward a base case (otherwise it recurses forever). Mentally, you trust that the function already works on the smaller input (the 'recursive leap of faith') and only worry about combining that result. Computing a factorial, summing a list, walking a tree, and generating permutations all fit this shape naturally.",
+        "Under the hood, each recursive call pushes a frame onto the call stack holding that call's local variables and its return address; when a call returns, its frame is popped and the result flows back up. This is elegant but bounded: Python caps recursion at roughly 1000 frames by default (`sys.getrecursionlimit`) and raises `RecursionError` past it, so recursion is unsuitable for very deep problems like iterating over a million-element list — use a loop there. Unlike some functional languages, CPython does not optimize tail calls, so a deeply tail-recursive function still grows the stack. A naive recursive solution can also be exponentially slow if it recomputes the same subproblem repeatedly (plain recursive Fibonacci is the classic example).",
+        "The practical fixes are memoization and choosing recursion where it genuinely simplifies the code. Decorating a recursive function with `functools.cache` (or `lru_cache`) stores each subresult so it is computed once, turning exponential Fibonacci into linear time with one line. As a rule of thumb, prefer recursion for naturally recursive structures — trees, nested data, divide-and-conquer algorithms like merge sort and quicksort, and backtracking searches — and prefer iteration for simple linear sweeps. Any recursion can be rewritten as a loop with an explicit stack, which is exactly how you sidestep the depth limit when a problem is recursive in shape but too deep for the call stack."
+      ],
+      "keyPoints": [
+        "Every recursive function needs a base case (stops recursion) and a recursive case that moves toward it.",
+        "Each call adds a stack frame; Python's default limit is ~1000 (`sys.getrecursionlimit`), and exceeding it raises `RecursionError`.",
+        "CPython does not do tail-call optimization, so deep recursion grows the stack — use a loop for deep linear work.",
+        "Naive recursion can be exponential by recomputing subproblems; `functools.cache`/`lru_cache` memoizes them in one line.",
+        "Recursion shines on trees, nested data, divide-and-conquer (merge/quick sort), and backtracking; loops win for flat sweeps.",
+        "Any recursion can be converted to iteration with an explicit stack to avoid the recursion depth limit."
+      ],
+      "code": [
+        {
+          "title": "Base case, recursive case, and the cost of naive recursion",
+          "language": "python",
+          "code": "# factorial: base case n <= 1, recursive case n * factorial(n-1)\ndef factorial(n: int) -> int:\n    if n <= 1:            # base case\n        return 1\n    return n * factorial(n - 1)   # recursive case shrinks n\n\nprint(factorial(5))   # 120\n\n# Naive Fibonacci recomputes the same values exponentially (O(2^n))\ndef fib_slow(n: int) -> int:\n    if n < 2:\n        return n\n    return fib_slow(n - 1) + fib_slow(n - 2)\n\nprint(fib_slow(10))   # 55  (fine here, but fib_slow(40) is painfully slow)"
+        },
+        {
+          "title": "Memoize with functools.cache to make it fast",
+          "language": "python",
+          "code": "from functools import cache\n\n@cache                       # stores each result; each n computed once\ndef fib(n: int) -> int:\n    if n < 2:\n        return n\n    return fib(n - 1) + fib(n - 2)\n\nprint(fib(40))               # 102334155 — instant, now O(n)\nprint(fib.cache_info())      # CacheInfo(hits=..., misses=41, ...)\n\n# Recursion over nested structure: sum arbitrarily nested lists\ndef deep_sum(items) -> int:\n    total = 0\n    for x in items:\n        if isinstance(x, list):\n            total += deep_sum(x)   # recurse into sublists\n        else:\n            total += x\n    return total\n\nprint(deep_sum([1, [2, 3, [4, 5]], 6]))   # 21"
+        }
+      ],
+      "resources": [
+        { "title": "functools — cache and lru_cache (official docs)", "url": "https://docs.python.org/3/library/functools.html#functools.cache", "type": "official" },
+        { "title": "sys.setrecursionlimit / getrecursionlimit (official docs)", "url": "https://docs.python.org/3/library/sys.html#sys.setrecursionlimit", "type": "official" },
+        { "title": "Recursion in Python: An Introduction (Real Python)", "url": "https://realpython.com/python-recursion/", "type": "article" },
+        { "title": "Recursion (Wikipedia)", "url": "https://en.wikipedia.org/wiki/Recursion_(computer_science)", "type": "article" }
+      ],
+      "handsOn": {
+        "goal": "Write recursive solutions for factorial, Fibonacci, and a tree-shaped problem; then see the call stack limit, fix exponential recursion with memoization, and convert a recursion to an iterative version with an explicit stack.",
+        "steps": [
+          {
+            "title": "Identify base case and recursive case",
+            "explanation": "Start with the simplest recursion. The base case answers the smallest input directly; the recursive case calls itself on a strictly smaller input and combines the result. Sum-of-list makes the pattern obvious: the sum of an empty list is 0, otherwise it is the first item plus the sum of the rest.",
+            "python": "# recursion_lab.py\ndef list_sum(nums):\n    if not nums:               # base case: empty list\n        return 0\n    return nums[0] + list_sum(nums[1:])   # first + sum of the rest\n\ndef factorial(n):\n    if n <= 1:                 # base case\n        return 1\n    return n * factorial(n - 1)\n\nprint(list_sum([1, 2, 3, 4, 5]))   # 15\nprint(factorial(6))                # 720",
+            "javascript": null
+          },
+          {
+            "title": "Hit (and inspect) the recursion limit",
+            "explanation": "Because each call adds a stack frame, deep recursion overflows the stack. Catch the `RecursionError` to see the limit in action, and read the current ceiling with `sys.getrecursionlimit`. This is why deep linear recursion is a bug waiting to happen.",
+            "python": "import sys\n\nprint(\"recursion limit:\", sys.getrecursionlimit())   # ~1000\n\ndef count_down(n):\n    if n == 0:\n        return \"done\"\n    return count_down(n - 1)\n\ntry:\n    count_down(50_000)        # far deeper than the limit\nexcept RecursionError as e:\n    print(\"RecursionError:\", e)",
+            "javascript": null
+          },
+          {
+            "title": "Fix exponential recursion with memoization",
+            "explanation": "Naive Fibonacci recomputes overlapping subproblems, exploding to O(2^n). Adding `@cache` stores each result so every `n` is computed exactly once, dropping it to O(n). `cache_info()` reveals how many calls were served from the cache.",
+            "python": "from functools import cache\nimport timeit\n\ndef fib_slow(n):\n    return n if n < 2 else fib_slow(n - 1) + fib_slow(n - 2)\n\n@cache\ndef fib_fast(n):\n    return n if n < 2 else fib_fast(n - 1) + fib_fast(n - 2)\n\nprint(\"fib_slow(30):\", timeit.timeit(lambda: fib_slow(30), number=1))\nprint(\"fib_fast(30):\", timeit.timeit(lambda: fib_fast(30), number=1))\nprint(fib_fast.cache_info())",
+            "javascript": null
+          },
+          {
+            "title": "Convert recursion to iteration with an explicit stack",
+            "explanation": "Any recursion can be made iterative by managing the stack yourself, sidestepping the depth limit. Here a recursive in-order tree walk becomes a loop driven by an explicit list used as a stack — same output, no `RecursionError` even on very deep trees.",
+            "python": "# Nested tuples model a tree: (key, left, right), with None for empty\ntree = (5, (3, (1, None, None), (4, None, None)),\n           (8, (7, None, None), (9, None, None)))\n\ndef inorder_iter(root):\n    out, stack, node = [], [], root\n    while stack or node is not None:\n        while node is not None:      # descend left, pushing as we go\n            stack.append(node)\n            node = node[1]\n        node = stack.pop()           # visit\n        out.append(node[0])\n        node = node[2]               # then go right\n    return out\n\nprint(inorder_iter(tree))   # [1, 3, 4, 5, 7, 8, 9]",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Write a recursive `reverse_string(s)` and a recursive `is_palindrome(s)`; identify the base case in each.",
+          "Implement recursive `power(base, exp)` in O(log exp) using fast exponentiation (square the result of the halved exponent).",
+          "Generate all permutations of a list recursively, then all subsets (the power set) recursively.",
+          "Solve the Towers of Hanoi for n disks recursively and print each move; count that it takes 2^n - 1 moves.",
+          "Take a recursive directory-walk that lists every file under a folder, then rewrite it iteratively with an explicit stack of paths."
+        ]
+      }
+    },
+    {
+      "id": "sorting-algorithms",
+      "title": "Sorting Algorithms",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Sorting arranges data into order; knowing how the classic algorithms work — and that Python's built-in `sorted` already beats them all — is core algorithmic literacy.",
+      "summary": [
+        "Sorting arranges elements into a defined order (numeric, lexicographic, or by any key you choose), and it matters because sorted data unlocks far faster searching (binary search), easy deduplication, grouping, and merge operations. The classic algorithms fall into two tiers by Big-O. The simple O(n^2) sorts — bubble sort (repeatedly swap adjacent out-of-order pairs), selection sort (repeatedly pick the minimum), and insertion sort (grow a sorted prefix one element at a time) — are easy to understand and fine for tiny inputs, but they crawl as data grows. The efficient O(n log n) sorts — merge sort (split, sort halves, merge) and quicksort (partition around a pivot, recurse) — are what real systems rely on.",
+        "A few properties distinguish these algorithms beyond raw speed. Stability means equal elements keep their original relative order, which matters when you sort by one key after another (sort by name, then stably by department). Merge sort is stable and guarantees O(n log n) but needs O(n) extra space; quicksort sorts in place with O(log n) stack space and is usually fastest in practice, but its worst case degrades to O(n^2) on bad pivots. Insertion sort, despite being O(n^2), is excellent on small or nearly-sorted data, which is why production sorts switch to it for small subarrays. Heap sort guarantees O(n log n) in place but is not stable.",
+        "In real Python you almost never write these — you call `sorted(iterable)` (returns a new list) or `list.sort()` (in place), both powered by Timsort, a hybrid of merge sort and insertion sort that is stable, O(n log n) worst case, and adaptively fast on real-world partially-ordered data. The leverage is in the `key` function and `reverse` flag: `sorted(words, key=str.lower)`, `sorted(records, key=lambda r: (r.dept, r.name))` for multi-level sorts, and `key=len` for length. Reach for `operator.itemgetter`/`attrgetter` for speed and clarity. Implement the classic algorithms to understand complexity, stability, and divide-and-conquer; use the built-in for everything you ship."
+      ],
+      "keyPoints": [
+        "Simple sorts (bubble, selection, insertion) are O(n^2) and only acceptable for tiny or nearly-sorted inputs.",
+        "Efficient sorts (merge, quick, heap) are O(n log n); merge sort is stable but uses O(n) space, quicksort is in-place but O(n^2) worst case.",
+        "Stability preserves the order of equal elements — essential for correct multi-key sorting.",
+        "Python's `sorted()` and `list.sort()` use Timsort: stable, O(n log n) worst case, and adaptive on real data.",
+        "Control order with `key=` (e.g. `key=str.lower`, `key=len`, `key=lambda r: (a, b)`) and `reverse=True`.",
+        "Implement classic sorts to learn complexity and divide-and-conquer; use the built-in for everything in production."
+      ],
+      "code": [
+        {
+          "title": "Built-in sorting: key functions and multi-level sorts",
+          "language": "python",
+          "code": "# sorted() returns a new list; list.sort() sorts in place\nnums = [5, 1, 4, 2, 8]\nprint(sorted(nums))               # [1, 2, 4, 5, 8]\nprint(sorted(nums, reverse=True)) # [8, 5, 4, 2, 1]\n\n# key= transforms each element before comparing (original values kept)\nwords = [\"banana\", \"Apple\", \"cherry\"]\nprint(sorted(words, key=str.lower))   # ['Apple', 'banana', 'cherry']\nprint(sorted(words, key=len))         # ['Apple', 'banana', 'cherry']\n\n# Multi-level sort: by department, then by name (Timsort is stable)\nfrom operator import itemgetter\npeople = [\n    {\"name\": \"Bob\", \"dept\": \"eng\"},\n    {\"name\": \"Ann\", \"dept\": \"eng\"},\n    {\"name\": \"Cy\",  \"dept\": \"ops\"},\n]\nfor p in sorted(people, key=itemgetter(\"dept\", \"name\")):\n    print(p[\"dept\"], p[\"name\"])\n# eng Ann / eng Bob / ops Cy"
+        },
+        {
+          "title": "Merge sort and quicksort from scratch",
+          "language": "python",
+          "code": "def merge_sort(a: list[int]) -> list[int]:\n    if len(a) <= 1:                       # base case\n        return a\n    mid = len(a) // 2\n    left = merge_sort(a[:mid])            # divide\n    right = merge_sort(a[mid:])\n    merged, i, j = [], 0, 0               # conquer: merge two sorted halves\n    while i < len(left) and j < len(right):\n        if left[i] <= right[j]:           # <= keeps it stable\n            merged.append(left[i]); i += 1\n        else:\n            merged.append(right[j]); j += 1\n    merged.extend(left[i:])\n    merged.extend(right[j:])\n    return merged\n\ndef quick_sort(a: list[int]) -> list[int]:\n    if len(a) <= 1:\n        return a\n    pivot = a[len(a) // 2]                # middle pivot avoids sorted worst case\n    less    = [x for x in a if x < pivot]\n    equal   = [x for x in a if x == pivot]\n    greater = [x for x in a if x > pivot]\n    return quick_sort(less) + equal + quick_sort(greater)\n\nprint(merge_sort([5, 1, 4, 2, 8, 3]))   # [1, 2, 3, 4, 5, 8]\nprint(quick_sort([5, 1, 4, 2, 8, 3]))   # [1, 2, 3, 4, 5, 8]"
+        }
+      ],
+      "resources": [
+        { "title": "Sorting Techniques (official HOWTO)", "url": "https://docs.python.org/3/howto/sorting.html", "type": "official" },
+        { "title": "list.sort() and sorted() (official docs)", "url": "https://docs.python.org/3/library/functions.html#sorted", "type": "official" },
+        { "title": "Sorting Algorithms in Python (Real Python)", "url": "https://realpython.com/sorting-algorithms-python/", "type": "article" },
+        { "title": "VisuAlgo — Sorting algorithm visualizations", "url": "https://visualgo.net/en/sorting", "type": "opensource" }
+      ],
+      "handsOn": {
+        "goal": "Implement bubble, insertion, merge, and quicksort by hand; verify they all sort correctly; then benchmark them against Python's built-in Timsort to feel the O(n^2) vs O(n log n) gap.",
+        "steps": [
+          {
+            "title": "Implement two O(n^2) sorts",
+            "explanation": "Bubble sort repeatedly swaps adjacent out-of-order pairs, bubbling the largest to the end each pass; the `swapped` flag lets it exit early on already-sorted data. Insertion sort grows a sorted prefix, inserting each new element into place — fast on nearly-sorted input. Both are O(n^2) in general.",
+            "python": "# sorting_lab.py\ndef bubble_sort(a):\n    a = a[:]                       # work on a copy\n    n = len(a)\n    for i in range(n):\n        swapped = False\n        for j in range(n - 1 - i):\n            if a[j] > a[j + 1]:\n                a[j], a[j + 1] = a[j + 1], a[j]\n                swapped = True\n        if not swapped:            # already sorted -> stop early\n            break\n    return a\n\ndef insertion_sort(a):\n    a = a[:]\n    for i in range(1, len(a)):\n        key, j = a[i], i - 1\n        while j >= 0 and a[j] > key:   # shift larger elements right\n            a[j + 1] = a[j]\n            j -= 1\n        a[j + 1] = key\n    return a\n\nprint(bubble_sort([5, 1, 4, 2, 8]))     # [1, 2, 4, 5, 8]\nprint(insertion_sort([5, 1, 4, 2, 8]))  # [1, 2, 4, 5, 8]",
+            "javascript": null
+          },
+          {
+            "title": "Implement two O(n log n) sorts",
+            "explanation": "Merge sort divides the list in half, sorts each half recursively, and merges the sorted halves; using `<=` in the merge keeps it stable. Quicksort picks a pivot and partitions into less/equal/greater, then recurses — concise here, though true in-place quicksort partitions without extra lists.",
+            "python": "def merge_sort(a):\n    if len(a) <= 1:\n        return a\n    mid = len(a) // 2\n    left, right = merge_sort(a[:mid]), merge_sort(a[mid:])\n    out, i, j = [], 0, 0\n    while i < len(left) and j < len(right):\n        if left[i] <= right[j]:\n            out.append(left[i]); i += 1\n        else:\n            out.append(right[j]); j += 1\n    out.extend(left[i:]); out.extend(right[j:])\n    return out\n\ndef quick_sort(a):\n    if len(a) <= 1:\n        return a\n    pivot = a[len(a) // 2]\n    less = [x for x in a if x < pivot]\n    equal = [x for x in a if x == pivot]\n    greater = [x for x in a if x > pivot]\n    return quick_sort(less) + equal + quick_sort(greater)\n\nprint(merge_sort([5, 1, 4, 2, 8, 3]))   # [1, 2, 3, 4, 5, 8]\nprint(quick_sort([5, 1, 4, 2, 8, 3]))   # [1, 2, 3, 4, 5, 8]",
+            "javascript": null
+          },
+          {
+            "title": "Verify correctness against the built-in",
+            "explanation": "Before benchmarking, prove every implementation is correct by comparing its output to Python's `sorted()` on many random inputs. If any disagree, the sort has a bug. This kind of property check is how you trust your own algorithms.",
+            "python": "import random\n\nsorts = {\n    \"bubble\": bubble_sort,\n    \"insertion\": insertion_sort,\n    \"merge\": merge_sort,\n    \"quick\": quick_sort,\n}\nfor _ in range(1000):\n    data = [random.randint(-50, 50) for _ in range(random.randint(0, 30))]\n    expected = sorted(data)\n    for name, fn in sorts.items():\n        assert fn(data) == expected, f\"{name} failed on {data}\"\nprint(\"all sorts agree with sorted() on 1000 random inputs\")",
+            "javascript": null
+          },
+          {
+            "title": "Benchmark: feel O(n^2) vs O(n log n) vs Timsort",
+            "explanation": "Time each sort on growing random inputs. The O(n^2) sorts blow up as n grows while the O(n log n) sorts stay manageable, and Python's built-in Timsort (C-implemented) beats every hand-written version by a wide margin — the reason you never ship your own sort.",
+            "python": "import random, timeit\n\nfor n in (200, 800):\n    data = [random.random() for _ in range(n)]\n    print(f\"\\n--- n = {n} ---\")\n    for name, fn in [(\"bubble\", bubble_sort), (\"insertion\", insertion_sort),\n                     (\"merge\", merge_sort), (\"quick\", quick_sort),\n                     (\"builtin\", sorted)]:\n        t = timeit.timeit(lambda: fn(data), number=5)\n        print(f\"{name:>10}: {t:.4f}s\")",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Add selection sort (repeatedly find the minimum of the unsorted tail and swap it into place) and include it in the correctness check and benchmark.",
+          "Make bubble sort count the number of swaps and show it drops to zero passes on already-sorted input thanks to the early-exit flag.",
+          "Demonstrate stability: sort a list of (value, original_index) pairs by value with merge sort and confirm equal values keep their original index order; then show a non-stable sort can reorder them.",
+          "Rewrite quicksort to partition in place (Lomuto or Hoare scheme) instead of building three new lists, and benchmark the memory/speed difference.",
+          "Sort a list of dicts by two keys using `sorted(..., key=operator.itemgetter('dept', 'name'))` and reproduce the same result with two successive stable single-key sorts."
+        ]
+      }
+    }
+  ]
+}
