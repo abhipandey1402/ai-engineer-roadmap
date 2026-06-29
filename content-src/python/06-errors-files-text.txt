@@ -1,0 +1,78 @@
+SECTION 6: Errors, Files & Text
+DESCRIPTION: Exceptions, file handling, context managers, and regular expressions.
+======================================================================
+
+
+### TOPIC: Exceptions  (id: exceptions)  [group: -]
+
+# Exceptions
+
+Exceptions are runtime errors that occur during program execution in Python. Instead of immediately stopping the program, Python allows developers to handle these errors using `try`, `except`, `else`, and `finally` blocks. Proper exception handling helps manage unexpected situations such as invalid input, missing files, or network failures, improving program reliability and allowing applications to fail gracefully.
+
+Visit the following resources to learn more:
+
+- [@official@Exceptions Documentation](https://docs.python.org/3/tutorial/errors.html#exceptions)
+- [@article@Python Exceptions: An Introduction](https://realpython.com/python-exceptions/)
+- [@article@Errors and Exceptions](https://docs.python.org/3/tutorial/errors.html)
+- [@article@Python Exception Handling](https://www.programiz.com/python-programming/exception-handling)
+- [@video@Exception Handling in Python](https://www.youtube.com/watch?v=V_NXT2-QIlE)
+
+----------------------------------------------------------------------
+
+### TOPIC: File Handling  (id: file-handling)  [group: -]
+
+# File Handling in Python
+
+File handling in Python involves reading data from and writing data to files. It allows programs to interact with files stored on a computer's storage. You can open files in different modes like read, write, or append, and then perform operations like reading the entire file content, reading line by line, or writing new data. A common use case is working with structured data, and Python provides built-in modules like `json` to easily read and write data in JSON format, which is frequently used for data exchange.
+
+Visit the following resources to learn more:
+
+- [@article@Pyhton File open](https://www.w3schools.com/python/python_file_handling.asp)
+- [@article@Working With Files in Python](https://realpython.com/working-with-files-in-python/)
+- [@article@Python JSON](https://www.w3schools.com/python/python_json.asp)
+- [@article@Working With JSON Data in Python](https://realpython.com/python-json/)
+- [@video@Python File Handling for Beginners](https://www.youtube.com/watch?v=BRrem1k3904)
+- [@video@Python Tutorial: Working with JSON Data using the json Module](https://www.youtube.com/watch?v=9N6a-VLBa2I)
+
+----------------------------------------------------------------------
+
+### TOPIC: Context Managers  (id: context-managers)  [group: -]
+
+# Context Manager
+
+Context Managers are a construct in Python that allows you to set up context for a block of code, and then automatically clean up or release resources when the block is exited. It is most commonly used with the `with` statement.
+
+Visit the following resources to learn more:
+
+- [@official@Context Libraries](https://docs.python.org/3/library/contextlib.html)
+- [@article@Context Managers in Python](https://www.freecodecamp.org/news/context-managers-in-python/)
+- [@article@Context Managers](https://book.pythontips.com/en/latest/context_managers.html)
+
+----------------------------------------------------------------------
+
+### TOPIC: Glob  (id: glob)  [group: -]
+
+# Glob Module in Python
+
+The `glob` module in Python is a handy tool for finding files and directories whose names match a specific pattern. It uses Unix shell rules for pattern matching, allowing you to easily search for files with certain extensions, files starting with a particular name, or any other combination of criteria you define using wildcards. The main function in this module, also named `glob`, takes a pattern as input and returns a list of all the pathnames that match it.
+
+Visit the following resources to learn more:
+
+- [@article@Python glob Module: File Pattern Matching Explained](https://roadmap.sh/python/glob)
+- [@article@glob](https://realpython.com/ref/stdlib/glob/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Regular Expressions  (id: regular-expressions)  [group: -]
+
+# Regular Expressions
+
+A regular expression is a sequence of characters that specifies a search pattern in text. Usually such patterns are used by string-searching algorithms for "find" or "find and replace" operations on strings, or for input validation.
+
+Visit the following resources to learn more:
+
+- [@official@Regular Expressions in Python](https://docs.python.org/3/library/re.html)
+- [@article@Python Regular Expressions](https://developers.google.com/edu/python/regular-expressions)
+- [@article@Python - Regular Expressions](https://www.tutorialspoint.com/python/python_reg_expressions.htm)
+
+----------------------------------------------------------------------

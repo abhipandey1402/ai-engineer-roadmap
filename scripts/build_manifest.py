@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Builds per-section source bundles from the roadmap.sh ai-engineer content
-so content-authoring agents can enrich them into the app's JSON data files."""
-import json, os, re
+"""Builds per-section source bundles from a roadmap.sh roadmap so content-authoring
+agents can enrich them into the app's JSON data files.
+Usage: build_manifest.py [--course ai-engineer|python]"""
+import json, os, re, sys
 
-CONTENT = '/tmp/dev-roadmap/src/data/roadmaps/ai-engineer/content'
-OUT = os.path.join(os.path.dirname(__file__), '..', 'content-src')
+COURSE = sys.argv[sys.argv.index('--course') + 1] if '--course' in sys.argv else 'ai-engineer'
+CONTENT = f'/tmp/dev-roadmap/src/data/roadmaps/{COURSE}/content'
+OUT = os.path.join(os.path.dirname(__file__), '..', 'content-src', COURSE)
 
 # (section_id, section_title, section_description, [(node_id, title, subsection)])
-SECTIONS = [
+SECTIONS_AI = [
     ("introduction", "Introduction", "What an AI Engineer is, what they do, and how the role differs from ML engineering.", [
         ("GN6SnI7RXIeW8JeD-qORW", "What is an AI Engineer?", None),
         ("K9EiuFgPBFgeRxY4wxAmb", "Roles and Responsibilities", None),
@@ -210,6 +212,118 @@ SECTIONS = [
         ("Ubk4GN0Z4XlDJ3EbRXdxg", "Replit", None),
     ]),
 ]
+
+SECTIONS_PYTHON = [
+    ("getting-started", "Getting Started", "What Python is, where it's used, and how to set up and run it.", [
+        ("GISOFMKvnBys0O0IMpz2J", "Learn the Basics", None),
+    ]),
+    ("language-basics", "Language Basics", "Syntax, variables, operators, strings, and control flow.", [
+        ("6xRncUs3_vxVbDur567QA", "Basic Syntax", None),
+        ("dEFLBGpiH6nbSMeR7ecaT", "Variables and Data Types", None),
+        ("so95CO6Qw3I0S98ISENS-", "Operators", None),
+        ("R9DQNc0AyAQ2HLpP4HOk6", "Type Casting", None),
+        ("Sg5w8zO2Ji-uDJKEoWey9", "Working with Strings", None),
+        ("NP1kjSk0ujU0Gx-ajNHlR", "Conditionals", None),
+        ("Dvy7BnNzK55qbh_SgOk8m", "Loops", None),
+    ]),
+    ("functions-scope", "Functions & Scope", "Defining and using functions, built-ins, lambdas, and scope.", [
+        ("-DJgS6l2qngfwurExlmmT", "Functions", None),
+        ("08XifLQ20c4FKI_4AWNBQ", "Builtin Functions", None),
+        ("aWHgAk959DPUZL46CeRiI", "Lambdas", None),
+        ("3RNy7Sp28d-NMx0Yh4bdx", "Variable Scope", None),
+    ]),
+    ("data-structures", "Data Structures", "Python's core collections and comprehensions.", [
+        ("UT_SR7G-LYtzqooWrEtF1", "Lists", None),
+        ("i7xIGiXU-k5UIKHIhQPjE", "Tuples", None),
+        ("soZFqivM3YBuljeX6PoaX", "Sets", None),
+        ("bc9CL_HMT-R6nXO1eR-gP", "Dictionaries", None),
+        ("4gtmtYWYRWqwLdZRL0XMg", "List Comprehensions", None),
+        ("jnLIVRrWxcX3yq3Op91Vr", "Generator Expressions", None),
+    ]),
+    ("oop", "Object-Oriented Programming", "Classes, methods, inheritance, encapsulation, and paradigms.", [
+        ("P_Di-XPSDITmU3xKQew8G", "OOP Overview", None),
+        ("AqwzR8dZKLQIoj_6KKZ3t", "Classes", None),
+        ("zAS4YiEJ6VPsyABrkIG8i", "Methods", None),
+        ("S0FLE70szSVUPI0CDEQK7", "Inheritance", None),
+        ("3dC2o3WXdx4plFhDP2Vqk", "Encapsulation", None),
+        ("4GU5HNi3W8yFkImVY9ZpW", "Programming Paradigms", None),
+    ]),
+    ("errors-files-text", "Errors, Files & Text", "Exceptions, file handling, context managers, and regular expressions.", [
+        ("fNTb9y3zs1HPYclAmu_Wv", "Exceptions", None),
+        ("Nf3kRDSl_vas6QPXG7eVa", "File Handling", None),
+        ("KAXF2kUAOvtBZhY8G9rkI", "Context Managers", None),
+        ("bqnwMKY4R0rirup3q_hb_", "Glob", None),
+        ("7t6mJBsaFMWPi7o9fbhhq", "Regular Expressions", None),
+    ]),
+    ("advanced-python", "Advanced Python", "Decorators, iterators, and modules.", [
+        ("pIluLJkySqn_gI_GykV6G", "Decorators", None),
+        ("aB1LSQjDEQb_BxueOcnxU", "Iterators", None),
+        ("274uk28wzxn6EKWQzLpHs", "Modules", None),
+    ]),
+    ("dsa", "Data Structures & Algorithms", "Core data structures and algorithms in Python.", [
+        ("VJSIbYJcy2MC6MOFBrqXi", "DSA Overview", None),
+        ("OPD4WdMO7q4gRZMcRCQh1", "Arrays and Linked Lists", None),
+        ("0NlRczh6ZEaFLlT6LORWz", "Heaps, Stacks and Queues", None),
+        ("DG4fi1e5ec2BVckPLsTJS", "Hashmaps", None),
+        ("uJIqgsqUbE62Tyo3K75Qx", "Binary Search Tree", None),
+        ("kLBgy_nxxjE8SxdVi04bq", "Recursion", None),
+        ("vvTmjcWCVclOPY4f_5uB0", "Sorting Algorithms", None),
+    ]),
+    ("environments-packaging", "Environments & Packaging", "Virtual environments, package managers, and project config.", [
+        ("qeCMw-sJ2FR4UxvU9DDzv", "Package Managers", None),
+        ("iVhQnp6hpgVZDNJ0XoVra", "pip", None),
+        ("1dfOTOGsOk5XE3bnZs8Ht", "PyPI", None),
+        ("_IXXTSwQOgYzYIUuKVWNE", "virtualenv", None),
+        ("N5VaKMbgQ0V_BC5tadV65", "pyenv", None),
+        ("uh67D1u-Iv5cZamRgFEJg", "conda", None),
+        ("IWq-tfkz-pSC1ztZl60vM", "pipenv", None),
+        ("uXd2B01GVBEQNXQE8RATT", "poetry", None),
+        ("xDgXISgVUMRHh9hu4h6Hl", "pdm", None),
+        ("p3Frfs6oxpuciUzeCEsvb", "uv", None),
+        ("GHKAY9gOykEbxkEeR30wL", "pyproject.toml", None),
+        ("_94NrQ3quc4t_PPOsFSN0", "Common Packages", None),
+    ]),
+    ("code-quality", "Code Quality", "Typing, formatting, testing, and documentation.", [
+        ("1PXApuUpPmJjgi12cmWo4", "Static Typing", "Typing"),
+        ("o1wi39VnjnFfWIC8XcuAK", "typing module", "Typing"),
+        ("gIcJ3bUVQXqO1Wx4gUKd5", "mypy", "Typing"),
+        ("1q9HWgu9jDTK757hTNOmE", "pyright", "Typing"),
+        ("9mFR_ueXbIB2IrkqU2s85", "pyre", "Typing"),
+        ("l7k0qTYe42wYBTlT2-1cy", "Custom Type Checkers", "Typing"),
+        ("0F0ppU_ClIUKZ23Q6BVZp", "Code Formatting", "Formatting"),
+        ("DS6nuAUhUYcqiJDmQisKM", "black", "Formatting"),
+        ("tsh_vbhzKz1-H9Vh69tsK", "yapf", "Formatting"),
+        ("6cB0pvUO1-gvCtgqozP-Q", "ruff", "Formatting"),
+        ("WQOYjuwKIWB2meea4JnsV", "Testing", "Testing"),
+        ("3FDwJpesfelEyJrNWtm0V", "pytest", "Testing"),
+        ("b4he_RO17C3ScNeUd6v2b", "unittest / PyUnit", "Testing"),
+        ("aVclygxoA9ePU5IxaORSH", "doctest", "Testing"),
+        ("jPFOiwbqfaGshaGDBWb5x", "tox", "Testing"),
+        ("maYNuTKYyZndxk1z29-UY", "Sphinx", "Documentation"),
+    ]),
+    ("concurrency-async", "Concurrency & Async", "Threads, processes, the GIL, and asynchronous Python.", [
+        ("u4nRzWQ4zhDFMOrZ2I_uJ", "Concurrency", None),
+        ("UIx0XYaOgXXlYbbQtjiPq", "Threading", None),
+        ("HSY5OUc_M5S6OcFXPRtkx", "Multiprocessing", None),
+        ("bS7WeVKm2kEElu3sBKcIC", "The GIL", None),
+        ("Mow7RvropbC4ZGDpcGZmw", "Asynchrony (asyncio)", None),
+        ("InUJIGmTnf0X4cSoLuCEQ", "gevent", None),
+    ]),
+    ("web-frameworks", "Web Frameworks", "The major Python web frameworks and data validation.", [
+        ("0-ShORjGnQlAdcwjtxdEB", "Learn a Framework", None),
+        ("W3VALz5evFo1qqkQbMN1R", "Pydantic", None),
+        ("x1V8GjdjANTnhP6YXMbgC", "Django", None),
+        ("HKsGyRzntjh1UbRZSWh_4", "Flask", None),
+        ("XeQSmvAsGSTi8dd7QVHxn", "FastAPI", None),
+        ("DHtskqATeAVKgaazdhXKD", "Pyramid", None),
+        ("9RGpqsj9jHz0_-r7EvRcw", "Sanic", None),
+        ("zey2C6BdzsHJAlb_K3qrP", "Tornado", None),
+        ("IBVAvFtN4mnIPbIuyUvEb", "aiohttp", None),
+        ("7zcpXN3krnS3tMRWVNIVe", "Plotly Dash", None),
+    ]),
+]
+
+SECTIONS = SECTIONS_PYTHON if COURSE == 'python' else SECTIONS_AI
 
 os.makedirs(OUT, exist_ok=True)
 files = {f.rsplit('@', 1)[1][:-3]: f for f in os.listdir(CONTENT)}

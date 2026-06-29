@@ -1,0 +1,46 @@
+SECTION 7: Advanced Python
+DESCRIPTION: Decorators, iterators, and modules.
+======================================================================
+
+
+### TOPIC: Decorators  (id: decorators)  [group: -]
+
+# Decorators
+
+Decorator is a design pattern in Python that allows a user to add new functionality to an existing object without modifying its structure. Decorators are usually called before the definition of a function you want to decorate.
+
+Visit the following resources to learn more:
+
+- [@article@Learn Decorators in Python](https://pythonbasics.org/decorators/)
+- [@article@Python Decorators](https://www.datacamp.com/tutorial/decorators-python)
+- [@video@Decorators in Python](https://www.youtube.com/watch?v=FXUUSfJO_J4)
+- [@video@Python Decorators in 1 Minute](https://www.youtube.com/watch?v=BE-L7xu8pO4)
+
+----------------------------------------------------------------------
+
+### TOPIC: Iterators  (id: iterators)  [group: -]
+
+# Iterators
+
+An iterator is an object that contains a countable number of values. An iterator is an object that can be iterated upon, meaning that you can traverse through all the values. Technically, in Python, an iterator is an object which implements the iterator protocol, which consist of the methods **iter**() and **next**() .
+
+Visit the following resources to learn more:
+
+- [@official@Python Official Documentation on Iterators](https://docs.python.org/3/tutorial/classes.html#iterators)
+- [@article@Python Iterators](https://www.programiz.com/python-programming/iterator)
+- [@article@Iterators and Iterables in Python](https://realpython.com/python-iterators-iterables/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Modules  (id: modules)  [group: -]
+
+# Modules
+
+Modules refer to a file containing Python statements and definitions. A file containing Python code, for example: `example.py`, is called a module, and its module name would be example. We use modules to break down large programs into small manageable and organized files. Furthermore, modules provide reusability of code.
+
+Visit the following resources to learn more:
+
+- [@official@Python Modules](https://docs.python.org/3/tutorial/modules.html)
+- [@article@Modules in Python](https://www.programiz.com/python-programming/modules)
+
+----------------------------------------------------------------------

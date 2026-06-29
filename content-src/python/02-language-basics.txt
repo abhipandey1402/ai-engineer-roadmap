@@ -1,0 +1,107 @@
+SECTION 2: Language Basics
+DESCRIPTION: Syntax, variables, operators, strings, and control flow.
+======================================================================
+
+
+### TOPIC: Basic Syntax  (id: basic-syntax)  [group: -]
+
+# Basic Syntax
+
+Setup the environment for python and get started with the basics.
+
+Visit the following resources to learn more:
+
+- [@article@Python Basics](https://www.tutorialspoint.com/python/python_basic_syntax.htm)
+- [@article@Learn X in Y Minutes / Python](https://learnxinyminutes.com/docs/python/)
+- [@video@Python for Beginners - Learn Python in 1 Hour](https://www.youtube.com/watch?v=kqtD5dpn9C8)
+
+----------------------------------------------------------------------
+
+### TOPIC: Variables and Data Types  (id: variables-and-data-types)  [group: -]
+
+# Variables
+
+Variables are used to store information to be referenced and manipulated in a computer program. They also provide a way of labeling data with a descriptive name, so our programs can be understood more clearly by the reader and ourselves. It is helpful to think of variables as containers that hold information. Their sole purpose is to label and store data in memory. This data can then be used throughout your program.
+
+Visit the following resources to learn more:
+
+- [@article@Variables in Python](https://realpython.com/python-variables)
+- [@article@Python for Beginners: Data Types](https://thenewstack.io/python-for-beginners-data-types/)
+- [@article@Python Null (None): Guide to Missing Values and NoneType](https://roadmap.sh/python/null)
+- [@video@Python Variables and Data Types](https://www.youtube.com/playlist?list=PLBlnK6fEyqRhN-sfWgCU1z_Qhakc1AGOn)
+
+----------------------------------------------------------------------
+
+### TOPIC: Operators  (id: operators)  [group: -]
+
+# Operators
+
+Operators are symbols or keywords that perform operations on values and variables. Python includes several types: arithmetic operators (+, -, \*, /) for math calculations, comparison operators (==, !=, <, >) for evaluating relationships between values, and logical operators (and, or, not) for combining conditions. There are also assignment operators (=, +=, -=) for storing and updating values, bitwise operators for working with binary data, and membership operators (in, not in) for checking whether a value exists within a sequence like a list or string.
+
+Visit the following resources to learn more:
+
+- [@article@Python Operators](https://www.w3schools.com/python/python_operators.asp)
+- [@article@Python Operators with examples](https://www.programiz.com/python-programming/operators)
+- [@article@Python Division: Operators, Floor Division, and Examples](https://roadmap.sh/python/division)
+- [@article@Python Modulo Operator (%): Complete Guide with Examples](https://roadmap.sh/python/modulo)
+- [@article@Python not Operator: The Complete Guide to Logical Negation](https://roadmap.sh/python/not-operator)
+
+----------------------------------------------------------------------
+
+### TOPIC: Type Casting  (id: type-casting)  [group: -]
+
+# Typecasting
+
+The process of converting the value of one data type (integer, string, float, etc.) to another data type is called type conversion. Python has two types of type conversion: Implicit and Explicit.
+
+Visit the following resources to learn more:
+
+- [@article@Type Conversion and Casting](https://www.programiz.com/python-programming/type-conversion-and-casting)
+
+----------------------------------------------------------------------
+
+### TOPIC: Working with Strings  (id: working-with-strings)  [group: -]
+
+# Working with Strings
+
+Strings in Python are sequences of characters used to represent text. You can create them by enclosing characters within single quotes, double quotes, or triple quotes. Once created, strings are immutable, meaning their values cannot be changed directly. Common operations include accessing individual characters using indexing, slicing to extract substrings, concatenating strings using the `+` operator, and using built-in methods to manipulate and format the text they contain.
+
+Visit the following resources to learn more:
+
+- [@official@string — Common string operations](https://docs.python.org/3/library/string.html)
+- [@article@Python Strings](https://www.w3schools.com/python/python_strings.asp)
+- [@article@Python Print New Line: Methods, Examples, and Best Practices](https://roadmap.sh/python/print-new-line)
+- [@article@Python Multiline Strings: The Complete Guide](https://roadmap.sh/python/multiline-strings)
+- [@video@String methods in Python are easy 〰️](https://www.youtube.com/watch?v=tb6EYiHtcXU)
+- [@video@Python Tutorial for Beginners 2: Strings - Working with Textual Data](https://www.youtube.com/watch?v=k9TUPpGqYTo)
+
+----------------------------------------------------------------------
+
+### TOPIC: Conditionals  (id: conditionals)  [group: -]
+
+# Conditionals
+
+Conditional Statements in Python perform different actions depending on whether a specific condition evaluates to true or false. Conditional Statements are handled by _if-elif-else_ statements and MATCH-CASE statements in Python.
+
+Visit the following resources to learn more:
+
+- [@article@Conditional Statements in Python](https://realpython.com/python-conditional-statements/)
+- [@article@Python Conditional Statements](https://www.guru99.com/if-loop-python-conditional-structures.html)
+- [@article@Python Switch Statement 101: Match-case and alternatives](https://roadmap.sh/python/switch)
+- [@article@How to Use a Match Statement in Python](https://learnpython.com/blog/python-match-case-statement/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Loops  (id: loops)  [group: -]
+
+# Loops
+
+Loops are used to execute a block of code repeatedly.
+
+Visit the following resources to learn more:
+
+- [@article@Python "while" Loops (Indefinite Iteration)](https://realpython.com/python-while-loop/)
+- [@article@Python "for" Loops (Definite Iteration)](https://realpython.com/python-for-loop/#the-guts-of-the-python-for-loop)
+- [@video@Python For Loops](https://www.youtube.com/watch?v=KWgYha0clzw)
+
+----------------------------------------------------------------------

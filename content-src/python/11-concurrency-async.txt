@@ -1,0 +1,84 @@
+SECTION 11: Concurrency & Async
+DESCRIPTION: Threads, processes, the GIL, and asynchronous Python.
+======================================================================
+
+
+### TOPIC: Concurrency  (id: concurrency)  [group: -]
+
+# Concurrency
+
+Concurrency in Python allows multiple tasks to be executed simultaneously using different approaches. GIL (Global Interpreter Lock) limits thread execution, making multithreading less efficient for computational tasks, but suitable for I/O. Multiprocessing, using the multiprocessing module, allows multiple cores to be utilized, providing true parallelism. Asynchrony via asyncio is optimal for I/O operations, allowing thousands of connections to be processed simultaneously without blocking. The choice of approach depends on the nature of the task.
+
+Visit the following resources to learn more:
+
+- [@official@Concurrent Execution](https://docs.python.org/3/library/concurrency.html)
+- [@article@Python Concurrency](https://realpython.com/python-concurrency/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Threading  (id: threading)  [group: -]
+
+# Threading
+
+[Multithreading](https://roadmap.sh/python/multithreading) allows multiple threads within a single process. However, because of GIL, threads cannot run in parallel on different cores, which makes multithreading suitable for I/O tasks (e.g., network requests) but not for computational tasks.
+
+Visit the following resources to learn more:
+
+- [@official@Python Threading Library](https://docs.python.org/3/library/threading.html)
+- [@article@Python Multithreading: The Most Practical Intro](https://roadmap.sh/python/multithreading)
+- [@article@Introduction to Threading in Python](https://realpython.com/intro-to-python-threading/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Multiprocessing  (id: multiprocessing)  [group: -]
+
+# Multiprocessing
+
+Multiprocessing utilizes multiple processes, each with its own GIL. This allows full utilization of multiple processor cores, which is effective for computationally intensive tasks. Python's multiprocessing module supports creating processes and exchanging data between them.
+
+Visit the following resources to learn more:
+
+- [@official@Python Documentation](https://docs.python.org/3/library/multiprocessing.html)
+- [@article@Multiprocessing in Python with Example](https://www.digitalocean.com/community/tutorials/python-multiprocessing-example)
+- [@article@Multiprocessing in Python](https://realpython.com/python-multiprocessing/)
+
+----------------------------------------------------------------------
+
+### TOPIC: The GIL  (id: the-gil)  [group: -]
+
+# GIL
+
+GIL is a mechanism that allows only one thread to execute Python code at a time. This limitation is related to memory management in CPython and can reduce the efficiency of multithreaded applications on multi-core systems.
+
+Visit the following resources to learn more:
+
+- [@article@What is GIL?](https://realpython.com/python-gil/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Asynchrony (asyncio)  (id: asynchrony-asyncio)  [group: -]
+
+# Asynchrony
+
+Asynchronous programming, supported by asyncio, allows code to be executed without blocking, using async and await. This is especially useful for I/O tasks such as networking or file manipulation, allowing thousands of connections to be handled without blocking the main thread.
+
+Visit the following resources to learn more:
+
+- [@official@Python AsyncIO library](https://docs.python.org/3/library/asyncio.html)
+- [@article@Async IO in Python: A Complete Walkthrough](https://realpython.com/async-io-python/)
+
+----------------------------------------------------------------------
+
+### TOPIC: gevent  (id: gevent)  [group: -]
+
+# gevent
+
+gevent is a Python library that provides a high-level interface to the event loop. It is based on non-blocking IO (libevent/libev) and lightweight greenlets. Non-blocking IO means requests waiting for network IO won't block other requests; greenlets mean we can continue to write code in synchronous style.
+
+Visit the following resources to learn more:
+
+- [@official@gevent Website](http://www.gevent.org/)
+- [@opensource@gevent/gevent](https://github.com/gevent/gevent)
+- [@article@gevent For the Working Python Developer](https://sdiehl.github.io/gevent-tutorial/)
+
+----------------------------------------------------------------------

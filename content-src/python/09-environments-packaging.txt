@@ -1,0 +1,168 @@
+SECTION 9: Environments & Packaging
+DESCRIPTION: Virtual environments, package managers, and project config.
+======================================================================
+
+
+### TOPIC: Package Managers  (id: package-managers)  [group: -]
+
+# Package Managers
+
+Package managers allow you to manage the dependencies (external code written by you or someone else) that your project needs to work correctly.
+
+`PyPI` and `Pip` are the most common contenders but there are some other options available as well.
+
+Visit the following resources to learn more:
+
+- [@opensource@pypa/pipx](https://github.com/pypa/pipx)
+- [@feed@Explore top posts about Python](https://app.daily.dev/tags/python?ref=roadmapsh)
+
+----------------------------------------------------------------------
+
+### TOPIC: pip  (id: pip)  [group: -]
+
+# Pip
+
+The standard package manager for Python is pip. It allows you to install and manage packages that aren’t part of the Python standard library.
+
+Visit the following resources to learn more:
+
+- [@official@pip Documentation](https://pip.pypa.io/en/stable/installation/)
+- [@article@Using Pythons pip to Manage Your Projects Dependencies](https://realpython.com/what-is-pip/)
+- [@feed@Explore top posts about PIP](https://app.daily.dev/tags/pip?ref=roadmapsh)
+
+----------------------------------------------------------------------
+
+### TOPIC: PyPI  (id: pypi)  [group: -]
+
+# PyPI
+
+PyPI, typically pronounced pie-pee-eye, is a repository containing several hundred thousand packages. These range from trivial Hello, World implementations to advanced deep learning libraries.
+
+Visit the following resources to learn more:
+
+- [@official@PyPI Website](https://pypi.org/)
+- [@article@How to Publish an Open-Source Python Package to PyPI](https://realpython.com/pypi-publish-python-package/)
+- [@video@Getting Started with Pip and PyPI in Python](https://www.youtube.com/watch?v=bPSfNKvhooA)
+- [@feed@Explore top posts about Python](https://app.daily.dev/tags/python?ref=roadmapsh)
+
+----------------------------------------------------------------------
+
+### TOPIC: virtualenv  (id: virtualenv)  [group: -]
+
+# virtualenv
+
+`virtualenv` is a tool to create isolated Python environments. It creates a folder which contains all the necessary executables to use the packages that a Python project would need.
+
+Visit the following resources to learn more:
+
+- [@official@Virtual Environments](https://virtualenv.pypa.io/en/latest/)
+
+----------------------------------------------------------------------
+
+### TOPIC: pyenv  (id: pyenv)  [group: -]
+
+# pyenv
+
+pyenv is a tool for managing multiple versions of the Python programming language on Unix-like systems. It works by setting environment variables to point to the directory where the desired version of Python is installed. This allows you to switch between different versions of Python without having to modify your system's default Python installation.
+
+Visit the following resources to learn more:
+
+- [@opensource@pyenv/pyenv](https://github.com/pyenv/pyenv)
+
+----------------------------------------------------------------------
+
+### TOPIC: conda  (id: conda)  [group: -]
+
+# Conda
+
+Conda is an open source package management system and environment management system that runs on Windows, macOS, and Linux. Conda quickly installs, runs and updates packages and their dependencies. Conda easily creates, saves, loads and switches between environments on your local computer. It was created for Python programs, but it can package and distribute software for any language.
+
+Visit the following resources to learn more:
+
+- [@official@Conda Documentation](https://docs.conda.io/en/latest/)
+
+----------------------------------------------------------------------
+
+### TOPIC: pipenv  (id: pipenv)  [group: -]
+
+# pipenv
+
+Pipeline Environment (pipenv) is a tool that aims to bring the best of all packaging worlds (bundled, requirements.txt, [setup.py](https://docs.python.org/3.11/distutils/setupscript.html), setup.cfg, etc.) to the Python world. It automatically creates and manages a virtualenv for your projects, as well as adds/removes packages from your Pipfile as you install/uninstall packages. It also generates the ever-important Pipfile.lock, which is used to produce deterministic builds.
+
+Visit the following resources to learn more:
+
+- [@official@Pipenv Documentation](https://pipenv.pypa.io/en/latest/)
+
+----------------------------------------------------------------------
+
+### TOPIC: poetry  (id: poetry)  [group: -]
+
+# Poetry
+
+Poetry is a dependency management and packaging tool for Python that runs on Windows, macOS, and Linux. Poetry efficiently installs, manages, and updates packages and their dependencies. Poetry seamlessly creates, saves, loads, and switches between project environments on your local computer. It is designed specifically for Python projects, providing a streamlined workflow for managing dependencies, virtual environments, and building packages.
+
+Poetry as a package manager helps you find and install packages. If you need a specific version of a package or a different version of Python, Poetry handles both dependency management and virtual environments effortlessly. With just a few commands, you can set up a completely isolated environment to run a different version of Python or package configuration, while maintaining your usual development environment. Poetry’s lock file ensures consistent installs across different environments, enhancing reproducibility and stability of your projects.
+
+Visit the following resources to learn more:
+
+- [@official@Poetry Docs](https://python-poetry.org/docs/)
+- [@video@Python Poetry - Basics](https://www.youtube.com/watch?v=Ji2XDxmXSOM)
+
+----------------------------------------------------------------------
+
+### TOPIC: pdm  (id: pdm)  [group: -]
+
+# PDM
+
+PDM is a modern Python package manager that supports PEP 582, which allows packages to be installed in a `__pypackages__` directory instead of the traditional `site-packages` directory. It aims to provide a streamlined and improved experience for managing dependencies, building, and publishing Python projects. PDM also includes features like dependency resolution, virtual environment management, and project scaffolding.
+
+Visit the following resources to learn more:
+
+- [@official@pdm](https://pdm-project.org/en/latest/)
+- [@opensource@pdm](https://github.com/pdm-project/pdm)
+- [@article@Introduction to PDM: A Python Project and Dependency Manager](https://betterstack.com/community/guides/scaling-python/pdm-explained/)
+
+----------------------------------------------------------------------
+
+### TOPIC: uv  (id: uv)  [group: -]
+
+# uv
+
+uv is an "extremely fast" python package installer and resolver.
+
+Visit the following resources to learn more:
+
+- [@opensource@astral-sh/uv](https://github.com/astral-sh/uv)
+- [@article@@UV for Python](https://www.youtube.com/watch?v=qh98qOND6MI&t)
+
+----------------------------------------------------------------------
+
+### TOPIC: pyproject.toml  (id: pyproject-toml)  [group: -]
+
+# pyproject.toml
+
+This file is used to define the project configuration and dependencies. It is a configuration file that contains metadata about the project, such as its name, version, dependencies, and build settings. The `pyproject.toml` file is used by tools like `poetry` and `flit` to manage Python projects and their dependencies.
+
+Visit the following resources to learn more:
+
+- [@official@Writing pyproject.toml files](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Common Packages  (id: common-packages)  [group: -]
+
+# Common Packages and Modules
+
+Python has a rich ecosystem of packages and modules that can be used to get the most out of the language. A package is essentially a directory that contains multiple modules and subpackages. A module is a single file that contains a collection of related functions, classes, and variables. Modules are the basic building blocks of Python code organization. A module can be thought of as a container that holds a set of related code.
+
+Visit the following resources to learn more:
+
+- [@official@requests](https://docs.python-requests.org/en/latest/)
+- [@official@pathlib](https://docs.python.org/3/library/pathlib.html)
+- [@official@asyncio](https://docs.python.org/3/library/asyncio.html)
+- [@official@dataclasses](https://docs.python.org/3/library/dataclasses.html)
+- [@official@python-dotenv](https://pypi.org/project/python-dotenv/)
+- [@official@numpy](https://numpy.org/doc/stable/)
+- [@official@pandas](https://pandas.pydata.org/docs/)
+
+----------------------------------------------------------------------

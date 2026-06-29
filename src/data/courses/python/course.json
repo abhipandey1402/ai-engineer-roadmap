@@ -1,0 +1,11 @@
+{
+  "id": "python",
+  "order": 2,
+  "title": "Python",
+  "tagline": "Master Python from syntax to web frameworks.",
+  "description": "The full roadmap.sh/python curriculum — from basic syntax and data structures through OOP, packaging, typing, testing, async, and web frameworks — distilled into focused lessons with runnable code and hands-on labs.",
+  "accent": "#3776ab",
+  "icon": "🐍",
+  "source": { "label": "roadmap.sh/python", "url": "https://roadmap.sh/python" },
+  "labLanguages": ["python"]
+}

@@ -1,0 +1,149 @@
+SECTION 12: Web Frameworks
+DESCRIPTION: The major Python web frameworks and data validation.
+======================================================================
+
+
+### TOPIC: Learn a Framework  (id: learn-a-framework)  [group: -]
+
+# Python Frameworks
+
+Frameworks automate the common implementation of common solutions which gives the flexibility to the users to focus on the application logic instead of the basic routine processes. Frameworks make the life of web developers easier by giving them a structure for app development. They provide common patterns in a web application that are fast, reliable and easily maintainable.
+
+Visit the following resources to learn more:
+
+- [@article@Pyscript: A Browser-Based Python Framework](https://thenewstack.io/pyscript-a-browser-based-python-framework/)
+- [@feed@Explore top posts about Python](https://app.daily.dev/tags/python?ref=roadmapsh)
+
+----------------------------------------------------------------------
+
+### TOPIC: Pydantic  (id: pydantic)  [group: -]
+
+# Pydantic
+
+Pydantic is a Python library for data validation and settings management using Python type annotations. It enforces type hints at runtime and provides clear, user-friendly error messages when data is invalid. Pydantic is widely used in FastAPI for request body parsing, and in CLI and configuration tools for parsing environment variables and config files via `BaseSettings`. At its core, you define a model by subclassing `BaseModel` and annotating fields with types — Pydantic handles all coercion, validation, and serialization automatically.
+
+Visit the following resources to learn more:
+
+- [@official@Pydantic Documentation](https://docs.pydantic.dev/latest/)
+- [@official@FastAPI – Request Body with Pydantic](https://fastapi.tiangolo.com/tutorial/body/)
+- [@article@Pydantic: Simplifying Data Validation in Python – Real Python](https://realpython.com/python-pydantic/)
+- [@article@Pydantic V2 Migration Guide](https://docs.pydantic.dev/latest/migration/)
+- [@video@Pydantic Tutorial – Complete Python Data Validation (ArjanCodes)](https://www.youtube.com/watch?v=XIdQ6gO3Anc)
+
+----------------------------------------------------------------------
+
+### TOPIC: Django  (id: django)  [group: -]
+
+# Django
+
+Django is a free and open-source, Python-based web framework that follows the model–template–views architectural pattern. It is maintained by the Django Software Foundation, an independent organization established in the US as a 501 non-profit
+
+Visit the following resources to learn more:
+
+- [@roadmap@Visit the Dedicated Django Roadmap](https://roadmap.sh/django)
+- [@official@Django Website](https://www.djangoproject.com/)
+- [@official@Getting Started](https://www.djangoproject.com/start/)
+- [@article@Is Django Synchronous or Asynchronous?](https://stackoverflow.com/questions/58548089/django-is-synchronous-or-asynchronous)
+- [@video@Python Django Tutorial for Beginners](https://www.youtube.com/watch?v=rHux0gMZ3Eg)
+- [@feed@Explore top posts about Django](https://app.daily.dev/tags/django?ref=roadmapsh)
+
+----------------------------------------------------------------------
+
+### TOPIC: Flask  (id: flask)  [group: -]
+
+# Flask
+
+Flask is a micro web framework written in Python. It is classified as a microframework because it does not require particular tools or libraries. It has no database abstraction layer, form validation, or any other components where pre-existing third-party libraries provide common functions. Instead, it provides flexibility by requiring you to choose and integrate the best libraries for your project's needs.
+
+Visit the following resources to learn more:
+
+- [@official@Flask Website](https://flask.palletsprojects.com/)
+- [@official@Flask Tutorial](https://flask.palletsprojects.com/en/3.0.x/tutorial/)
+- [@feed@Explore top posts about Flask](https://app.daily.dev/tags/flask?ref=roadmapsh)
+
+----------------------------------------------------------------------
+
+### TOPIC: FastAPI  (id: fastapi)  [group: -]
+
+# FastAPI
+
+FastAPI is a modern Python web framework used for building APIs with high performance and automatic documentation. It leverages Python type hints for request validation, serialization, and editor support, making API development faster and less error-prone. FastAPI is commonly used for backend services, microservices, and machine learning model deployment due to its speed and ease of use.
+
+Visit the following resources to learn more:
+
+- [@official@FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [@video@Create an API with Fast-API (Full 19 Hour Course)](https://www.youtube.com/watch?v=0sOvCWFmrtA)
+- [@feed@Explore top posts about FastAPI](https://app.daily.dev/tags/fastapi?ref=roadmapsh)
+
+----------------------------------------------------------------------
+
+### TOPIC: Pyramid  (id: pyramid)  [group: -]
+
+# Pyramid
+
+Pyramid is a general, open source, web application development framework built in python. It allows python developer to create web applications with ease. Pyramid is backed by the enterprise knowledge Management System KARL (a George Soros project).
+
+Visit the following resources to learn more:
+
+- [@official@Pyramid Website](https://trypyramid.com/)
+- [@official@Pyramid Documentation](https://trypyramid.com/documentation.html)
+- [@article@Pyramid Framework Introduction](https://www.tutorialspoint.com/python_web_development_libraries/python_web_development_libraries_pyramid_framework.htm)
+
+----------------------------------------------------------------------
+
+### TOPIC: Sanic  (id: sanic)  [group: -]
+
+# Sanic
+
+Sanic is a Python 3.8+ web server and web framework designed for speed. It fully supports the `async`/`await` syntax introduced in Python 3.5, allowing you to write non-blocking request handlers that can handle thousands of concurrent connections efficiently. Unlike traditional synchronous frameworks, Sanic uses `uvloop` under the hood for its event loop, making it one of the fastest Python web frameworks available. It supports features like Blueprints for route grouping, WebSockets, middleware, streaming responses, and a built-in static file server, making it a strong choice for building high-performance APIs and real-time applications.
+
+Visit the following resources to learn more:
+
+- [@official@Sanic Official Website](https://sanic.dev/en/)
+- [@official@Sanic User Guide – Getting Started](https://sanic.dev/en/guide/getting-started.html)
+- [@opensource@Sanic on GitHub](https://github.com/sanic-org/sanic)
+- [@article@Async Python Web Frameworks Compared: Sanic vs FastAPI vs Starlette](https://testdriven.io/blog/fastapi-vs-flask/)
+- [@video@Sanic Python Framework Tutorial (Tech With Tim)](https://www.youtube.com/watch?v=w4UQkgxKuaI)
+
+----------------------------------------------------------------------
+
+### TOPIC: Tornado  (id: tornado)  [group: -]
+
+# Tornado
+
+Tornado is a scalable, non-blocking web server and web application framework written in Python. It was developed for use by FriendFeed; the company was acquired by Facebook in 2009 and Tornado was open-sourced soon after.
+
+Visit the following resources to learn more:
+
+- [@official@Tornado Website](https://www.tornadoweb.org/)
+- [@article@A Step-by-Step Tutorial on Python Tornado](https://phrase.com/blog/posts/tornado-web-framework-i18n/)
+- [@video@Tornado Python Framework](https://www.youtube.com/watch?v=-gJ21qzpieA)
+
+----------------------------------------------------------------------
+
+### TOPIC: aiohttp  (id: aiohttp)  [group: -]
+
+# AIOHTTP
+
+aiohttp is a Python 3.5+ library that provides a simple and powerful asynchronous HTTP client and server implementation.
+
+Visit the following resources to learn more:
+
+- [@official@aiohttp docs](https://docs.aiohttp.org/en/stable/)
+- [@article@Creating a RESTful API with Python and aiohttp](https://tutorialedge.net/python/create-rest-api-python-aiohttp/)
+- [@video@Python Asyncio, Requests, Aiohttp | Make faster API Calls](https://www.youtube.com/watch?v=nFn4_nA_yk8)
+
+----------------------------------------------------------------------
+
+### TOPIC: Plotly Dash  (id: plotly-dash)  [group: -]
+
+# Plotly Dash
+
+Plotly Dash is a Python framework that allows you to build analytical web applications. It's a high-level library that enables you to create interactive, web-based data visualization dashboards without requiring extensive knowledge of web development.
+
+Visit the following resources to learn more:
+
+- [@official@Plotly Dash Documentation](https://dash.plotly.com/)
+- [@official@20 Minutes Tutorial](http://dash.plotly.com/tutorial)
+
+----------------------------------------------------------------------

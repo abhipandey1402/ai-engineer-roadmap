@@ -16,4 +16,11 @@ describe('course registry', () => {
     const orders = courses.map((c) => c.order)
     expect(orders).toEqual([...orders].sort((a, b) => a - b))
   })
+
+  it('loads the python course as a Python-only course', () => {
+    const py = getCourse('python')
+    expect(py).toBeDefined()
+    expect(py!.labLanguages).toEqual(['python'])
+    expect(py!.sections.length).toBeGreaterThanOrEqual(1)
+  })
 })

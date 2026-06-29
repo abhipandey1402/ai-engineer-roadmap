@@ -1,0 +1,209 @@
+SECTION 10: Code Quality
+DESCRIPTION: Typing, formatting, testing, and documentation.
+======================================================================
+
+
+### TOPIC: Static Typing  (id: static-typing)  [group: Typing]
+
+# Static Typing
+
+Static typing can be a powerful tool to help you catch bugs before they happen. It can also help you understand the code you're working with, and make it easier to maintain and refactor.
+
+Visit the following resources to learn more:
+
+- [@official@Static Typing in Python](https://typing.readthedocs.io/en/latest/index.html)
+
+----------------------------------------------------------------------
+
+### TOPIC: typing module  (id: typing-module)  [group: Typing]
+
+# Typing
+
+The `typing` module provides support for type hints in Python, allowing developers to specify expected data types for variables, function parameters, and return values. Type hints improve code readability, enable better editor support and static analysis, and help catch potential bugs early without changing how Python executes programs at runtime.
+
+Visit the following resources to learn more:
+
+- [@official@Typing Module](https://docs.python.org/3/library/typing.html)
+
+----------------------------------------------------------------------
+
+### TOPIC: mypy  (id: mypy)  [group: Typing]
+
+# mypy
+
+mypy is an optional static type checker for Python that aims to combine the benefits of dynamic (or "duck") typing and static typing. Mypy combines the expressive power and convenience of Python with a powerful type system and compile-time type checking. Mypy type checks standard Python programs; run them using any Python VM with basically no runtime overhead.
+
+Visit the following resources to learn more:
+
+- [@official@mypy documentation](https://mypy-lang.org/)
+- [@opensource@python/mypy](https://github.com/python/mypy)
+
+----------------------------------------------------------------------
+
+### TOPIC: pyright  (id: pyright)  [group: Typing]
+
+# pyright
+
+pyright is a static type checker for Python. It is a Microsoft product and is written in TypeScript. It is a language server that uses the Language Server Protocol (LSP) to communicate with the editor. It is a good alternative to mypy and pytype.
+
+Visit the following resources to learn more:
+
+- [@official@Pyright Documentation](https://microsoft.github.io/pyright/)
+
+----------------------------------------------------------------------
+
+### TOPIC: pyre  (id: pyre)  [group: Typing]
+
+# pyrefly
+
+pyrefly is a static type checker for Python. It is a tool that helps you find type errors in your Python code. Pyre is designed to be fast, scalable, and easy to use. It is used at Facebook to help developers catch type errors before they make it to production.
+
+Visit the following resources to learn more:
+
+- [@official@pyrefly Documentation](https://pyrefly.org)
+
+----------------------------------------------------------------------
+
+### TOPIC: Custom Type Checkers  (id: custom-type-checkers)  [group: Typing]
+
+# Custom Modules
+
+Modules refer to a file containing Python statements and definitions. A file containing Python code, for example: `example.py`, is called a module, and its module name would be example. We use modules to break down large programs into small manageable and organized files. Furthermore, modules provide reusability of code.
+
+Visit the following resources to learn more:
+
+- [@official@Python Modules](https://docs.python.org/3/tutorial/modules.html)
+- [@article@Modules in Python](https://www.programiz.com/python-programming/modules)
+- [@article@Python Modules and Packages](https://realpython.com/python-modules-packages/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Code Formatting  (id: code-formatting)  [group: Formatting]
+
+# Code Formatting
+
+Python code formatting is crucial for maintaining readability, consistency, and reducing errors. Black is a code formatter for Python. It is a tool that automatically formats Python code to adhere to the PEP 8 style guide. It is a great tool to use in your Python projects to ensure that your code is formatted consistently and correctly.
+
+Visit the following resources to learn more:
+
+- [@official@Pylint for Python](https://www.pylint.org/)
+- [@official@Black Documentation](https://black.readthedocs.io/en/stable/)
+
+----------------------------------------------------------------------
+
+### TOPIC: black  (id: black)  [group: Formatting]
+
+# black
+
+Black is a python code formatter that automatically formats code according to a consistent style. By removing formatting decisions from developers, Black helps maintain uniform codebases, improves readability, and reduces time spent on style discussions during code reviews.
+
+Visit the following resources to learn more:
+
+- [@official@Getting Started with Black](https://black.readthedocs.io/en/stable/getting_started.html)
+- [@official@Black Documentation](https://black.readthedocs.io/en/stable/)
+
+----------------------------------------------------------------------
+
+### TOPIC: yapf  (id: yapf)  [group: Formatting]
+
+# yapf
+
+yapf is a formatter for Python files. It is a tool that automatically formats Python code to conform to the PEP 8 style guide. It is similar to black but has more configuration options.
+
+Visit the following resources to learn more:
+
+- [@opensource@google/yapf](https://github.com/google/yapf)
+
+----------------------------------------------------------------------
+
+### TOPIC: ruff  (id: ruff)  [group: Formatting]
+
+# ruff
+
+Ruff is a fast Python linter and code quality tool written in Rust that combines the functionality of multiple linting and formatting tools into a single, high-performance utility. It helps detect errors, enforce coding standards, and improve code quality while running significantly faster than traditional Python linters.
+
+Visit the following resources to learn more:
+
+- [@official@Ruff documentation](https://docs.astral.sh/ruff/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Testing  (id: testing)  [group: Testing]
+
+# Testing
+
+Testing in programming means checking if your code works as expected. It's a systematic way to find and fix errors (bugs) before your code goes live. Imagine building a beautiful house without checking if the walls are straight or the roof doesn't leak—that's what coding without testing can feel like!
+
+Visit the following resources to learn more:
+
+- [@official@Unit Testing in Python](https://docs.python.org/3/library/unittest.html)
+- [@article@Python Testing Tutorial](https://realpython.com/python-testing/)
+
+----------------------------------------------------------------------
+
+### TOPIC: pytest  (id: pytest)  [group: Testing]
+
+# pytest
+
+pytest is a mature full-featured Python testing tool that helps you write better programs.
+
+Visit the following resources to learn more:
+
+- [@official@Pytest Docs](https://docs.pytest.org/)
+- [@article@Pytest Tutorial](https://www.tutorialspoint.com/pytest/index.htm)
+- [@article@Effective Python Testing With Pytest](https://realpython.com/pytest-python-testing/)
+- [@video@Pytest Tutorial – How to Test Python Code](https://www.youtube.com/watch?v=cHYq1MRoyI0)
+- [@feed@Explore top posts about Python](https://app.daily.dev/tags/python?ref=roadmapsh)
+
+----------------------------------------------------------------------
+
+### TOPIC: unittest / PyUnit  (id: unittest-pyunit)  [group: Testing]
+
+# PyUnit / Unittest
+
+PyUnit is an easy way to create unit testing programs and UnitTests with Python. (Note that [docs.python.org](http://docs.python.org) uses the name "unittest", which is also the module name.)
+
+Visit the following resources to learn more:
+
+- [@official@PyUnit Docs](https://wiki.python.org/moin/PyUnit%C2%A0)
+- [@article@How To Use unittest to Write a Test Case for a Function in Python](https://www.digitalocean.com/community/tutorials/how-to-use-unittest-to-write-a-test-case-for-a-function-in-python)
+- [@article@A Gentle Introduction to Unit Testing in Python](https://machinelearningmastery.com/a-gentle-introduction-to-unit-testing-in-python/)
+
+----------------------------------------------------------------------
+
+### TOPIC: doctest  (id: doctest)  [group: Testing]
+
+# Doctest
+
+Python’s standard library comes equipped with a test framework module called doctest. The doctest module programmatically searches Python code for pieces of text within comments that look like interactive Python sessions. Then, the module executes those sessions to confirm that the code referenced by a doctest runs as expected.
+
+Visit the following resources to learn more:
+
+- [@official@Doctest Module](https://docs.python.org/3/library/doctest.html)
+- [@article@How To Write Doctests in Python](https://www.digitalocean.com/community/tutorials/how-to-write-doctests-in-python)
+
+----------------------------------------------------------------------
+
+### TOPIC: tox  (id: tox)  [group: Testing]
+
+# Tox
+
+Tox is a tool for automating test environment management and testing against multiple interpreter configurations. It is particularly useful for Python codebase that need to support multiple versions of Python.
+
+Visit the following resources to learn more:
+
+- [@official@Tox Documentation](https://tox.wiki/en/)
+
+----------------------------------------------------------------------
+
+### TOPIC: Sphinx  (id: sphinx)  [group: Documentation]
+
+# sphinx
+
+Sphinx is a tool that makes it easy to create intelligent and beautiful documentation, written by Georg Brandl and licensed under the BSD license.
+
+Visit the following resources to learn more:
+
+- [@official@Sphinx Website](https://www.sphinx-doc.org/en/master/)
+
+----------------------------------------------------------------------

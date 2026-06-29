@@ -1,0 +1,95 @@
+SECTION 5: Object-Oriented Programming
+DESCRIPTION: Classes, methods, inheritance, encapsulation, and paradigms.
+======================================================================
+
+
+### TOPIC: OOP Overview  (id: oop-overview)  [group: -]
+
+# OOP
+
+In Python, object-oriented Programming (OOPs) is a programming paradigm that uses objects and classes in programming. It aims to implement real-world entities like inheritance, polymorphism, encapsulation, etc., in programming. The main concept of OOPs is to bind the data and the functions that work on that together as a single unit so that no other part of the code can access this data.
+
+Visit the following resources to learn more:
+
+- [@article@Object Oriented Programming in Python](https://realpython.com/python3-object-oriented-programming/)
+- [@video@Object Oriented Programming (OOP) In Python - Beginner Crash Course](https://www.youtube.com/watch?v=-pEs-Bss8Wc/)
+- [@video@OOP in Python One Shot](https://www.youtube.com/watch?v=Ej_02ICOIgs)
+- [@video@Python OOP Tutorial](https://www.youtube.com/watch?v=IbMDCwVm63M)
+
+----------------------------------------------------------------------
+
+### TOPIC: Classes  (id: classes)  [group: -]
+
+# Classes
+
+A class is a user-defined blueprint or prototype from which objects are created. Classes provide a means of bundling data and functionality together. Creating a new class creates a new type of object, allowing new instances of that type to be made. Each class instance can have attributes attached to it for maintaining its state. Class instances can also have methods (defined by their class) for modifying their state.
+
+Visit the following resources to learn more:
+
+- [@official@Classes in Python](https://docs.python.org/3/tutorial/classes.html)
+- [@video@Python OOP Tutorial](https://www.youtube.com/watch?v=ZDa-Z5JzLYM&list=PL-osiE80TeTsqhIuOqKhwlXsIBIdSeYtc)
+
+----------------------------------------------------------------------
+
+### TOPIC: Methods  (id: methods)  [group: -]
+
+# Methods and Dunder
+
+A method in python is somewhat similar to a function, except it is associated with object/classes. Methods in python are very similar to functions except for two major differences.
+
+*   The method is implicitly used for an object for which it is called.
+*   The method is accessible to data that is contained within the class.
+
+Dunder or magic methods in Python are the methods that have two prefix and suffix underscores in the method name. Dunder here means “Double Under (Underscores)”. These are commonly used for operator overloading. Few examples for magic methods are: **`__init__`**, **`__add__`**, **`__len__`**, **`__repr__`** etc.
+
+Visit the following resources to learn more:
+
+- [@article@Method vs Function in Python](https://www.tutorialspoint.com/difference-between-method-and-function-in-python)
+- [@article@Python - Magic or Dunder Methods](https://www.tutorialsteacher.com/python/magic-methods-in-python)
+
+----------------------------------------------------------------------
+
+### TOPIC: Inheritance  (id: inheritance)  [group: -]
+
+# Inheritance
+
+Inheritance is a fundamental concept in object-oriented programming where a new class (the child class or subclass) is derived from an existing class (the parent class or superclass). The child class inherits attributes and methods from the parent class, allowing for code reuse and the creation of hierarchical relationships between classes. This promotes a more organized and maintainable codebase by establishing a clear structure and reducing redundancy.
+
+Visit the following resources to learn more:
+
+- [@official@Python Official Documentation on Inheritance](https://docs.python.org/3/tutorial/classes.html#inheritance)
+
+----------------------------------------------------------------------
+
+### TOPIC: Encapsulation  (id: encapsulation)  [group: -]
+
+# Encapsulation
+
+Encapsulation is a way to bundle data (attributes) and the methods that operate on that data into a single unit, known as a class. It restricts direct access to some of the object's components and prevents the accidental modification of data. This is achieved by declaring some attributes or methods as private, meaning they can only be accessed from within the class itself.
+
+Visit the following resources to learn more:
+
+- [@article@Encapsulation in Python: All You Need to Know](https://roadmap.sh/python/encapsulation)
+- [@article@Encapsulation in Python: A Comprehensive Guide](https://www.datacamp.com/tutorial/encapsulation-in-python-object-oriented-programming)
+- [@article@Encapsulation](https://programming-25.mooc.fi/part-9/3-encapsulation)
+- [@video@Encapsulation - Advanced Python Tutorial #5](https://www.youtube.com/watch?v=dzmYoSzL8ok)
+
+----------------------------------------------------------------------
+
+### TOPIC: Programming Paradigms  (id: programming-paradigms)  [group: -]
+
+# Python Paradigms
+
+Python is a multi-paradigm programming language, which means that it supports several programming paradigms. Some of the main paradigms supported by Python are:
+
+*   Imperative programming: This paradigm focuses on telling the computer what to do, step by step. Python supports imperative programming with features such as variables, loops, and control structures.
+*   Object-oriented programming (OOP): This paradigm is based on the idea of objects and their interactions. Python supports OOP with features such as classes, inheritance, and polymorphism.
+*   Functional programming: This paradigm is based on the idea of functions as first-class citizens, and it emphasizes the use of pure functions and immutable data. Python supports functional programming with features such as higher-order functions, lambda expressions, and generators.
+*   Aspect-oriented programming: This paradigm is based on the idea of separating cross-cutting concerns from the main functionality of a program. Python does not have built-in support for aspect-oriented programming, but it can be achieved using libraries or language extensions.
+
+Visit the following resources to learn more:
+
+- [@article@Python Paradigms](https://opensource.com/article/19/10/python-programming-paradigms)
+- [@video@Learn Functional Programming - Python Course](https://www.youtube.com/watch?v=5QZYGU0C2OA)
+
+----------------------------------------------------------------------

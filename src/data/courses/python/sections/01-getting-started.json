@@ -1,0 +1,75 @@
+{
+  "id": "getting-started",
+  "title": "Getting Started",
+  "description": "What Python is, where it's used, and how to set up and run it.",
+  "topics": [
+    {
+      "id": "learn-the-basics",
+      "title": "Getting Started with Python",
+      "subsection": null,
+      "minutes": 6,
+      "intro": "Python is a high-level, interpreted, general-purpose language prized for readability — the fastest way to start is to install it, open the REPL, and run your first script.",
+      "summary": [
+        "Python is a high-level, interpreted, dynamically-typed, garbage-collected programming language whose design philosophy emphasizes readability through significant indentation rather than braces. Because it reads almost like English and ships with a large standard library (\"batteries included\"), it has become one of the most popular languages in the world and the default choice for beginners and experts alike. It is used across web development (Django, Flask, FastAPI), data science and machine learning (NumPy, pandas, PyTorch), automation and scripting, DevOps tooling, and scientific computing.",
+        "Python is an interpreted language, which means you don't compile your program ahead of time — the `python` interpreter reads and executes your code directly. You interact with it in two main ways. The REPL (Read-Eval-Print Loop), started by typing `python3` in a terminal, lets you type expressions and immediately see results, which is ideal for experimenting and learning. For real programs you write code into a `.py` file and run it with `python3 myscript.py`. Almost everything in this course can be tried in the REPL first, then saved into a script.",
+        "Today's standard is Python 3 (Python 2 reached end-of-life in 2020, so always use `python3`). On macOS and Linux a Python 3 build is often preinstalled, but installing the latest version from python.org — or via a version manager — is recommended so you control exactly which version you use. Once installed, `python3 --version` confirms it works, and `pip`, Python's package installer, lets you add third-party libraries from PyPI. With those pieces in place you're ready to learn the language itself."
+      ],
+      "keyPoints": [
+        "Python is high-level, interpreted, dynamically typed, and uses indentation (not braces) to define code blocks.",
+        "It's a top language for web backends, data science/ML, automation, scripting, and DevOps — a versatile first language.",
+        "Always use Python 3 (run `python3`); Python 2 is end-of-life and should not be used for new code.",
+        "The REPL (`python3`) is for quick experiments; `.py` files run with `python3 file.py` are for real programs.",
+        "`pip` installs third-party packages from PyPI; the standard library already covers a huge amount out of the box.",
+        "Verify your install with `python3 --version` before moving on."
+      ],
+      "code": [
+        {
+          "title": "Hello, World!",
+          "language": "python",
+          "code": "# hello.py — run with: python3 hello.py\nprint(\"Hello, World!\")"
+        },
+        {
+          "title": "A first taste of the language",
+          "language": "python",
+          "code": "name = \"Ada\"          # variables need no type declaration\nage = 36\n\n# f-strings interpolate expressions inside { }\nprint(f\"{name} is {age} years old.\")\n\n# indentation defines the block — no braces, no semicolons\nfor i in range(3):\n    print(\"count\", i)"
+        }
+      ],
+      "resources": [
+        { "title": "Python.org — Official Website & Downloads", "url": "https://www.python.org/", "type": "official" },
+        { "title": "The Python Tutorial (official docs)", "url": "https://docs.python.org/3/tutorial/", "type": "official" },
+        { "title": "Using the Python Interpreter (the REPL)", "url": "https://docs.python.org/3/tutorial/interpreter.html", "type": "official" },
+        { "title": "Real Python — Python 3 Installation & Setup Guide", "url": "https://realpython.com/installing-python/", "type": "article" },
+        { "title": "Python Full Course for Beginners (freeCodeCamp)", "url": "https://www.youtube.com/watch?v=rfscVS0vtbw", "type": "video" }
+      ],
+      "handsOn": {
+        "goal": "Install Python 3, confirm it works, experiment in the REPL, then write and run your first `.py` script.",
+        "steps": [
+          {
+            "title": "Install Python 3 and verify it",
+            "explanation": "Download the latest Python 3 from python.org (or use your OS package manager / a version manager like `pyenv`). Then confirm the interpreter and `pip` are on your PATH. On some systems the command is `python` instead of `python3`.",
+            "python": "# in your terminal\npython3 --version\n# e.g. Python 3.13.1\n\npip3 --version\n# e.g. pip 24.x from .../site-packages/pip (python 3.13)",
+            "javascript": null
+          },
+          {
+            "title": "Experiment in the REPL",
+            "explanation": "Start the interactive interpreter and try a few expressions. The REPL prints the result of each expression immediately — perfect for learning. Type `exit()` or press Ctrl-D to leave.",
+            "python": "python3\n>>> 2 + 3 * 4\n14\n>>> name = \"world\"\n>>> f\"hello {name}\"\n'hello world'\n>>> len(\"python\")\n6\n>>> exit()",
+            "javascript": null
+          },
+          {
+            "title": "Write and run a script",
+            "explanation": "Save code to a file ending in `.py`, then run it with the interpreter. This is how real programs are executed.",
+            "python": "# save as greet.py\nname = input(\"What's your name? \")\nprint(f\"Nice to meet you, {name}!\")\n\n# run it:\n#   python3 greet.py",
+            "javascript": null
+          }
+        ],
+        "practice": [
+          "Install Python 3 and get `python3 --version` to print a 3.x version.",
+          "In the REPL, compute the number of seconds in a week using `*`, and store it in a variable.",
+          "Write a `temperature.py` script that converts 100°C to Fahrenheit (`c * 9/5 + 32`) and prints it with an f-string.",
+          "Make your script read a Celsius value with `input()` and `float()`, then print the Fahrenheit result."
+        ]
+      }
+    }
+  ]
+}

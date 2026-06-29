@@ -1,0 +1,60 @@
+SECTION 3: Functions & Scope
+DESCRIPTION: Defining and using functions, built-ins, lambdas, and scope.
+======================================================================
+
+
+### TOPIC: Functions  (id: functions)  [group: -]
+
+# Functions
+
+In programming, a function is a reusable block of code that executes a certain functionality when it is called. Functions are integral parts of every programming language because they help make your code more modular and reusable. In Python, we define a function with the `def` keyword, then write the function identifier (name) followed by parentheses and a colon.
+
+Visit the following resources to learn more:
+
+- [@official@Built-in Functions in Python](https://docs.python.org/3/library/functions.html)
+- [@article@Defining Python Functions](https://realpython.com/defining-your-own-python-function/)
+- [@article@How to Return Multiple Values in Python (and When to Use Each Method)](https://roadmap.sh/python/return-multiple-values)
+
+----------------------------------------------------------------------
+
+### TOPIC: Builtin Functions  (id: builtin-functions)  [group: -]
+
+# Builtin Modules
+
+Python has a rich standard library of built-in modules that provide a wide range of functionality. Some of the most commonly used built-in modules include: sys, os, math, datetime, random, re, itertools, etc.
+
+Visit the following resources to learn more:
+
+- [@official@Python Module Index](https://docs.python.org/3/py-modindex.html)
+- [@article@Python Modules](https://www.digitalocean.com/community/tutorials/python-modules)
+- [@article@Python - Built-In Modules](https://www.knowledgehut.com/tutorials/python-tutorial/python-built-in-modules)
+
+----------------------------------------------------------------------
+
+### TOPIC: Lambdas  (id: lambdas)  [group: -]
+
+# Lambdas
+
+Python Lambda Functions are anonymous function means that the function is without a name. As we already know that the def keyword is used to define a normal function in Python. Similarly, the lambda keyword is used to define an anonymous function in Python.
+
+Visit the following resources to learn more:
+
+- [@article@How to use Lambda functions](https://realpython.com/python-lambda/)
+- [@video@Python Lambda Functions](https://www.youtube.com/watch?v=KR22jigJLok)
+
+----------------------------------------------------------------------
+
+### TOPIC: Variable Scope  (id: variable-scope)  [group: -]
+
+# Variable Scope
+
+Variable scope refers to the region of a program where a particular variable can be accessed. It determines the visibility and lifetime of a variable. Understanding scope is crucial for avoiding naming conflicts and ensuring that variables are used correctly within different parts of your code.
+
+Visit the following resources to learn more:
+
+- [@article@Python Nonlocal Keyword Explained by Our Experts](https://roadmap.sh/python/nonlocal)
+- [@article@Python Variable Scope And The LEGB Rule Explained](https://www.datacamp.com/tutorial/scope-of-variables-python)
+- [@article@Python Scope](https://www.w3schools.com/python/python_scope.asp)
+- [@video@Python Tutorial: Variable Scope - Understanding the LEGB rule and global/nonlocal statements](https://www.youtube.com/watch?v=QVdf0LgmICw)
+
+----------------------------------------------------------------------
