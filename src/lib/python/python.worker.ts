@@ -25,8 +25,10 @@ async function init(): Promise<PyodideInterface> {
   post({ kind: 'status', state: 'loading' })
   const mod = await import(/* @vite-ignore */ `${PYODIDE_CDN}pyodide.mjs`)
   const py: PyodideInterface = await mod.loadPyodide({ indexURL: PYODIDE_CDN })
-  py.setStdout({ batched: (text: string) => post({ kind: 'output', id: currentId, stream: 'stdout', text }) })
-  py.setStderr({ batched: (text: string) => post({ kind: 'output', id: currentId, stream: 'stderr', text }) })
+  // Pyodide's `batched` callback fires once per line with the trailing newline
+  // stripped, so we re-add it — otherwise consecutive prints render on one line.
+  py.setStdout({ batched: (text: string) => post({ kind: 'output', id: currentId, stream: 'stdout', text: `${text}\n` }) })
+  py.setStderr({ batched: (text: string) => post({ kind: 'output', id: currentId, stream: 'stderr', text: `${text}\n` }) })
   // Let scripts import sibling files written to the virtual FS.
   py.runPython(`import sys; sys.path.insert(0, '${HOME}')`)
   post({ kind: 'status', state: 'ready' })
