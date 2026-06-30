@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { usePython } from '../../hooks/usePython'
+import { codeNeedsNetwork } from '../../lib/python/analyze'
 import { CodeEditor } from './CodeEditor'
 import { Console } from './Console'
 
@@ -45,8 +46,17 @@ export function PythonRunner({ initialCode = '', storageKey, variant = 'inline',
     clearOutput()
   }
 
+  const needsNetwork = codeNeedsNetwork(code)
+
   return (
     <div className={`py-runner py-${variant}`}>
+      {needsNetwork && (
+        <p className="py-net-note">
+          ⚠ This snippet calls an external API (needs a key + network). In-browser Python can’t reach
+          those services (CORS &amp; key safety) — run it locally to make the live call. The
+          non-API parts still run here.
+        </p>
+      )}
       <CodeEditor value={code} onChange={update} onRun={doRun} autoFocus={autoFocus} ariaLabel="Editable Python code" />
       <div className="py-toolbar">
         {running ? (

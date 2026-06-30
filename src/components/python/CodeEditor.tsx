@@ -1,55 +1,30 @@
-import { type KeyboardEvent } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
+import { PlainEditor, type EditorProps } from './PlainEditor'
 
-interface Props {
-  value: string
-  onChange: (v: string) => void
-  onRun?: () => void
-  placeholder?: string
-  autoFocus?: boolean
-  minRows?: number
-  ariaLabel?: string
-}
+// Load CodeMirror once, lazily, into its own chunk. Until it resolves (and if it
+// fails, e.g. offline) we render the dependency-free textarea, so the editor is
+// always usable and CodeMirror never bloats the initial bundle.
+let cmPromise: Promise<{ CodeMirrorEditor: ComponentType<EditorProps> }> | null = null
+const loadCodeMirror = () => (cmPromise ??= import('./CodeMirrorEditor'))
 
-/** Plain monospace editor: Tab inserts two spaces, ⌘/Ctrl+Enter runs. */
-export function CodeEditor({
-  value,
-  onChange,
-  onRun,
-  placeholder,
-  autoFocus,
-  minRows = 6,
-  ariaLabel = 'Python code',
-}: Props) {
-  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      e.preventDefault()
-      onRun?.()
-      return
-    }
-    if (e.key === 'Tab') {
-      e.preventDefault()
-      const el = e.currentTarget
-      const { selectionStart: s, selectionEnd: end } = el
-      onChange(value.slice(0, s) + '  ' + value.slice(end))
-      requestAnimationFrame(() => {
-        el.selectionStart = el.selectionEnd = s + 2
+/** Public editor: CodeMirror when available, textarea fallback otherwise. */
+export function CodeEditor(props: EditorProps) {
+  const [Cm, setCm] = useState<ComponentType<EditorProps> | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    loadCodeMirror()
+      .then((m) => {
+        if (alive) setCm(() => m.CodeMirrorEditor)
       })
+      .catch(() => {
+        /* stay on the textarea fallback */
+      })
+    return () => {
+      alive = false
     }
-  }
+  }, [])
 
-  return (
-    <textarea
-      className="py-editor"
-      value={value}
-      placeholder={placeholder}
-      spellCheck={false}
-      autoCapitalize="off"
-      autoCorrect="off"
-      autoFocus={autoFocus}
-      rows={Math.max(minRows, value.split('\n').length)}
-      aria-label={ariaLabel}
-      onChange={(e) => onChange(e.target.value)}
-      onKeyDown={onKeyDown}
-    />
-  )
+  const Editor = Cm ?? PlainEditor
+  return <Editor {...props} />
 }

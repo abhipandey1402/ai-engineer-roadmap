@@ -7,5 +7,6 @@
   "accent": "#e8590c",
   "icon": "◐",
   "source": { "label": "roadmap.sh/ai-engineer", "url": "https://roadmap.sh/ai-engineer" },
-  "labLanguages": ["python", "javascript"]
+  "labLanguages": ["python", "javascript"],
+  "runnablePython": true
 }
