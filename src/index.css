@@ -1825,3 +1825,135 @@ kbd {
   background: color-mix(in srgb, var(--accent) 14%, var(--bg));
   border-bottom: 1px solid var(--border);
 }
+
+/* ---------- floating code runner dock ---------- */
+
+.runner-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #ffffff;
+  font-family: var(--mono);
+  font-size: 19px;
+  font-weight: 700;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.28);
+  z-index: 1001;
+  transition: transform 0.15s, background 0.15s, color 0.15s;
+}
+
+.runner-fab:hover {
+  background: var(--accent-bright);
+  color: #1a1a1a;
+  transform: translateY(-2px);
+}
+
+.runner-fab.open {
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 24px;
+}
+
+.runner-dock {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(460px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  box-shadow: -10px 0 34px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 0.24s ease, visibility 0.24s;
+}
+
+.runner-dock.open {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+.runner-dock-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.runner-dock-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.runner-dock-glyph {
+  font-family: var(--mono);
+  color: var(--accent);
+}
+
+.runner-dock-tabs {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 4px;
+}
+
+.runner-dock-tabs button {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--gray-4);
+  transition: all 0.13s;
+}
+
+.runner-dock-tabs button.active {
+  border-color: var(--accent);
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.runner-dock-close {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--gray-4);
+  padding: 0 4px;
+}
+
+.runner-dock-close:hover {
+  color: var(--fg);
+}
+
+.runner-dock-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.runner-dock-pane[hidden] {
+  display: none;
+}
+
+/* Cap the dock editor so the console stays in view. */
+.runner-dock .py-cm .cm-scroller {
+  max-height: 42vh;
+}
+
+@media (max-width: 540px) {
+  .runner-fab {
+    right: 16px;
+    bottom: 16px;
+  }
+}
