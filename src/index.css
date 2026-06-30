@@ -1416,3 +1416,372 @@ kbd {
     font-size: 42px;
   }
 }
+
+/* ---------- python runner ---------- */
+
+.lab-code-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.code-run {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.code-run:hover {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+
+.lab-runner {
+  border-top: 1px solid var(--border);
+}
+
+.py-runner {
+  display: flex;
+  flex-direction: column;
+}
+
+.py-editor {
+  display: block;
+  width: 100%;
+  border: none;
+  resize: vertical;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  font-family: var(--mono);
+  font-size: 14.5px;
+  line-height: 1.6;
+  padding: 16px 18px;
+  tab-size: 2;
+  outline: none;
+}
+
+.py-editor:focus {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.py-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.py-btn {
+  font-family: var(--mono);
+  font-size: 13px;
+  border: 1px solid var(--gray-3);
+  border-radius: 6px;
+  padding: 4px 12px;
+  background: var(--bg);
+  color: var(--fg);
+  transition: all 0.13s;
+}
+
+.py-btn:hover:not(:disabled) {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+.py-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.py-run {
+  border-color: var(--accent);
+  color: #ffffff;
+  background: var(--accent);
+  font-weight: 600;
+}
+
+.py-run:hover:not(:disabled) {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+  color: #1a1a1a;
+}
+
+.py-stop {
+  border-color: #d64545;
+  color: #ffffff;
+  background: #d64545;
+  font-weight: 600;
+}
+
+.py-stop:hover {
+  background: #b83838;
+  border-color: #b83838;
+  color: #ffffff;
+}
+
+.py-status {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--gray-4);
+}
+
+.py-console {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.55;
+  padding: 14px 18px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: auto;
+  max-height: 320px;
+  min-height: 48px;
+  border-top: 1px solid var(--border);
+}
+
+.py-out {
+  color: var(--code-fg);
+}
+
+.py-err {
+  color: #ff8585;
+}
+
+.py-console-empty {
+  color: var(--gray-4);
+  font-style: italic;
+}
+
+.py-console-loading {
+  color: var(--accent-bright);
+}
+
+/* ---------- lab scratch pad ---------- */
+
+.lab-scratch {
+  padding: 0 24px 24px;
+}
+
+.lab-scratch-toggle {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--gray-4);
+  padding: 6px 0;
+}
+
+.lab-scratch-toggle:hover {
+  color: var(--fg);
+}
+
+.lab-scratch .py-runner {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+/* ---------- REPL ---------- */
+
+.py-repl {
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.py-repl-scroll {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.55;
+  padding: 14px 18px;
+  overflow-y: auto;
+  max-height: 280px;
+  min-height: 60px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.py-repl-entry {
+  margin-bottom: 4px;
+}
+
+.py-repl-in {
+  color: var(--code-fg);
+}
+
+.py-repl-ps {
+  color: var(--accent-bright);
+  user-select: none;
+}
+
+.py-repl-result {
+  color: #8ad6a0;
+}
+
+.py-repl-prompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: var(--code-bg);
+  border-top: 1px solid var(--border);
+}
+
+.py-repl-input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  color: var(--code-fg);
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+/* ---------- file tabs ---------- */
+
+.py-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.py-tab {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.py-tab.active {
+  border-color: var(--accent);
+}
+
+.py-tab-name {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 4px 10px;
+  color: var(--gray-5);
+}
+
+.py-tab.active .py-tab-name {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.py-tab-x {
+  padding: 4px 8px;
+  color: var(--gray-4);
+  border-left: 1px solid var(--border);
+}
+
+.py-tab-x:hover {
+  color: #ffffff;
+  background: #d64545;
+}
+
+.py-tab-add {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--gray-4);
+  padding: 4px 10px;
+  border: 1px dashed var(--gray-3);
+  border-radius: 6px;
+}
+
+.py-tab-add:hover {
+  color: var(--fg);
+  border-color: var(--fg);
+}
+
+/* ---------- playground ---------- */
+
+.playground {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.playground-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pg-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.playground-head h1 {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.pg-head-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pg-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 0;
+}
+
+.pg-editor-pane {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  min-width: 0;
+}
+
+.pg-editor-pane .py-editor {
+  flex: 1;
+}
+
+.pg-output-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pg-output-pane .py-console {
+  flex: 1;
+  max-height: none;
+  border-top: none;
+}
+
+@media (max-width: 900px) {
+  .pg-body {
+    grid-template-columns: 1fr;
+  }
+
+  .pg-editor-pane {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pg-output-pane .py-console {
+    max-height: 320px;
+  }
+}

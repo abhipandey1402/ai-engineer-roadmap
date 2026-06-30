@@ -137,7 +137,12 @@ export function TopicView({
         ))}
 
         {topic.handsOn && (
-          <HandsOnLab lab={topic.handsOn} topicKey={key} labLanguages={course.labLanguages} />
+          <HandsOnLab
+            lab={topic.handsOn}
+            topicKey={key}
+            labLanguages={course.labLanguages}
+            runnable={course.runnablePython}
+          />
         )}
 
         {topic.resources.length > 0 && (

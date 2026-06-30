@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 export type Route =
   | { kind: 'home' }
+  | { kind: 'playground' }
   | { kind: 'course'; courseId: string }
   | { kind: 'topic'; courseId: string; sectionId: string; topicId: string }
 
@@ -10,7 +11,10 @@ export function parseHash(hash: string): Route {
   const clean = hash.replace(/^#/, '').replace(/^\//, '').replace(/\/$/, '')
   if (!clean) return { kind: 'home' }
   const parts = clean.split('/')
-  if (parts.length === 1) return { kind: 'course', courseId: parts[0] }
+  if (parts.length === 1) {
+    // 'playground' is a reserved single-segment route; everything else is a course id.
+    return parts[0] === 'playground' ? { kind: 'playground' } : { kind: 'course', courseId: parts[0] }
+  }
   if (parts.length === 3) {
     return { kind: 'topic', courseId: parts[0], sectionId: parts[1], topicId: parts[2] }
   }

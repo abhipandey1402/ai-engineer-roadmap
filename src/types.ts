@@ -55,6 +55,8 @@ export interface Course {
   icon: string
   source: { label: string; url: string }
   labLanguages: Array<'python' | 'javascript'>
+  /** When true, Python lab code is runnable in-browser (Pyodide). Opt-in per course. */
+  runnablePython?: boolean
   sections: Section[]
 }
 

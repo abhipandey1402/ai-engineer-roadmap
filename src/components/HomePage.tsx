@@ -11,6 +11,7 @@ interface Props {
   theme: Theme
   onToggleTheme: () => void
   onOpenCourse: (courseId: string) => void
+  onOpenPlayground: () => void
 }
 
 function coursePct(course: Course, statuses: Record<string, TopicStatus>): number {
@@ -22,7 +23,7 @@ function coursePct(course: Course, statuses: Record<string, TopicStatus>): numbe
   return Math.round((done / total) * 100)
 }
 
-export function HomePage({ courses, statuses, theme, onToggleTheme, onOpenCourse }: Props) {
+export function HomePage({ courses, statuses, theme, onToggleTheme, onOpenCourse, onOpenPlayground }: Props) {
   return (
     <div className="home">
       <nav className="home-nav">
@@ -80,6 +81,19 @@ export function HomePage({ courses, statuses, theme, onToggleTheme, onOpenCourse
             </button>
           )
         })}
+
+        <button
+          className="course-card course-card-tool"
+          style={{ '--card-accent': '#3776ab' } as CSSProperties}
+          onClick={onOpenPlayground}
+        >
+          <div className="course-card-body">
+            <span className="course-card-icon">▶</span>
+            <h2>Python Playground</h2>
+            <p>Write, run, and test real Python in your browser — files &amp; REPL included.</p>
+            <span className="course-card-cta">Open playground →</span>
+          </div>
+        </button>
 
         <div className="course-card course-card-soon" aria-disabled="true">
           <div className="course-card-body">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { HandsOnLab as Lab } from '../types'
 import { Inline } from './Inline'
+import { PythonRunner } from './python/PythonRunner'
 
 type Lang = 'python' | 'javascript'
 
@@ -25,8 +26,20 @@ function loadPractice(): Record<string, boolean> {
   }
 }
 
-function StepCode({ code, language }: { code: string; language: Lang }) {
+function StepCode({
+  code,
+  language,
+  runnable,
+  storageKey,
+}: {
+  code: string
+  language: Lang
+  runnable?: boolean
+  storageKey?: string
+}) {
   const [copied, setCopied] = useState(false)
+  const [open, setOpen] = useState(false)
+  const canRun = !!runnable && language === 'python'
   const copy = () => {
     navigator.clipboard.writeText(code).then(() => {
       setCopied(true)
@@ -37,13 +50,26 @@ function StepCode({ code, language }: { code: string; language: Lang }) {
     <div className="lab-code">
       <div className="lab-code-bar">
         <span className="code-lang">{language}</span>
-        <button className="code-copy" onClick={copy}>
-          {copied ? 'copied ✓' : 'copy'}
-        </button>
+        <span className="lab-code-actions">
+          {canRun && (
+            <button className="code-copy code-run" onClick={() => setOpen((o) => !o)}>
+              {open ? 'hide ▾' : 'run ▶'}
+            </button>
+          )}
+          <button className="code-copy" onClick={copy}>
+            {copied ? 'copied ✓' : 'copy'}
+          </button>
+        </span>
       </div>
-      <pre>
-        <code>{code}</code>
-      </pre>
+      {open ? (
+        <div className="lab-runner">
+          <PythonRunner initialCode={code} storageKey={storageKey} variant="inline" autoFocus />
+        </div>
+      ) : (
+        <pre>
+          <code>{code}</code>
+        </pre>
+      )}
     </div>
   )
 }
@@ -52,10 +78,12 @@ export function HandsOnLab({
   lab,
   topicKey,
   labLanguages = ['python', 'javascript'],
+  runnable = false,
 }: {
   lab: Lab
   topicKey: string
   labLanguages?: Lang[]
+  runnable?: boolean
 }) {
   const single = labLanguages.length <= 1
   const only: Lang = labLanguages[0] ?? 'python'
@@ -63,6 +91,7 @@ export function HandsOnLab({
     single ? only : (localStorage.getItem(LANG_KEY) as Lang) || 'python',
   )
   const [practice, setPractice] = useState<Record<string, boolean>>(loadPractice)
+  const [scratchOpen, setScratchOpen] = useState(false)
 
   useEffect(() => {
     if (!single) localStorage.setItem(LANG_KEY, lang)
@@ -120,6 +149,8 @@ export function HandsOnLab({
                 <StepCode
                   code={code}
                   language={fellBack ? (lang === 'python' ? 'javascript' : 'python') : lang}
+                  runnable={runnable}
+                  storageKey={`pathwise-run:${topicKey}:${i}`}
                 />
               )}
             </li>
@@ -154,6 +185,25 @@ export function HandsOnLab({
               </label>
             )
           })}
+        </div>
+      )}
+
+      {runnable && (
+        <div className="lab-scratch">
+          <button
+            className="lab-scratch-toggle"
+            onClick={() => setScratchOpen((o) => !o)}
+            aria-expanded={scratchOpen}
+          >
+            {scratchOpen ? '▾' : '▸'} Scratch pad — try the practice here
+          </button>
+          {scratchOpen && (
+            <PythonRunner
+              storageKey={`pathwise-scratch:${topicKey}`}
+              initialCode={'# Your scratch space — write Python and press Run (or ⌘/Ctrl+Enter)\n'}
+              variant="inline"
+            />
+          )}
         </div>
       )}
     </section>

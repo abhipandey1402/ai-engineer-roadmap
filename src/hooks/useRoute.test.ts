@@ -25,4 +25,10 @@ describe('parseHash', () => {
   it('ignores a trailing slash', () => {
     expect(parseHash('#/python/')).toEqual({ kind: 'course', courseId: 'python' })
   })
+  it('parses "#/playground" as the reserved playground route', () => {
+    expect(parseHash('#/playground')).toEqual({ kind: 'playground' })
+  })
+  it('still parses a non-playground single segment as a course', () => {
+    expect(parseHash('#/ai-engineer')).toEqual({ kind: 'course', courseId: 'ai-engineer' })
+  })
 })

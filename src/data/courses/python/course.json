@@ -7,5 +7,6 @@
   "accent": "#3776ab",
   "icon": "🐍",
   "source": { "label": "roadmap.sh/python", "url": "https://roadmap.sh/python" },
-  "labLanguages": ["python"]
+  "labLanguages": ["python"],
+  "runnablePython": true
 }
