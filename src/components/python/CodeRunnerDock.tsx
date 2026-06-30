@@ -3,10 +3,11 @@ import { PythonRunner } from './PythonRunner'
 import { Repl } from './Repl'
 
 const DOCK_INITIAL =
-  '# Scratch runner — drag me by the header, resize from the corner.\n# Write Python and press Run (or ⌘/Ctrl+Enter).\n\nprint("ready")\n'
+  '# Scratch runner — drag the header, resize from any edge or corner.\n# Write Python and press Run (or ⌘/Ctrl+Enter).\n\nprint("ready")\n'
 const STORE_KEY = 'pathwise-dock-window'
 const MIN_W = 320
 const MIN_H = 240
+const MAX_MARGIN = 16
 
 interface Box {
   x: number
@@ -14,6 +15,26 @@ interface Box {
   w: number
   h: number
 }
+
+interface Edges {
+  n?: boolean
+  s?: boolean
+  e?: boolean
+  w?: boolean
+}
+
+// 4 edges + 4 corners. Each handle resizes the edges it names; the opposite
+// edge stays anchored.
+const HANDLES: { dir: string; edges: Edges }[] = [
+  { dir: 'n', edges: { n: true } },
+  { dir: 's', edges: { s: true } },
+  { dir: 'e', edges: { e: true } },
+  { dir: 'w', edges: { w: true } },
+  { dir: 'ne', edges: { n: true, e: true } },
+  { dir: 'nw', edges: { n: true, w: true } },
+  { dir: 'se', edges: { s: true, e: true } },
+  { dir: 'sw', edges: { s: true, w: true } },
+]
 
 function clampBox(b: Box): Box {
   const vw = window.innerWidth
@@ -23,6 +44,41 @@ function clampBox(b: Box): Box {
   const x = Math.min(Math.max(0, b.x), Math.max(0, vw - w))
   const y = Math.min(Math.max(0, b.y), Math.max(0, vh - h))
   return { x, y, w, h }
+}
+
+function maximizedBox(): Box {
+  return {
+    x: MAX_MARGIN,
+    y: MAX_MARGIN,
+    w: window.innerWidth - 2 * MAX_MARGIN,
+    h: window.innerHeight - 2 * MAX_MARGIN,
+  }
+}
+
+// Resize by moving only the named edges, keeping the opposite edge fixed, then
+// clamping moving edges to the viewport and enforcing the minimum size.
+function resizeBox(b: Box, edges: Edges, dx: number, dy: number): Box {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  let left = edges.w ? b.x + dx : b.x
+  let top = edges.n ? b.y + dy : b.y
+  let right = edges.e ? b.x + b.w + dx : b.x + b.w
+  let bottom = edges.s ? b.y + b.h + dy : b.y + b.h
+
+  if (edges.w) left = Math.max(0, left)
+  if (edges.e) right = Math.min(vw, right)
+  if (edges.n) top = Math.max(0, top)
+  if (edges.s) bottom = Math.min(vh, bottom)
+
+  if (right - left < MIN_W) {
+    if (edges.w) left = right - MIN_W
+    else right = left + MIN_W
+  }
+  if (bottom - top < MIN_H) {
+    if (edges.n) top = bottom - MIN_H
+    else bottom = top + MIN_H
+  }
+  return { x: left, y: top, w: right - left, h: bottom - top }
 }
 
 function defaultBox(): Box {
@@ -46,6 +102,10 @@ function loadBox(): Box {
   return defaultBox()
 }
 
+type Gesture =
+  | { mode: 'drag'; sx: number; sy: number; box: Box }
+  | { mode: 'resize'; sx: number; sy: number; box: Box; edges: Edges }
+
 /**
  * App-wide floating code runner: a fixed action button toggles a draggable,
  * resizable window (Editor + REPL tabs) reusing the shared engine. Mounted once
@@ -57,8 +117,10 @@ export function CodeRunnerDock() {
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<'editor' | 'repl'>('editor')
   const [box, setBox] = useState<Box>(loadBox)
+  const [maximized, setMaximized] = useState(false)
   const winRef = useRef<HTMLDivElement>(null)
-  const gesture = useRef<{ mode: 'drag' | 'resize'; sx: number; sy: number; box: Box } | null>(null)
+  const restoreBox = useRef<Box | null>(null)
+  const gesture = useRef<Gesture | null>(null)
 
   useEffect(() => {
     try {
@@ -68,12 +130,12 @@ export function CodeRunnerDock() {
     }
   }, [box])
 
-  // Keep the window on-screen if the viewport shrinks.
+  // Keep the window usable when the viewport changes.
   useEffect(() => {
-    const onResize = () => setBox((b) => clampBox(b))
+    const onResize = () => setBox((b) => (maximized ? maximizedBox() : clampBox(b)))
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, [])
+  }, [maximized])
 
   const applyGeometry = (b: Box) => {
     const el = winRef.current
@@ -86,13 +148,15 @@ export function CodeRunnerDock() {
 
   const beginDrag = (e: ReactPointerEvent) => {
     if ((e.target as HTMLElement).closest('button')) return // let header buttons work
+    setMaximized(false)
     gesture.current = { mode: 'drag', sx: e.clientX, sy: e.clientY, box }
     winRef.current?.setPointerCapture(e.pointerId)
   }
 
-  const beginResize = (e: ReactPointerEvent) => {
+  const beginResize = (e: ReactPointerEvent, edges: Edges) => {
     e.stopPropagation()
-    gesture.current = { mode: 'resize', sx: e.clientX, sy: e.clientY, box }
+    setMaximized(false)
+    gesture.current = { mode: 'resize', sx: e.clientX, sy: e.clientY, box, edges }
     winRef.current?.setPointerCapture(e.pointerId)
   }
 
@@ -104,7 +168,7 @@ export function CodeRunnerDock() {
     applyGeometry(
       g.mode === 'drag'
         ? clampBox({ ...g.box, x: g.box.x + dx, y: g.box.y + dy })
-        : clampBox({ ...g.box, w: g.box.w + dx, h: g.box.h + dy }),
+        : resizeBox(g.box, g.edges, dx, dy),
     )
   }
 
@@ -123,6 +187,22 @@ export function CodeRunnerDock() {
         }),
       )
     }
+  }
+
+  const toggleMaximize = () => {
+    if (maximized) {
+      if (restoreBox.current) setBox(clampBox(restoreBox.current))
+      setMaximized(false)
+    } else {
+      restoreBox.current = box
+      setBox(maximizedBox())
+      setMaximized(true)
+    }
+  }
+
+  const onHeaderDoubleClick = (e: ReactPointerEvent | React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return
+    toggleMaximize()
   }
 
   return (
@@ -148,7 +228,7 @@ export function CodeRunnerDock() {
         onPointerUp={endGesture}
         onPointerCancel={endGesture}
       >
-        <header className="runner-dock-head" onPointerDown={beginDrag}>
+        <header className="runner-dock-head" onPointerDown={beginDrag} onDoubleClick={onHeaderDoubleClick}>
           <span className="runner-dock-title">
             <span className="runner-dock-glyph">{'>_'}</span> Python Runner
           </span>
@@ -170,7 +250,15 @@ export function CodeRunnerDock() {
               REPL
             </button>
           </span>
-          <button className="runner-dock-close" onClick={() => setOpen(false)} aria-label="Close runner">
+          <button
+            className="runner-dock-icon"
+            onClick={toggleMaximize}
+            aria-label={maximized ? 'Restore runner size' : 'Maximize runner'}
+            title={maximized ? 'Restore' : 'Maximize'}
+          >
+            {maximized ? '❐' : '□'}
+          </button>
+          <button className="runner-dock-icon" onClick={() => setOpen(false)} aria-label="Close runner" title="Close">
             ×
           </button>
         </header>
@@ -184,12 +272,14 @@ export function CodeRunnerDock() {
           </div>
         </div>
 
-        <span
-          className="runner-resize"
-          onPointerDown={beginResize}
-          aria-hidden="true"
-          title="Drag to resize"
-        />
+        {HANDLES.map(({ dir, edges }) => (
+          <span
+            key={dir}
+            className={`runner-rz runner-rz-${dir}`}
+            onPointerDown={(e) => beginResize(e, edges)}
+            aria-hidden="true"
+          />
+        ))}
       </aside>
     </>
   )

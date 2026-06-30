@@ -1929,15 +1929,21 @@ kbd {
   font-weight: 600;
 }
 
-.runner-dock-close {
-  font-size: 22px;
+.runner-dock-icon {
+  font-size: 15px;
   line-height: 1;
   color: var(--gray-4);
-  padding: 0 4px;
+  padding: 2px 4px;
+  border-radius: 5px;
 }
 
-.runner-dock-close:hover {
+.runner-dock-icon:last-child {
+  font-size: 22px;
+}
+
+.runner-dock-icon:hover {
   color: var(--fg);
+  background: var(--gray-2);
 }
 
 .runner-window-body {
@@ -1987,24 +1993,80 @@ kbd {
   max-height: none;
 }
 
-.runner-resize {
+/* Resize handles: thin invisible hit-zones along each edge + larger corners,
+   positioned just inside the window so the overflow:hidden clip doesn't eat
+   them. Corners sit above edges. */
+.runner-rz {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 18px;
-  height: 18px;
-  cursor: nwse-resize;
   touch-action: none;
-  z-index: 2;
+  z-index: 3;
 }
 
-.runner-resize::after {
+.runner-rz-n,
+.runner-rz-s {
+  left: 10px;
+  right: 10px;
+  height: 7px;
+  cursor: ns-resize;
+}
+.runner-rz-n {
+  top: 0;
+}
+.runner-rz-s {
+  bottom: 0;
+}
+
+.runner-rz-e,
+.runner-rz-w {
+  top: 10px;
+  bottom: 10px;
+  width: 7px;
+  cursor: ew-resize;
+}
+.runner-rz-e {
+  right: 0;
+}
+.runner-rz-w {
+  left: 0;
+}
+
+.runner-rz-ne,
+.runner-rz-nw,
+.runner-rz-se,
+.runner-rz-sw {
+  width: 14px;
+  height: 14px;
+  z-index: 4;
+}
+.runner-rz-ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+.runner-rz-nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+.runner-rz-se {
+  bottom: 0;
+  right: 0;
+  cursor: nwse-resize;
+}
+.runner-rz-sw {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+/* A subtle grip on the bottom-right corner so the resize affordance is visible. */
+.runner-rz-se::after {
   content: '';
   position: absolute;
   right: 3px;
   bottom: 3px;
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-right: 2px solid var(--gray-3);
   border-bottom: 2px solid var(--gray-3);
 }
