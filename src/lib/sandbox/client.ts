@@ -24,6 +24,9 @@ interface ApiErrorBody {
 
 const INVALID_RESPONSE_MESSAGE =
   'The runtime service returned an invalid response.'
+const INVALID_IDEMPOTENCY_KEY_MESSAGE =
+  'The command request could not be prepared.'
+const encoder = new TextEncoder()
 
 export class RuntimeClientError extends Error {
   readonly code: string
@@ -54,6 +57,14 @@ function invalidResponse(status: number): RuntimeClientError {
     'INVALID_RESPONSE',
     INVALID_RESPONSE_MESSAGE,
     status,
+  )
+}
+
+function invalidIdempotencyKey(): RuntimeClientError {
+  return new RuntimeClientError(
+    'COMMAND_REJECTED',
+    INVALID_IDEMPOTENCY_KEY_MESSAGE,
+    0,
   )
 }
 
@@ -126,6 +137,7 @@ const defaultIdempotencyKey: IdempotencyKeyFactory = () =>
 export class SandboxClient {
   private readonly fetch: Fetch
   private readonly createIdempotencyKey: IdempotencyKeyFactory
+  private readonly usedIdempotencyKeys = new Set<string>()
 
   constructor(
     fetch: Fetch = globalThis.fetch,
@@ -171,6 +183,16 @@ export class SandboxClient {
     signal?: AbortSignal,
   ): Promise<CommandResult> {
     const idempotencyKey = this.createIdempotencyKey()
+    if (
+      typeof idempotencyKey !== 'string'
+      || idempotencyKey.trim().length === 0
+      || encoder.encode(idempotencyKey).byteLength > 256
+      || /[\0\r\n]/.test(idempotencyKey)
+      || this.usedIdempotencyKeys.has(idempotencyKey)
+    ) {
+      throw invalidIdempotencyKey()
+    }
+    this.usedIdempotencyKeys.add(idempotencyKey)
     const response = await accept(await this.fetch('/api/runtime/commands', {
       method: 'POST',
       credentials: 'same-origin',

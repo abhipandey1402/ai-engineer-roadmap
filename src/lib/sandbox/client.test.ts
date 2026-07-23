@@ -253,4 +253,104 @@ describe('SandboxClient', () => {
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
     expect(fetch.mock.calls[0][1]?.signal).toBe(controller.signal)
   })
+
+  it.each([
+    ['empty', ''],
+    ['whitespace-only', ' \t '],
+    ['NUL-containing', 'request\0key'],
+    ['carriage-return-containing', 'request\rkey'],
+    ['line-feed-containing', 'request\nkey'],
+    ['over 256 UTF-8 bytes', 'é'.repeat(129)],
+  ])('rejects a %s generated idempotency key before fetch', async (
+    _description,
+    idempotencyKey,
+  ) => {
+    const fetch = vi.fn<typeof globalThis.fetch>()
+    const client = new SandboxClient(fetch, () => idempotencyKey)
+
+    const rejection = client.run(
+      {
+        kind: 'execute',
+        executable: 'python',
+        args: ['secret-argument'],
+      },
+      { API_KEY: 'environment-secret' },
+      ['API_KEY'],
+      'owner-token',
+    )
+
+    await expect(rejection).rejects.toMatchObject({
+      name: 'RuntimeClientError',
+      code: 'COMMAND_REJECTED',
+      status: 0,
+    })
+    await expect(rejection).rejects.not.toThrow(
+      /secret-argument|environment-secret|owner-token/,
+    )
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('rejects a repeated generated idempotency key before a second fetch', async () => {
+    const firstResult = resultForKey('repeated-key')
+    const fetch = vi.fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(responseForResult(firstResult))
+    const client = new SandboxClient(fetch, () => 'repeated-key')
+
+    await expect(client.run(
+      command,
+      {},
+      [],
+      'owner-token',
+    )).resolves.toEqual(firstResult)
+    await expect(client.run(
+      command,
+      {},
+      [],
+      'owner-token',
+    )).rejects.toMatchObject({
+      name: 'RuntimeClientError',
+      code: 'COMMAND_REJECTED',
+      status: 0,
+    })
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('accepts unique valid generated idempotency keys', async () => {
+    const keys = ['unique-key-1', 'unique-key-2']
+    const fetch = vi.fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(responseForResult(resultForKey(keys[0])))
+      .mockResolvedValueOnce(responseForResult(resultForKey(keys[1])))
+    const client = new SandboxClient(fetch, () => {
+      const key = keys.shift()
+      if (!key) throw new Error('Unexpected key request')
+      return key
+    })
+
+    await expect(client.run(
+      command,
+      {},
+      [],
+      'owner-token',
+    )).resolves.toMatchObject({ idempotencyKey: 'unique-key-1' })
+    await expect(client.run(
+      command,
+      {},
+      [],
+      'owner-token',
+    )).resolves.toMatchObject({ idempotencyKey: 'unique-key-2' })
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
 })
+
+function resultForKey(idempotencyKey: string): CommandResult {
+  return { idempotencyKey, exitCode: 0, output: [] }
+}
+
+function responseForResult(result: CommandResult): Response {
+  return jsonResponse(result, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': result.idempotencyKey,
+    },
+  })
+}

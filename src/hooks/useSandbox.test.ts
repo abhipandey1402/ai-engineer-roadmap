@@ -271,6 +271,39 @@ describe('SandboxController', () => {
     expect(snapshot().output).toEqual([])
   })
 
+  it.each([
+    ['Stop', async (controller: SandboxController) => controller.stop()],
+    ['Destroy', async (controller: SandboxController) => controller.destroy()],
+    ['a runtime change', async (controller: SandboxController) => (
+      controller.updateConfiguration('node', {
+        accessToken: 'new-owner-token',
+        environment: {},
+        secretNames: [],
+      })
+    )],
+  ])('ignores a command rejection that arrives after %s', async (
+    _transitionName,
+    transition,
+  ) => {
+    let rejectRun!: (error: unknown) => void
+    const run = vi.fn().mockReturnValue(new Promise<CommandResult>(
+      (_resolve, reject) => {
+        rejectRun = reject
+      },
+    ))
+    const client = clientMock({ run })
+    const { controller, snapshot } = setup(client)
+    const pending = controller.runCommand(command)
+    await vi.waitFor(() => expect(run).toHaveBeenCalled())
+
+    await transition(controller)
+    rejectRun(new Error('late command failure'))
+    await pending
+
+    expect(snapshot().state).toBe('idle')
+    expect(snapshot().error).toBeUndefined()
+  })
+
   it('does not recover an expired file sync after Stop invalidates it', async () => {
     let rejectSync!: (error: unknown) => void
     const syncFiles = vi.fn().mockReturnValue(new Promise<void>((_resolve, reject) => {
@@ -393,6 +426,94 @@ describe('SandboxController', () => {
     resolveDestroy()
     await Promise.all([changing, running])
     expect(client.create).toHaveBeenCalledWith('node', 'new-owner-token')
+  })
+
+  it('ignores a runtime-change rejection after a newer Stop transition', async () => {
+    let rejectDestroy!: (error: unknown) => void
+    let resolveStop!: () => void
+    const destroy = vi.fn().mockReturnValue(new Promise<void>(
+      (_resolve, reject) => {
+        rejectDestroy = reject
+      },
+    ))
+    const stop = vi.fn().mockReturnValue(new Promise<void>((resolve) => {
+      resolveStop = resolve
+    }))
+    const client = clientMock({ destroy, stop })
+    const { controller, snapshot } = setup(client)
+
+    const changing = controller.updateConfiguration('node', {
+      accessToken: 'new-owner-token',
+      environment: {},
+      secretNames: [],
+    })
+    const stopping = controller.stop()
+    rejectDestroy(new Error('stale runtime-change failure'))
+    await changing
+
+    expect(snapshot().state).toBe('stopping')
+    expect(snapshot().error).toBeUndefined()
+
+    await vi.waitFor(() => expect(stop).toHaveBeenCalled())
+    resolveStop()
+    await stopping
+  })
+
+  it('ignores a Stop rejection after a newer Destroy transition', async () => {
+    let rejectStop!: (error: unknown) => void
+    let resolveDestroy!: () => void
+    const stop = vi.fn().mockReturnValue(new Promise<void>(
+      (_resolve, reject) => {
+        rejectStop = reject
+      },
+    ))
+    const destroy = vi.fn().mockReturnValue(new Promise<void>((resolve) => {
+      resolveDestroy = resolve
+    }))
+    const client = clientMock({ stop, destroy })
+    const { controller, snapshot } = setup(client)
+
+    const stopping = controller.stop()
+    const destroying = controller.destroy()
+    rejectStop(new Error('stale Stop failure'))
+    await stopping
+
+    expect(snapshot().state).toBe('stopping')
+    expect(snapshot().error).toBeUndefined()
+
+    await vi.waitFor(() => expect(destroy).toHaveBeenCalled())
+    resolveDestroy()
+    await destroying
+  })
+
+  it('ignores a Destroy rejection after a newer runtime-change transition', async () => {
+    let rejectFirstDestroy!: (error: unknown) => void
+    let resolveSecondDestroy!: () => void
+    const destroy = vi.fn()
+      .mockReturnValueOnce(new Promise<void>((_resolve, reject) => {
+        rejectFirstDestroy = reject
+      }))
+      .mockReturnValueOnce(new Promise<void>((resolve) => {
+        resolveSecondDestroy = resolve
+      }))
+    const client = clientMock({ destroy })
+    const { controller, snapshot } = setup(client)
+
+    const destroying = controller.destroy()
+    const changing = controller.updateConfiguration('node', {
+      accessToken: 'new-owner-token',
+      environment: {},
+      secretNames: [],
+    })
+    rejectFirstDestroy(new Error('stale Destroy failure'))
+    await destroying
+
+    expect(snapshot().state).toBe('stopping')
+    expect(snapshot().error).toBeUndefined()
+
+    await vi.waitFor(() => expect(destroy).toHaveBeenCalledTimes(2))
+    resolveSecondDestroy()
+    await changing
   })
 
   it('clears sensitive values on explicit destroy', async () => {

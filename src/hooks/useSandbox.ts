@@ -135,6 +135,7 @@ export class SandboxController {
   }
 
   async loadCapabilities(): Promise<void> {
+    const generation = this.lifecycleGeneration
     this.send({ type: 'loading' })
     if (this.capabilities) {
       this.send({ type: 'capabilities', capabilities: this.capabilities })
@@ -143,7 +144,7 @@ export class SandboxController {
     try {
       await this.ensureCapabilities()
     } catch (error) {
-      this.fail(error)
+      this.failIfCurrent(generation, error)
     }
   }
 
@@ -173,51 +174,43 @@ export class SandboxController {
         this.send({ type: 'state', state: 'idle' })
       }
     } catch (error) {
-      this.fail(error)
+      this.failIfCurrent(generation, error)
     }
   }
 
   async runFiles(files: ProjectFile[]): Promise<void> {
     this.files = files.map((file) => ({ ...file }))
-    let generation: number | undefined
+    const generation = this.lifecycleGeneration
     try {
-      generation = await this.prepareOperation()
+      await this.prepareOperation(generation)
       await this.ensureSession(generation)
       await this.client.syncFiles(this.files, this.credentials.accessToken)
       this.assertCurrent(generation)
       this.send({ type: 'state', state: 'ready' })
     } catch (error) {
-      if (
-        generation !== undefined
-        && !this.isCurrent(generation)
-      ) {
-        return
-      }
-      if (
-        generation !== undefined
-        && this.isExpired(error)
-      ) {
+      if (!this.isCurrent(generation)) return
+      if (this.isExpired(error)) {
         try {
           await this.recreateAndResync(generation)
           return
         } catch (recoveryError) {
-          if (!isAbortError(recoveryError)) this.fail(recoveryError)
+          this.failIfCurrent(generation, recoveryError)
           return
         }
       }
-      if (!isAbortError(error)) this.fail(error)
+      this.failIfCurrent(generation, error)
     }
   }
 
   async runCommand(
     command: ExecuteCommand,
   ): Promise<CommandResult | undefined> {
-    let generation: number
+    const generation = this.lifecycleGeneration
     try {
-      generation = await this.prepareOperation()
+      await this.prepareOperation(generation)
       await this.ensureSession(generation)
     } catch (error) {
-      if (!isAbortError(error)) this.fail(error)
+      this.failIfCurrent(generation, error)
       return undefined
     }
 
@@ -250,7 +243,7 @@ export class SandboxController {
       this.send({ type: 'state', state: 'ready' })
       return result
     } catch (error) {
-      if (!isAbortError(error)) this.fail(error)
+      this.failIfCurrent(generation, error)
       return undefined
     } finally {
       this.abortControllers.delete(abortController)
@@ -273,7 +266,7 @@ export class SandboxController {
         this.send({ type: 'state', state: 'idle' })
       }
     } catch (error) {
-      this.fail(error)
+      this.failIfCurrent(generation, error)
     }
   }
 
@@ -292,7 +285,7 @@ export class SandboxController {
       await this.prepareOperation(generation)
       await this.recreateAndResync(generation)
     } catch (error) {
-      if (!isAbortError(error)) this.fail(error)
+      this.failIfCurrent(generation, error)
     }
   }
 
@@ -313,7 +306,7 @@ export class SandboxController {
         this.send({ type: 'state', state: 'idle' })
       }
     } catch (error) {
-      this.fail(error)
+      this.failIfCurrent(generation, error)
     }
   }
 
@@ -504,6 +497,12 @@ export class SandboxController {
 
   private fail(error: unknown): void {
     this.send({ type: 'error', message: safeErrorMessage(error) })
+  }
+
+  private failIfCurrent(generation: number, error: unknown): void {
+    if (this.isCurrent(generation) && !isAbortError(error)) {
+      this.fail(error)
+    }
   }
 
   private send(action: SandboxAction): void {
