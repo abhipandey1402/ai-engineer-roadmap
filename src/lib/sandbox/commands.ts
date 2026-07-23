@@ -3,16 +3,36 @@ import {
   type CloudRuntime,
   type ExecuteCommand,
   type ParsedTerminalCommand,
+  type PlaygroundRuntime,
 } from './protocol'
 
 type Quote = 'single' | 'double' | null
+type CommandRuntime = CloudRuntime | PlaygroundRuntime
 
 const encoder = new TextEncoder()
 const environmentName = /^[A-Za-z_][A-Za-z0-9_]*$/
 const secretName = /(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)/i
+const windowsAbsolutePath = /^[A-Za-z]:\//
 
 function isShellOperator(character: string): boolean {
-  return character === '\n' || character === '\r' || ';|&<>'.includes(character)
+  return character === '\n' || character === '\r' || ';|&'.includes(character)
+}
+
+function hasControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0)
+    return code <= 31 || code === 127
+  })
+}
+
+function isUnsafePath(path: string): boolean {
+  const normalized = path.replaceAll('\\', '/')
+  return (
+    normalized.startsWith('/')
+    || windowsAbsolutePath.test(normalized)
+    || normalized.split('/').includes('..')
+    || hasControlCharacter(normalized)
+  )
 }
 
 function tokenize(input: string): string[] {
@@ -92,6 +112,34 @@ function assertArgumentLimits(args: string[]): void {
   }
 }
 
+function assertNoControlCharacters(args: string[]): void {
+  if (args.some(hasControlCharacter)) {
+    throw new Error('Command arguments cannot contain control characters')
+  }
+}
+
+function assertNoRedirects(executable: string, args: string[]): void {
+  const packageInstall = (executable === 'pip' || executable === 'npm') && args[0] === 'install'
+  const redirectInExecutable = executable.includes('<') || executable.includes('>')
+  const redirectInArguments = args.some((argument, index) => {
+    if (!argument.includes('<') && !argument.includes('>')) return false
+    if (!packageInstall || index === 0) return true
+    return argument.startsWith('<') || argument.startsWith('>')
+  })
+
+  if (redirectInExecutable || redirectInArguments) {
+    throw new Error('Shell operators are not supported')
+  }
+}
+
+function assertSafeCommandPaths(executable: string, args: string[]): void {
+  const path = executable === 'python' || executable === 'node' || executable === 'ls'
+    ? args[0]
+    : undefined
+
+  if (path !== undefined && isUnsafePath(path)) throw new Error('Invalid command path')
+}
+
 function parseEnvironment(tokens: string[]): ParsedTerminalCommand {
   if (tokens.length !== 2) throw new Error('Expected export NAME=value')
 
@@ -122,22 +170,40 @@ function runtimeError(executable: string): Error {
 
 export function parseTerminalCommand(
   input: string,
-  runtime: CloudRuntime,
+  runtime: CommandRuntime,
 ): ParsedTerminalCommand {
   const tokens = tokenize(input)
   if (tokens.length === 0) throw new Error('Command cannot be empty')
-  if (tokens[0] === 'export') return parseEnvironment(tokens)
 
   const [executable, ...args] = tokens
-  const allowed = runtime === 'python'
+  assertNoControlCharacters(args)
+  assertNoRedirects(executable, args)
+
+  if (runtime === 'browser-python') {
+    if (executable !== 'pip' || args[0] !== 'install') {
+      throw new Error('Browser Python supports only pip install')
+    }
+  } else if (executable === 'export') {
+    return parseEnvironment(tokens)
+  }
+
+  const cloudRuntime = runtime === 'cloud-python'
+    ? 'python'
+    : runtime === 'cloud-node'
+      ? 'node'
+      : runtime
+  const allowed = cloudRuntime === 'python'
     ? ['pip', 'python', 'pwd', 'ls']
-    : ['npm', 'node', 'pwd', 'ls']
+    : cloudRuntime === 'node'
+      ? ['npm', 'node', 'pwd', 'ls']
+      : ['pip']
 
   if (!allowed.includes(executable)) throw runtimeError(executable)
   if ((executable === 'pip' || executable === 'npm') && args[0] !== 'install') {
     throw new Error(`${executable} supports only the install subcommand`)
   }
   assertArgumentLimits(args)
+  assertSafeCommandPaths(executable, args)
 
   return {
     kind: 'execute',
@@ -147,6 +213,8 @@ export function parseTerminalCommand(
 }
 
 export function commandForFile(runtime: CloudRuntime, file: string): ExecuteCommand {
+  if (isUnsafePath(file)) throw new Error('Invalid command path')
+
   const matchesRuntime = runtime === 'python'
     ? file.endsWith('.py')
     : /\.(?:c?js|mjs)$/.test(file)
