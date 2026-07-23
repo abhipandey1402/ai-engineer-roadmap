@@ -137,6 +137,51 @@ describe('parseTerminalCommand', () => {
       args: ['install', '@scope/pkg@^2', 'package@>=3', 'github:user/repo#semver:^1'],
     })
   })
+
+  it('preserves quoted comparison expressions as literal arguments', () => {
+    expect(parseTerminalCommand('python app.py --expr "x > 1"', 'python')).toEqual({
+      kind: 'execute',
+      executable: 'python',
+      args: ['app.py', '--expr', 'x > 1'],
+    })
+  })
+
+  it('rejects an attached pip redirect', () => {
+    expect(() => parseTerminalCommand('pip install openai>requirements.txt', 'python'))
+      .toThrow('Shell operators are not supported')
+  })
+
+  it.each(['openai>=1.0', 'openai<2'])(
+    'accepts legitimate Python requirement comparator %j',
+    (requirement) => {
+      expect(parseTerminalCommand(`pip install ${requirement}`, 'python')).toEqual({
+        kind: 'execute',
+        executable: 'pip',
+        args: ['install', requirement],
+      })
+    },
+  )
+
+  it.each([
+    'ls -la ..',
+    'ls -- ../secret',
+    'ls -la /tmp',
+    'ls -la src ..',
+    'ls -- safe ../secret',
+  ])('rejects every unsafe ls path operand in %j', (command) => {
+    expect(() => parseTerminalCommand(command, 'python')).toThrow('Invalid command path')
+  })
+
+  it.each([
+    ['ls -la src', ['-la', 'src']],
+    ['ls -- -named', ['--', '-named']],
+  ] as const)('preserves valid ls flags and operands in %j', (command, args) => {
+    expect(parseTerminalCommand(command, 'python')).toEqual({
+      kind: 'execute',
+      executable: 'ls',
+      args: [...args],
+    })
+  })
 })
 
 describe('commandForFile', () => {

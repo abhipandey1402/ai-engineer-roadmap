@@ -8,11 +8,18 @@ import {
 
 type Quote = 'single' | 'double' | null
 type CommandRuntime = CloudRuntime | PlaygroundRuntime
+interface TerminalToken {
+  value: string
+  hasUnquotedRedirect: boolean
+}
 
 const encoder = new TextEncoder()
 const environmentName = /^[A-Za-z_][A-Za-z0-9_]*$/
 const secretName = /(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)/i
 const windowsAbsolutePath = /^[A-Za-z]:\//
+const pythonRequirementWithComparator =
+  /^[A-Za-z0-9][A-Za-z0-9._-]*(?:\[[A-Za-z0-9._,-]+\])?(?:===|==|~=|!=|<=|>=|<|>)[0-9*][A-Za-z0-9*+!._-]*(?:,(?:===|==|~=|!=|<=|>=|<|>)[0-9*][A-Za-z0-9*+!._-]*)*$/
+const npmPackageWithComparator = /^(?:@[^/@\s]+\/)?[^@/\s]+@(?:<=|>=|<|>)[0-9][A-Za-z0-9+._-]*$/
 
 function isShellOperator(character: string): boolean {
   return character === '\n' || character === '\r' || ';|&'.includes(character)
@@ -35,10 +42,11 @@ function isUnsafePath(path: string): boolean {
   )
 }
 
-function tokenize(input: string): string[] {
-  const tokens: string[] = []
+function tokenize(input: string): TerminalToken[] {
+  const tokens: TerminalToken[] = []
   let token = ''
   let tokenStarted = false
+  let hasUnquotedRedirect = false
   let quote: Quote = null
   let escaped = false
 
@@ -49,6 +57,9 @@ function tokenize(input: string): string[] {
       }
       token += character
       tokenStarted = true
+      if (quote === null && (character === '<' || character === '>')) {
+        hasUnquotedRedirect = true
+      }
       escaped = false
       continue
     }
@@ -89,19 +100,21 @@ function tokenize(input: string): string[] {
 
     if (/\s/.test(character)) {
       if (tokenStarted) {
-        tokens.push(token)
+        tokens.push({ value: token, hasUnquotedRedirect })
         token = ''
         tokenStarted = false
+        hasUnquotedRedirect = false
       }
       continue
     }
 
     token += character
     tokenStarted = true
+    if (character === '<' || character === '>') hasUnquotedRedirect = true
   }
 
   if (escaped || quote !== null) throw new Error('Unmatched quote or escape')
-  if (tokenStarted) tokens.push(token)
+  if (tokenStarted) tokens.push({ value: token, hasUnquotedRedirect })
   return tokens
 }
 
@@ -118,26 +131,40 @@ function assertNoControlCharacters(args: string[]): void {
   }
 }
 
-function assertNoRedirects(executable: string, args: string[]): void {
-  const packageInstall = (executable === 'pip' || executable === 'npm') && args[0] === 'install'
-  const redirectInExecutable = executable.includes('<') || executable.includes('>')
-  const redirectInArguments = args.some((argument, index) => {
-    if (!argument.includes('<') && !argument.includes('>')) return false
-    if (!packageInstall || index === 0) return true
-    return argument.startsWith('<') || argument.startsWith('>')
-  })
+function assertNoRedirects(tokens: TerminalToken[]): void {
+  const [executable, subcommand] = tokens
 
-  if (redirectInExecutable || redirectInArguments) {
-    throw new Error('Shell operators are not supported')
+  for (const [index, token] of tokens.entries()) {
+    if (!token.hasUnquotedRedirect) continue
+
+    const allowedPythonComparator = executable.value === 'pip'
+      && subcommand?.value === 'install'
+      && index >= 2
+      && pythonRequirementWithComparator.test(token.value)
+    const allowedNodeComparator = executable.value === 'npm'
+      && subcommand?.value === 'install'
+      && index >= 2
+      && npmPackageWithComparator.test(token.value)
+
+    if (!allowedPythonComparator && !allowedNodeComparator) {
+      throw new Error('Shell operators are not supported')
+    }
   }
 }
 
 function assertSafeCommandPaths(executable: string, args: string[]): void {
-  const path = executable === 'python' || executable === 'node' || executable === 'ls'
-    ? args[0]
-    : undefined
+  const paths = executable === 'python' || executable === 'node'
+    ? args.slice(0, 1)
+    : executable === 'ls'
+      ? args.filter((argument, index) => {
+          const doubleDashIndex = args.indexOf('--')
+          return doubleDashIndex >= 0
+            ? index > doubleDashIndex || (index < doubleDashIndex && !argument.startsWith('-'))
+            : !argument.startsWith('-')
+        })
+      : []
 
-  if (path !== undefined && isUnsafePath(path)) throw new Error('Invalid command path')
+  if (paths.some(isUnsafePath)) throw new Error('Invalid command path')
 }
 
 function parseEnvironment(tokens: string[]): ParsedTerminalCommand {
@@ -175,16 +202,19 @@ export function parseTerminalCommand(
   const tokens = tokenize(input)
   if (tokens.length === 0) throw new Error('Command cannot be empty')
 
-  const [executable, ...args] = tokens
+  assertNoRedirects(tokens)
+
+  const [executableToken, ...argumentTokens] = tokens
+  const executable = executableToken.value
+  const args = argumentTokens.map((token) => token.value)
   assertNoControlCharacters(args)
-  assertNoRedirects(executable, args)
 
   if (runtime === 'browser-python') {
     if (executable !== 'pip' || args[0] !== 'install') {
       throw new Error('Browser Python supports only pip install')
     }
   } else if (executable === 'export') {
-    return parseEnvironment(tokens)
+    return parseEnvironment([executable, ...args])
   }
 
   const cloudRuntime = runtime === 'cloud-python'
