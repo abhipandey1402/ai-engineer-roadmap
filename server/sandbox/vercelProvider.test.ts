@@ -36,6 +36,7 @@ class LocalSandbox implements VercelSandboxFacade {
   readonly runCalls: RunCommandOptions[] = []
   stopCalls = 0
   stopError: unknown
+  helperSourceTransform?: (source: string) => string
   private readonly flockTails = new Map<string, Promise<void>>()
 
   constructor(
@@ -61,6 +62,9 @@ class LocalSandbox implements VercelSandboxFacade {
     const lockPath = args[1]
     if (args[0] !== '-x' || !lockPath || !args[2]) {
       throw new Error('Invalid flock invocation')
+    }
+    if (this.helperSourceTransform && args[3] === '-e' && args[4]) {
+      args[4] = this.helperSourceTransform(args[4])
     }
     const prior = this.flockTails.get(lockPath) ?? Promise.resolve()
     let release = () => {}
@@ -443,6 +447,46 @@ describe('VercelSandboxProvider', () => {
         `require('node:fs').writeFileSync(${JSON.stringify(counter)}, 'ran')`,
         stateRoot,
       ),
+      { key, requestFingerprint: 'same' },
+    )).rejects.toMatchObject({ name: 'SandboxIndeterminateExecutionError' })
+    await expect(stat(counter)).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('preserves started evidence when gate creation fails and never retries', async () => {
+    const stateRoot = await makeStateRoot()
+    const key = 'gate-write-fault'
+    const digest = createHash('sha256').update(key, 'utf8').digest('hex')
+    const recordPath = join(stateRoot, digest)
+    const counter = join(stateRoot, 'gate-write-counter.txt')
+    const { sdk, sandbox } = createSdk()
+    const handle = await new VercelSandboxProvider(sdk, { stateRoot }).get('existing')
+    const testCommand = command(
+      `require('node:fs').writeFileSync(${JSON.stringify(counter)}, 'ran')`,
+      stateRoot,
+    )
+    sandbox.helperSourceTransform = (source) => source.replace(
+      "await fs.writeFile(gatePath, '', { flag: 'wx' });",
+      "throw new Error('injected gate write failure');",
+    )
+
+    await expect(handle.runIdempotent(
+      testCommand,
+      { key, requestFingerprint: 'same' },
+    )).rejects.toMatchObject({ name: 'SandboxIndeterminateExecutionError' })
+
+    const started = JSON.parse(
+      await readFile(join(recordPath, 'started.json'), 'utf8'),
+    ) as Record<string, unknown>
+    expect(started).toMatchObject({
+      version: 1,
+      phase: 'started',
+      fingerprint: 'same',
+      childPid: expect.any(Number),
+    })
+    sandbox.helperSourceTransform = undefined
+
+    await expect(handle.runIdempotent(
+      testCommand,
       { key, requestFingerprint: 'same' },
     )).rejects.toMatchObject({ name: 'SandboxIndeterminateExecutionError' })
     await expect(stat(counter)).rejects.toMatchObject({ code: 'ENOENT' })

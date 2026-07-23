@@ -210,6 +210,7 @@ async function main() {
   });
 
   let execution;
+  let launchedChild;
   try {
     let announceStarted;
     let rejectStarted;
@@ -239,6 +240,7 @@ async function main() {
         },
         stdio: ['ignore', 'pipe', 'pipe'],
       });
+      launchedChild = child;
       child.once('spawn', () => {
         spawned = true;
         announceStarted(child.pid);
@@ -289,8 +291,18 @@ async function main() {
     });
     await fs.writeFile(gatePath, '', { flag: 'wx' });
   } catch {
-    await fs.rm(payload.recordPath, { recursive: true, force: true });
-    send({ status: 'error' });
+    const startedAfterFailure = await readRecord(startedPath);
+    const gateAfterFailure = await readRecord(gatePath);
+    if (launchedChild) launchedChild.kill('SIGKILL');
+    if (
+      startedAfterFailure.kind === 'missing'
+      && gateAfterFailure.kind === 'missing'
+    ) {
+      await fs.rm(payload.recordPath, { recursive: true, force: true });
+      send({ status: 'error' });
+      return;
+    }
+    send({ status: 'indeterminate' });
     return;
   }
 
