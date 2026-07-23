@@ -282,7 +282,8 @@ Snapshots and durable cloud projects are outside the first implementation.
 
 Cloud mode is off by default. Enabling it requires:
 
-- working Vercel Sandbox OIDC/access-token authentication;
+- working Vercel Sandbox OIDC authentication, or static authentication using
+  `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, and `VERCEL_PROJECT_ID` together;
 - `SANDBOX_ENABLED=true`;
 - a non-default session-signing secret;
 - an access policy appropriate to the deployment.
@@ -375,7 +376,8 @@ tests, and setup documentation. A working public cloud runtime additionally
 depends on deployment-owned state that cannot be committed safely:
 
 - a linked Vercel project and Sandbox entitlement;
-- OIDC or a Vercel access token;
+- Vercel OIDC, or the complete static `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, and
+  `VERCEL_PROJECT_ID` trio;
 - a session-signing secret;
 - an access/rate-limit policy;
 - an OpenAI credential-brokering or private BYOK policy.

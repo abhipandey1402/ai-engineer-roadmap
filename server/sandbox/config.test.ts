@@ -59,13 +59,72 @@ describe('loadRuntimeConfig', () => {
     })).toThrow('Vercel authentication')
   })
 
-  it('accepts a Vercel access token instead of OIDC authentication', () => {
+  it('accepts the Vercel production request context without a module-load OIDC token', () => {
     expect(loadRuntimeConfig({
       SANDBOX_ENABLED: 'true',
-      VERCEL_ACCESS_TOKEN: 'vercel-access-token',
+      VERCEL: '1',
       PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
       PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
     }).enabled).toBe(true)
+  })
+
+  it('loads the official static Vercel credential trio only in private config', () => {
+    const env = {
+      SANDBOX_ENABLED: 'true',
+      VERCEL_TOKEN: 'vercel-token',
+      VERCEL_TEAM_ID: 'team-id',
+      VERCEL_PROJECT_ID: 'project-id',
+      PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
+      PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
+    }
+
+    expect(loadRuntimeConfig(env)).toEqual({
+      enabled: true,
+      runtimes: ['python', 'node'],
+      allowByok: false,
+      limits: DEFAULT_LIMITS,
+    })
+    expect(loadRuntimeCredentials(env)).toEqual({
+      sessionSecret: SESSION_SECRET,
+      accessToken: 'owner-access-token',
+      sandboxCredentials: {
+        token: 'vercel-token',
+        teamId: 'team-id',
+        projectId: 'project-id',
+      },
+    })
+    expect(JSON.stringify(loadRuntimeConfig(env))).not.toMatch(
+      /vercel-token|team-id|project-id/,
+    )
+  })
+
+  it.each([
+    [
+      { VERCEL_TOKEN: 'vercel-token' },
+      'VERCEL_TEAM_ID, VERCEL_PROJECT_ID',
+    ],
+    [
+      { VERCEL_TEAM_ID: 'team-id', VERCEL_PROJECT_ID: 'project-id' },
+      'VERCEL_TOKEN',
+    ],
+  ])('rejects a partial static credential trio without exposing values', (partial, missing) => {
+    expect(() => loadRuntimeConfig({
+      SANDBOX_ENABLED: 'true',
+      ...partial,
+      PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
+      PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
+    })).toThrow(
+      `Static Vercel authentication requires VERCEL_TOKEN, VERCEL_TEAM_ID, and VERCEL_PROJECT_ID together; missing: ${missing}.`,
+    )
+  })
+
+  it('does not accept the unsupported VERCEL_ACCESS_TOKEN name', () => {
+    expect(() => loadRuntimeConfig({
+      SANDBOX_ENABLED: 'true',
+      VERCEL_ACCESS_TOKEN: 'unsupported-token',
+      PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
+      PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
+    })).toThrow('Vercel authentication')
   })
 
   it('enables BYOK only for the exact value true', () => {

@@ -199,6 +199,31 @@ describe('VercelSandboxProvider', () => {
     )
   })
 
+  it('passes official static credentials to every SDK create and get call', async () => {
+    const { sdk, create, get } = createSdk()
+    const credentials = {
+      token: 'vercel-token',
+      teamId: 'team-id',
+      projectId: 'project-id',
+    }
+    const provider = new VercelSandboxProvider(sdk, { credentials })
+
+    await provider.create('node', 'pathwise-new', 300_000)
+    await provider.get('pathwise-existing')
+
+    expect(create).toHaveBeenCalledWith({
+      name: 'pathwise-new',
+      runtime: 'node24',
+      timeout: 300_000,
+      networkPolicy: 'allow-all',
+      ...credentials,
+    })
+    expect(get).toHaveBeenCalledWith({
+      name: 'pathwise-existing',
+      ...credentials,
+    })
+  })
+
   it('creates the workspace and writes project contents as buffers', async () => {
     const { sdk, sandbox } = createSdk()
     const handle = await new VercelSandboxProvider(sdk).get('existing')

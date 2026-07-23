@@ -24,9 +24,16 @@ export interface DisabledRuntimeConfig extends PublicRuntimeConfig {
   runtimes: readonly []
 }
 
+export interface SandboxCredentials {
+  token: string
+  teamId: string
+  projectId: string
+}
+
 export interface PrivateRuntimeCredentials {
   sessionSecret: string
   accessToken: string
+  sandboxCredentials?: SandboxCredentials
 }
 
 export type RuntimeConfig = EnabledRuntimeConfig | DisabledRuntimeConfig
@@ -58,7 +65,31 @@ function isSafeSessionSecret(secret: string | undefined): secret is string {
 function loadEnabledCredentials(
   env: Record<string, string | undefined>,
 ): PrivateRuntimeCredentials {
-  if (!hasValue(env.VERCEL_OIDC_TOKEN) && !hasValue(env.VERCEL_ACCESS_TOKEN)) {
+  const staticCredentialNames = [
+    'VERCEL_TOKEN',
+    'VERCEL_TEAM_ID',
+    'VERCEL_PROJECT_ID',
+  ] as const
+  const suppliedStaticCredentials = staticCredentialNames.filter(
+    (name) => hasValue(env[name]),
+  )
+  if (
+    suppliedStaticCredentials.length > 0
+    && suppliedStaticCredentials.length < staticCredentialNames.length
+  ) {
+    const missing = staticCredentialNames.filter((name) => !hasValue(env[name]))
+    throw new Error(
+      `Static Vercel authentication requires VERCEL_TOKEN, VERCEL_TEAM_ID, and VERCEL_PROJECT_ID together; missing: ${missing.join(', ')}.`,
+    )
+  }
+
+  const hasStaticCredentials = suppliedStaticCredentials.length
+    === staticCredentialNames.length
+  if (
+    !hasValue(env.VERCEL_OIDC_TOKEN)
+    && env.VERCEL !== '1'
+    && !hasStaticCredentials
+  ) {
     throw new Error('Vercel authentication is required to enable cloud runtimes.')
   }
 
@@ -72,10 +103,19 @@ function loadEnabledCredentials(
     throw new Error('A playground access token is required to enable cloud runtimes.')
   }
 
-  return {
+  const credentials: PrivateRuntimeCredentials = {
     sessionSecret,
     accessToken,
   }
+  if (hasStaticCredentials) {
+    credentials.sandboxCredentials = {
+      token: env.VERCEL_TOKEN!,
+      teamId: env.VERCEL_TEAM_ID!,
+      projectId: env.VERCEL_PROJECT_ID!,
+    }
+  }
+
+  return credentials
 }
 
 export function loadRuntimeConfig(

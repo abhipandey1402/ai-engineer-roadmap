@@ -53,8 +53,10 @@ continue to work without Vercel credentials.
 
 Requirements:
 
-- a Vercel project with Sandbox access and OIDC enabled;
-- Vercel CLI authentication for local cloud development;
+- a Vercel project with Sandbox access;
+- either Vercel OIDC (recommended) or the complete static credential trio
+  described below;
+- Vercel CLI authentication for local OIDC development;
 - a random session-signing secret of at least 32 characters;
 - a private owner access token; and
 - an access and abuse-control policy appropriate for the deployment.
@@ -93,8 +95,21 @@ Use these values:
 
 Run the full local Vercel environment with `vercel dev`. A plain `npm run dev`
 serves the browser application but does not provide the serverless runtime API.
-On Vercel deployments, the Sandbox SDK uses the project OIDC context; do not add
-or commit a static OIDC token.
+On Vercel deployments with OIDC enabled, the Sandbox SDK reads the current
+function request's OIDC context and Vercel manages token rotation. The
+application does not require `VERCEL_OIDC_TOKEN` to exist in the function's
+module-load environment. Do not add or commit a static OIDC token.
+
+If OIDC is unavailable, the Sandbox SDK also supports official static
+authentication. Set all three variables together:
+
+- `VERCEL_TOKEN`
+- `VERCEL_TEAM_ID`
+- `VERCEL_PROJECT_ID`
+
+The server passes that complete trio only to Sandbox SDK create/get operations.
+A partial trio is rejected. `VERCEL_ACCESS_TOKEN` is not a supported variable
+name for this integration.
 
 ### Access and secret warning
 

@@ -16,6 +16,7 @@ import {
   type SandboxHandle,
   type SandboxProvider,
 } from './provider'
+import type { SandboxCredentials } from './config'
 
 const WORKSPACE = '/vercel/sandbox/workspace'
 const DEFAULT_STATE_ROOT = '/vercel/sandbox/.pathwise/idempotency'
@@ -48,12 +49,13 @@ export interface VercelSandboxSdkFacade {
     runtime: 'python3.13' | 'node24'
     timeout: number
     networkPolicy: 'allow-all'
-  }): Promise<VercelSandboxFacade>
-  get(options: { name: string }): Promise<VercelSandboxFacade>
+  } & Partial<SandboxCredentials>): Promise<VercelSandboxFacade>
+  get(options: { name: string } & Partial<SandboxCredentials>): Promise<VercelSandboxFacade>
 }
 
 interface ProviderOptions {
   stateRoot?: string
+  credentials?: SandboxCredentials
 }
 
 interface HelperPayload {
@@ -762,12 +764,14 @@ const defaultSdk: VercelSandboxSdkFacade = {
 
 export class VercelSandboxProvider implements SandboxProvider {
   private readonly stateRoot: string
+  private readonly credentials: SandboxCredentials | undefined
 
   constructor(
     private readonly sdk: VercelSandboxSdkFacade = defaultSdk,
     options: ProviderOptions = {},
   ) {
     this.stateRoot = options.stateRoot ?? DEFAULT_STATE_ROOT
+    this.credentials = options.credentials
   }
 
   async create(
@@ -780,13 +784,17 @@ export class VercelSandboxProvider implements SandboxProvider {
       runtime: runtime === 'python' ? 'python3.13' : 'node24',
       timeout: timeoutMs,
       networkPolicy: 'allow-all',
+      ...this.credentials,
     })
     return new VercelSandboxHandle(sandbox, this.stateRoot, runtime)
   }
 
   async get(name: string): Promise<SandboxHandle> {
     try {
-      const sandbox = await this.sdk.get({ name })
+      const sandbox = await this.sdk.get({
+        name,
+        ...this.credentials,
+      })
       return new VercelSandboxHandle(
         sandbox,
         this.stateRoot,
