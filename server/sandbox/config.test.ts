@@ -6,16 +6,19 @@ const SESSION_SECRET = 'test-session-secret-with-at-least-32-characters'
 
 describe('loadRuntimeConfig', () => {
   it('disables cloud runtimes by default', () => {
-    expect(loadRuntimeConfig({})).toEqual({
+    const config = loadRuntimeConfig({})
+
+    expect(config.capabilities).toEqual({
       enabled: false,
       reason: 'Set SANDBOX_ENABLED=true to enable cloud runtimes.',
       runtimes: [],
       allowByok: false,
       limits: DEFAULT_LIMITS,
     })
+    expect(config.credentials).toBeUndefined()
   })
 
-  it('loads enabled public capabilities and keeps private secrets nested', () => {
+  it('structurally separates public capabilities from private credentials', () => {
     const config = loadRuntimeConfig({
       SANDBOX_ENABLED: 'true',
       VERCEL_OIDC_TOKEN: 'oidc-token',
@@ -24,18 +27,20 @@ describe('loadRuntimeConfig', () => {
       PLAYGROUND_ALLOW_BYOK: 'true',
     })
 
-    expect(config).toMatchObject({
+    expect(config.capabilities).toEqual({
       enabled: true,
       runtimes: ['python', 'node'],
       allowByok: true,
       limits: DEFAULT_LIMITS,
-      secrets: {
-        sessionSecret: SESSION_SECRET,
-        accessToken: 'owner-access-token',
-      },
     })
-    expect(config).not.toHaveProperty('sessionSecret')
-    expect(config).not.toHaveProperty('accessToken')
+    expect(config.credentials).toEqual({
+      sessionSecret: SESSION_SECRET,
+      accessToken: 'owner-access-token',
+    })
+
+    const serializedCapabilities = JSON.stringify(config.capabilities)
+    expect(serializedCapabilities).not.toContain(SESSION_SECRET)
+    expect(serializedCapabilities).not.toContain('owner-access-token')
   })
 
   it('accepts a Vercel access token instead of OIDC authentication', () => {
@@ -44,7 +49,7 @@ describe('loadRuntimeConfig', () => {
       VERCEL_ACCESS_TOKEN: 'vercel-access-token',
       PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
       PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
-    }).enabled).toBe(true)
+    }).capabilities.enabled).toBe(true)
   })
 
   it('enables BYOK only for the exact value true', () => {
@@ -54,7 +59,7 @@ describe('loadRuntimeConfig', () => {
       PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
       PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
       PLAYGROUND_ALLOW_BYOK: 'TRUE',
-    }).allowByok).toBe(false)
+    }).capabilities.allowByok).toBe(false)
   })
 
   it('rejects enabled configuration without Vercel authentication', () => {

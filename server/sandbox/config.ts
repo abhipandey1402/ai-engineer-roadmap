@@ -6,7 +6,7 @@ import {
 
 type RuntimeLimits = typeof DEFAULT_LIMITS
 
-export interface PublicRuntimeConfig {
+interface RuntimeCapabilities {
   enabled: boolean
   reason?: string
   runtimes: readonly CloudRuntime[]
@@ -14,20 +14,33 @@ export interface PublicRuntimeConfig {
   limits: RuntimeLimits
 }
 
-export interface PrivateRuntimeSecrets {
+export interface EnabledRuntimeCapabilities extends RuntimeCapabilities {
+  enabled: true
+}
+
+export interface DisabledRuntimeCapabilities extends RuntimeCapabilities {
+  enabled: false
+  reason: string
+  runtimes: readonly []
+}
+
+export type PublicRuntimeCapabilities =
+  | EnabledRuntimeCapabilities
+  | DisabledRuntimeCapabilities
+
+export interface PrivateRuntimeCredentials {
   sessionSecret: string
   accessToken: string
 }
 
-export interface EnabledRuntimeConfig extends PublicRuntimeConfig {
-  enabled: true
-  secrets: PrivateRuntimeSecrets
+export interface EnabledRuntimeConfig {
+  capabilities: EnabledRuntimeCapabilities
+  credentials: PrivateRuntimeCredentials
 }
 
-export interface DisabledRuntimeConfig extends PublicRuntimeConfig {
-  enabled: false
-  reason: string
-  runtimes: readonly []
+export interface DisabledRuntimeConfig {
+  capabilities: DisabledRuntimeCapabilities
+  credentials?: never
 }
 
 export type RuntimeConfig = EnabledRuntimeConfig | DisabledRuntimeConfig
@@ -61,11 +74,13 @@ export function loadRuntimeConfig(
 ): RuntimeConfig {
   if (env.SANDBOX_ENABLED !== 'true') {
     return {
-      enabled: false,
-      reason: DISABLED_REASON,
-      runtimes: [],
-      allowByok: false,
-      limits: DEFAULT_LIMITS,
+      capabilities: {
+        enabled: false,
+        reason: DISABLED_REASON,
+        runtimes: [],
+        allowByok: false,
+        limits: DEFAULT_LIMITS,
+      },
     }
   }
 
@@ -84,11 +99,13 @@ export function loadRuntimeConfig(
   }
 
   return {
-    enabled: true,
-    runtimes: CLOUD_RUNTIMES,
-    allowByok: env.PLAYGROUND_ALLOW_BYOK === 'true',
-    limits: DEFAULT_LIMITS,
-    secrets: {
+    capabilities: {
+      enabled: true,
+      runtimes: CLOUD_RUNTIMES,
+      allowByok: env.PLAYGROUND_ALLOW_BYOK === 'true',
+      limits: DEFAULT_LIMITS,
+    },
+    credentials: {
       sessionSecret,
       accessToken,
     },
@@ -103,9 +120,12 @@ export function authorizeAccess(
   config: RuntimeConfig,
   token: string | undefined,
 ): boolean {
-  const expected = config.enabled ? config.secrets.accessToken : ''
+  const expected = config.credentials?.accessToken ?? ''
   const supplied = typeof token === 'string' ? token : ''
   const matches = timingSafeEqual(digest(expected), digest(supplied))
 
-  return config.enabled && typeof token === 'string' && matches
+  return config.capabilities.enabled
+    && config.credentials !== undefined
+    && typeof token === 'string'
+    && matches
 }

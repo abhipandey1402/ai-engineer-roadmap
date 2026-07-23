@@ -1,3 +1,9 @@
+import { Buffer } from 'node:buffer'
+import {
+  createCipheriv,
+  createHash,
+  randomBytes,
+} from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import {
   openSession,
@@ -9,6 +15,21 @@ import {
 
 const TEST_SECRET = 'test-session-secret-with-at-least-32-characters'
 const WRONG_SECRET = 'wrong-session-secret-with-at-least-32-characters'
+
+function authenticateRawPayload(payload: unknown, secret: string): string {
+  const iv = randomBytes(12)
+  const key = createHash('sha256').update(secret, 'utf8').digest()
+  const cipher = createCipheriv('aes-256-gcm', key, iv)
+  const plaintext = Buffer.from(JSON.stringify(payload), 'utf8')
+  const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()])
+  const tag = cipher.getAuthTag()
+
+  return [
+    iv.toString('base64url'),
+    ciphertext.toString('base64url'),
+    tag.toString('base64url'),
+  ].join('.')
+}
 
 describe('sealed sessions', () => {
   it('round-trips an authenticated session payload', async () => {
@@ -58,6 +79,16 @@ describe('sealed sessions', () => {
     } as unknown as SessionPayload
 
     await expect(sealSession(invalidPayload, TEST_SECRET)).rejects.toThrow('Invalid session')
+  })
+
+  it('rejects an authenticated token with an invalid decoded runtime', async () => {
+    const token = authenticateRawPayload({
+      name: 'pathwise-test',
+      runtime: 'ruby',
+      expiresAt: 2_000_000_000_000,
+    }, TEST_SECRET)
+
+    await expect(openSession(token, TEST_SECRET)).rejects.toThrow('Invalid session')
   })
 
   it('uses a fresh 96-bit IV for each token', async () => {
