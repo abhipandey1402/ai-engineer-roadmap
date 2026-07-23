@@ -1826,6 +1826,402 @@ kbd {
   border-bottom: 1px solid var(--border);
 }
 
+.py-package-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.py-package-fallback .py-btn {
+  flex-shrink: 0;
+}
+
+/* ---------- runtime workbench ---------- */
+
+.runtime-selector {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  background: var(--gray-1);
+}
+
+.runtime-rail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.runtime-option {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    'marker name'
+    'marker detail'
+    'marker status';
+  column-gap: 12px;
+  padding: 14px 22px 13px;
+  text-align: left;
+  border-right: 1px solid var(--border);
+}
+
+.runtime-option:first-child {
+  border-left: 1px solid var(--border);
+}
+
+.runtime-option[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.runtime-option:focus-visible,
+.package-terminal-prompt input:focus-visible,
+.package-terminal-prompt button:focus-visible,
+.environment-panel input:focus-visible,
+.environment-panel button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.runtime-marker {
+  grid-area: marker;
+  width: 11px;
+  height: 11px;
+  margin-top: 5px;
+  border: 1.5px solid var(--gray-3);
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+.runtime-option.active .runtime-marker {
+  border: 3px solid var(--accent);
+}
+
+.runtime-option.active::after {
+  content: '';
+  position: absolute;
+  left: 27px;
+  bottom: -13px;
+  width: 1px;
+  height: 13px;
+  background: var(--accent);
+  z-index: 2;
+}
+
+.runtime-name {
+  grid-area: name;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.runtime-detail,
+.runtime-status {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--gray-4);
+}
+
+.runtime-detail {
+  grid-area: detail;
+}
+
+.runtime-status {
+  grid-area: status;
+}
+
+.runtime-option.active .runtime-status {
+  color: var(--accent);
+}
+
+.runtime-setup {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--gray-1);
+}
+
+.runtime-setup h2,
+.environment-head h2 {
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.runtime-setup p {
+  margin-top: 5px;
+  color: var(--gray-5);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.runtime-setup pre {
+  max-width: 620px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  background: var(--code-bg);
+  color: var(--code-fg);
+  font: 12px/1.65 var(--mono);
+}
+
+.runtime-setup .runtime-setup-note {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.package-terminal {
+  --runtime-seam: var(--accent);
+  display: flex;
+  flex: 1;
+  min-height: 260px;
+  flex-direction: column;
+  border-top: 1px solid var(--runtime-seam);
+  background: var(--code-bg);
+  color: var(--code-fg);
+}
+
+.package-terminal-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid #313131;
+  font: 600 11px/1.4 var(--mono);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.package-terminal-head span:last-child {
+  color: var(--accent-bright);
+}
+
+.package-terminal-output {
+  display: flex;
+  flex: 1;
+  min-height: 150px;
+  max-height: 48vh;
+  flex-direction: column;
+  padding: 15px 17px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 13px/1.6 var(--mono);
+}
+
+.package-terminal-empty {
+  color: #888888;
+}
+
+.package-terminal-error {
+  color: #ff8585;
+}
+
+.package-terminal-prompt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border-top: 1px solid #313131;
+  font-family: var(--mono);
+}
+
+.package-terminal-prompt label {
+  color: var(--accent-bright);
+}
+
+.package-terminal-prompt input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--code-fg);
+  font: 13px/1.4 var(--mono);
+  outline: none;
+}
+
+.package-terminal-prompt button {
+  padding: 5px 9px;
+  border: 1px solid #555555;
+  border-radius: 5px;
+  color: var(--code-fg);
+  font: 11px/1.4 var(--mono);
+}
+
+.package-terminal-prompt button:disabled,
+.environment-panel button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.package-terminal-hint {
+  padding: 0 12px 9px 33px;
+  color: #777777;
+  font: 10px/1.4 var(--mono);
+}
+
+.environment-panel {
+  border-top: 1px solid var(--border);
+  padding: 16px;
+  background: var(--bg);
+}
+
+.environment-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.environment-head p {
+  color: var(--gray-4);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.environment-panel button,
+.environment-add {
+  padding: 5px 9px;
+  border: 1px solid var(--gray-3);
+  border-radius: 5px;
+  font: 11px/1.4 var(--mono);
+}
+
+.environment-access {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+  color: var(--gray-4);
+  font: 11px/1.4 var(--mono);
+}
+
+.environment-access input,
+.environment-row input:not([type='checkbox']) {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--gray-1);
+  color: var(--fg);
+  font: 12px/1.4 var(--mono);
+}
+
+.environment-rows {
+  display: grid;
+  gap: 7px;
+}
+
+.environment-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.8fr) minmax(130px, 1.2fr) auto auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.environment-secret {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 11px/1.4 var(--mono);
+}
+
+.environment-add {
+  margin-top: 9px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 900px) {
+  .runtime-option {
+    padding-inline: 14px;
+  }
+
+  .runtime-option.active::after {
+    left: 19px;
+  }
+
+  .environment-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .playground-head {
+    flex-wrap: wrap;
+  }
+
+  .runtime-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .runtime-option,
+  .runtime-option:first-child {
+    border-left: none;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .runtime-option:last-child {
+    border-bottom: none;
+  }
+
+  .runtime-option.active::after {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 2px;
+    height: auto;
+  }
+
+  .environment-row {
+    grid-template-columns: 1fr;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .py-package-fallback {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .package-terminal-prompt {
+    flex-wrap: wrap;
+  }
+
+  .package-terminal-prompt input {
+    flex-basis: calc(100% - 30px);
+  }
+
+  .package-terminal-prompt button {
+    margin-left: 21px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .runtime-option,
+  .package-terminal-prompt button,
+  .environment-panel button {
+    transition: none;
+  }
+}
+
 /* ---------- floating code runner dock ---------- */
 
 .runner-fab {

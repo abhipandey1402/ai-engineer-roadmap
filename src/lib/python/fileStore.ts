@@ -1,5 +1,6 @@
 // Pure file-store for the Playground's multi-file editor. Kept free of React so
 // it can be unit-tested directly; PlaygroundApp drives it via useReducer.
+import type { PlaygroundRuntime } from '../sandbox/protocol'
 
 export interface FileStore {
   files: Record<string, string>
@@ -68,6 +69,20 @@ export function uniqueName(state: FileStore, base = 'untitled'): string {
   let candidate = ensurePy(base)
   let i = 1
   while (state.files[candidate] !== undefined) candidate = ensurePy(`${base}_${i++}`)
+  return candidate
+}
+
+export function uniqueRuntimeName(
+  state: FileStore,
+  runtime: PlaygroundRuntime,
+  base = 'untitled',
+): string {
+  const extension = runtime === 'cloud-node' ? '.js' : '.py'
+  let candidate = `${base}${extension}`
+  let index = 1
+  while (state.files[candidate] !== undefined) {
+    candidate = `${base}_${index++}${extension}`
+  }
   return candidate
 }
 
