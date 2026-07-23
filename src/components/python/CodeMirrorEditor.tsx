@@ -10,10 +10,43 @@ import {
 } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { bracketMatching, indentUnit } from '@codemirror/language'
-import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
+import {
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+  completionKeymap,
+} from '@codemirror/autocomplete'
+import { linter, lintGutter, lintKeymap } from '@codemirror/lint'
 import { python } from '@codemirror/lang-python'
 import { oneDark } from '@codemirror/theme-one-dark'
+import { checkIndentation } from '../../lib/python/indentLint'
 import type { EditorProps } from './PlainEditor'
+
+// Live indentation/whitespace diagnostics. Underlines the offending spot, shows
+// the fix in a hover tooltip + gutter marker, and (where clear) a one-click fix.
+const indentLinter = linter(
+  (view) => {
+    const code = view.state.doc.toString()
+    const len = code.length
+    return checkIndentation(code).map((d) => ({
+      from: Math.min(d.from, len),
+      to: Math.min(Math.max(d.to, d.from), len),
+      severity: d.severity,
+      message: d.message,
+      actions: d.fix
+        ? [
+            {
+              name: d.fix.label,
+              apply(v: EditorView) {
+                v.dispatch({ changes: { from: d.fix!.from, to: d.fix!.to, insert: d.fix!.insert } })
+              },
+            },
+          ]
+        : undefined,
+    }))
+  },
+  { delay: 300 },
+)
 
 // The code surface is dark in both app themes (--code-bg), so one dark theme is
 // correct everywhere; we just re-skin oneDark to the app's tokens.
@@ -78,10 +111,23 @@ export function CodeMirrorEditor({
       history(),
       bracketMatching(),
       closeBrackets(),
+      // Suggest identifiers already written in the buffer (variables, funcs,
+      // classes, imports) plus Python builtins/keywords. python() registers the
+      // local + global completion sources; this turns the popup on.
+      autocompletion({ activateOnTyping: true, closeOnBlur: true }),
+      indentLinter,
+      lintGutter(),
       indentUnit.of('  '),
       EditorView.lineWrapping,
       runKeymap,
-      keymap.of([...closeBracketsKeymap, indentWithTab, ...defaultKeymap, ...historyKeymap]),
+      keymap.of([
+        ...closeBracketsKeymap,
+        ...completionKeymap,
+        ...lintKeymap,
+        indentWithTab,
+        ...defaultKeymap,
+        ...historyKeymap,
+      ]),
       python(),
       oneDark,
       appTheme(`${(minRows * 1.6).toFixed(1)}em`),

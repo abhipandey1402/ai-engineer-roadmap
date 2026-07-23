@@ -123,8 +123,17 @@ export function CourseApp({ course, route, statuses, setStatus, theme, toggleThe
         return
       }
       if (searchOpen || e.metaKey || e.ctrlKey || e.altKey) return
-      const tag = (e.target as HTMLElement)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      // Don't hijack keys while typing in a field or the code editor. CodeMirror
+      // is a contenteditable <div> (not a textarea), so check for that and the
+      // editor root too — otherwise arrows/letters leak into topic navigation.
+      const target = e.target as HTMLElement | null
+      if (
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable ||
+        target?.closest?.('.cm-editor')
+      )
+        return
       if (e.key === 'Escape') {
         if (route.kind === 'topic') goRoadmap()
         else onHome()
