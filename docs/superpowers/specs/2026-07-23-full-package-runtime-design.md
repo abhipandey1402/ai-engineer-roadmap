@@ -149,8 +149,9 @@ Before Run:
    `.mjs`, and `.cjs`.
 4. Stream output and final exit status.
 
-The existing Run and Stop controls remain. Cloud mode also exposes Restart Session
-and Destroy Session. An idle session is destroyed automatically.
+The existing Run and Stop controls remain. In cloud mode, Stop ends the active
+sandbox session and a later run creates a fresh one. Cloud mode also exposes
+Restart Session and Destroy Session. An idle session is destroyed automatically.
 
 ### 3.4 Inline course runners
 
@@ -261,7 +262,8 @@ It never returns configuration values or credentials.
 - `PUT /api/runtime/sessions/current/files` synchronizes a complete bounded file
   set.
 - `POST /api/runtime/sessions/current/commands` runs one validated command.
-- `POST /api/runtime/sessions/current/stop` stops the active command or sandbox.
+- `POST /api/runtime/sessions/current/stop` stops the active sandbox and ends
+  the current session.
 
 The server sets a signed, HttpOnly, Secure, SameSite cookie containing an opaque
 session reference. Sandbox IDs are not accepted directly from the browser.

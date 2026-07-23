@@ -278,6 +278,88 @@ describe('RuntimeApi', () => {
     expect(created.body).toEqual({ runtime })
   })
 
+  it('reuses a matching live sandbox when create is repeated with its cookie', async () => {
+    const { api, provider, cookie, handle } = await createApi('python')
+
+    const repeated = await api.createSession(request(
+      { runtime: 'python' },
+      accessHeaders({ cookie }),
+    ))
+
+    expect(repeated).toMatchObject({
+      status: 200,
+      body: { runtime: 'python' },
+    })
+    expect(provider.createCalls).toHaveLength(1)
+    expect(provider.getCalls).toEqual([handle.name])
+    expect(handle.stopIdempotentCalls).toBe(0)
+  })
+
+  it('creates a replacement when a matching cookie references an expired sandbox', async () => {
+    const { api, provider, cookie, handle } = await createApi('python')
+    provider.handles.delete(handle.name)
+
+    const replacement = await api.createSession(request(
+      { runtime: 'python' },
+      accessHeaders({ cookie }),
+    ))
+
+    expect(replacement.status).toBe(201)
+    expect(provider.createCalls).toHaveLength(2)
+    expect(provider.getCalls).toEqual([handle.name])
+  })
+
+  it('does not create a duplicate when reconnecting to a matching sandbox is indeterminate', async () => {
+    const { api, provider, cookie, handle } = await createApi('python')
+    provider.getError = new Error('provider lookup failed')
+
+    const response = await api.createSession(request(
+      { runtime: 'python' },
+      accessHeaders({ cookie }),
+    ))
+
+    expect(response.status).toBe(503)
+    expect(errorCode(response)).toBe('SANDBOX_UNAVAILABLE')
+    expect(provider.createCalls).toHaveLength(1)
+    expect(provider.getCalls).toEqual([handle.name])
+  })
+
+  it('stops a mismatched live sandbox before creating its replacement', async () => {
+    const { api, provider, cookie, handle } = await createApi('python')
+
+    const replacement = await api.createSession(request(
+      { runtime: 'node' },
+      accessHeaders({ cookie }),
+    ))
+
+    expect(replacement).toMatchObject({
+      status: 201,
+      body: { runtime: 'node' },
+    })
+    expect(provider.getCalls).toEqual([handle.name])
+    expect(handle.stopIdempotentCalls).toBe(1)
+    expect(provider.createCalls.map(({ runtime }) => runtime)).toEqual([
+      'python',
+      'node',
+    ])
+  })
+
+  it('does not replace a mismatched sandbox when stopping it is indeterminate', async () => {
+    const { api, provider, cookie, handle } = await createApi('python')
+    handle.stopIdempotent = vi.fn().mockRejectedValue(
+      new Error('provider stop failed'),
+    )
+
+    const response = await api.createSession(request(
+      { runtime: 'node' },
+      accessHeaders({ cookie }),
+    ))
+
+    expect(response.status).toBe(503)
+    expect(errorCode(response)).toBe('SANDBOX_UNAVAILABLE')
+    expect(provider.createCalls).toHaveLength(1)
+  })
+
   it('rejects file traversal before resolving the provider', async () => {
     const { api, provider, cookie } = await createApi()
     provider.getCalls.length = 0

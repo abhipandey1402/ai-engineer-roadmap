@@ -318,6 +318,53 @@ export class RuntimeApi {
     }
 
     const runtime = req.body.runtime
+    const existingToken = cookieToken(req)
+    if (existingToken) {
+      let existingSession: SessionPayload | undefined
+      try {
+        existingSession = await openSession(
+          existingToken,
+          credentials.sessionSecret,
+          this.now(),
+        )
+      } catch {
+        // Invalid and expired cookies cannot safely identify a sandbox. The
+        // provider timeout remains the cleanup boundary for those sessions.
+      }
+
+      if (existingSession) {
+        let existingSandbox
+        try {
+          existingSandbox = await this.provider.get(existingSession.name)
+        } catch (caught) {
+          if (!(caught instanceof SandboxNotFoundError)) {
+            return error(
+              503,
+              'SANDBOX_UNAVAILABLE',
+              'The cloud sandbox is temporarily unavailable.',
+            )
+          }
+        }
+
+        if (existingSandbox) {
+          if (existingSession.runtime === runtime) {
+            return { status: 200, body: { runtime } }
+          }
+          try {
+            await existingSandbox.stopIdempotent()
+          } catch (caught) {
+            if (!(caught instanceof SandboxNotFoundError)) {
+              return error(
+                503,
+                'SANDBOX_UNAVAILABLE',
+                'The cloud sandbox is temporarily unavailable.',
+              )
+            }
+          }
+        }
+      }
+    }
+
     const name = `pathwise-${randomUUID()}`
     try {
       await this.provider.create(

@@ -6,6 +6,7 @@
 // alone). The `pyodide` npm package is used only for its TypeScript types.
 import type { PyodideInterface } from 'pyodide'
 import { PYODIDE_CDN, type WorkerRequest, type WorkerResponse } from './protocol'
+import { installPackages } from './python.worker.install'
 
 const post = (msg: WorkerResponse) => self.postMessage(msg)
 
@@ -84,18 +85,7 @@ self.onmessage = async (e: MessageEvent) => {
         break
       }
       case 'install': {
-        const packages = req.packages.map((value) => value.trim()).filter(Boolean)
-        if (packages.length === 0) throw new Error('Enter at least one package to install.')
-        await py.loadPackage('micropip')
-        const micropip = py.pyimport('micropip')
-        try {
-          post({ kind: 'output', id: req.id, stream: 'stdout', text: `Installing ${packages.join(' ')}…\n` })
-          await micropip.install.callKwargs(packages, { keep_going: true })
-          post({ kind: 'output', id: req.id, stream: 'stdout', text: `Installed ${packages.join(' ')}\n` })
-          post({ kind: 'done', id: req.id, ok: true })
-        } finally {
-          micropip.destroy()
-        }
+        await installPackages(py, req, post)
         break
       }
       case 'writeFile':

@@ -196,10 +196,12 @@ the Node example follows the
 
 ## Stop, destroy, or disable cloud execution
 
-- **Stop** interrupts the active command. It does not remove installed packages
-  or files from the sandbox.
-- **Destroy session** stops and removes the current sandbox and clears in-memory
-  access/secret values. Use it before closing a private BYOK session.
+- **Stop** aborts the browser request, stops the current sandbox, and ends that
+  cloud session. The next run creates a fresh sandbox, so packages and sandbox
+  files from the stopped session are not preserved.
+- **Destroy session** has the same server-side stop-and-remove behavior and also
+  clears in-memory access/secret values. Use it before closing a private BYOK
+  session.
 - To disable new cloud execution, set `SANDBOX_ENABLED=false` for every deployed
   Vercel environment and redeploy. Then verify the playground shows the cloud
   setup notice and the Cloud Python/Cloud Node choices are unavailable. Destroy

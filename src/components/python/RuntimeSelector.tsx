@@ -53,7 +53,7 @@ export function RuntimeSelector({
               role="radio"
               aria-checked={selected}
               aria-disabled={!supported || disabled}
-              disabled={disabled}
+              disabled={!supported || disabled}
               onClick={() => supported && !disabled && onChange(runtime.value)}
             >
               <span className="runtime-marker" aria-hidden="true" />

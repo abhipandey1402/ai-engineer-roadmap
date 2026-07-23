@@ -46,4 +46,64 @@ describe('runtime singleton authentication wiring', () => {
 
     expect(providerConstructor).toHaveBeenCalledWith()
   })
+
+  it.each([
+    {
+      name: 'partial static authentication',
+      env: {
+        VERCEL_TOKEN: 'private-vercel-token',
+        PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
+        PLAYGROUND_ACCESS_TOKEN: 'private-owner-token',
+      },
+    },
+    {
+      name: 'missing session secret',
+      env: {
+        VERCEL_OIDC_TOKEN: 'private-oidc-token',
+        PLAYGROUND_ACCESS_TOKEN: 'private-owner-token',
+      },
+    },
+    {
+      name: 'missing access token',
+      env: {
+        VERCEL_OIDC_TOKEN: 'private-oidc-token',
+        PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
+      },
+    },
+  ])('keeps handlers importable with $name', async ({ env }) => {
+    vi.stubEnv('SANDBOX_ENABLED', 'true')
+    for (const [name, value] of Object.entries(env)) vi.stubEnv(name, value)
+
+    const { runtimeApi } = await import('./singleton')
+    const capabilities = await runtimeApi.capabilities({
+      method: 'GET',
+      headers: {},
+    })
+    const create = await runtimeApi.createSession({
+      method: 'POST',
+      headers: { 'x-playground-access': 'private-owner-token' },
+      body: { runtime: 'python' },
+    })
+
+    expect(capabilities.status).toBe(200)
+    expect(capabilities.body).toMatchObject({
+      enabled: false,
+      runtimes: [],
+      allowByok: false,
+      reason: 'Cloud runtimes require server setup.',
+    })
+    expect(create.status).toBe(503)
+    expect(create.body).toEqual({
+      error: {
+        code: 'CLOUD_DISABLED',
+        message: 'Cloud runtimes require server setup.',
+      },
+    })
+    expect(providerConstructor).toHaveBeenCalledWith()
+
+    const publicResponse = JSON.stringify({ capabilities, create })
+    for (const value of Object.values(env)) {
+      expect(publicResponse).not.toContain(value)
+    }
+  })
 })

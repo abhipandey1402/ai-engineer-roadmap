@@ -39,6 +39,7 @@ export interface PrivateRuntimeCredentials {
 export type RuntimeConfig = EnabledRuntimeConfig | DisabledRuntimeConfig
 
 const DISABLED_REASON = 'Set SANDBOX_ENABLED=true to enable cloud runtimes.'
+export const SETUP_REQUIRED_REASON = 'Cloud runtimes require server setup.'
 const CLOUD_RUNTIMES = ['python', 'node'] as const satisfies readonly CloudRuntime[]
 const MINIMUM_SESSION_SECRET_LENGTH = 32
 const DEFAULT_SECRET_MARKERS = [
@@ -50,6 +51,16 @@ const DEFAULT_SECRET_MARKERS = [
   'default',
   'example',
 ]
+
+export function setupRequiredRuntimeConfig(): DisabledRuntimeConfig {
+  return {
+    enabled: false,
+    reason: SETUP_REQUIRED_REASON,
+    runtimes: [],
+    allowByok: false,
+    limits: DEFAULT_LIMITS,
+  }
+}
 
 function hasValue(value: string | undefined): value is string {
   return typeof value === 'string' && value.trim().length > 0
