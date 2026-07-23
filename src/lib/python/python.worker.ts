@@ -6,6 +6,7 @@
 // alone). The `pyodide` npm package is used only for its TypeScript types.
 import type { PyodideInterface } from 'pyodide'
 import { PYODIDE_CDN, type WorkerRequest, type WorkerResponse } from './protocol'
+import { installPackages } from './python.worker.install'
 
 const post = (msg: WorkerResponse) => self.postMessage(msg)
 
@@ -81,6 +82,10 @@ self.onmessage = async (e: MessageEvent) => {
           if (typeof ret.destroy === 'function') ret.destroy()
         }
         post({ kind: 'done', id: req.id, ok: true, result })
+        break
+      }
+      case 'install': {
+        await installPackages(py, req, post)
         break
       }
       case 'writeFile':

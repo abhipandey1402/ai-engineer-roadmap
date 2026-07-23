@@ -341,9 +341,11 @@ Test that an empty environment returns:
 }
 ```
 
-Test enabled configuration with `VERCEL_OIDC_TOKEN`, a 32+ character session
-secret, and access token. Test rejection for missing Vercel auth, default/short
-secrets, and incorrect access tokens using a timing-safe comparison.
+Test enabled configuration with `VERCEL_OIDC_TOKEN`, Vercel production request
+context (`VERCEL=1`), or the complete static `VERCEL_TOKEN`, `VERCEL_TEAM_ID`,
+and `VERCEL_PROJECT_ID` trio, plus a 32+ character session secret and playground
+access token. Test rejection for missing/partial Vercel auth, default/short
+secrets, and incorrect playground access tokens using a timing-safe comparison.
 
 - [ ] **Step 2: Run configuration tests and verify RED**
 
@@ -355,8 +357,11 @@ Expected: module-not-found failure.
 
 Use an injected `Record<string, string | undefined>` rather than reading
 `process.env` inside pure functions. Return public capability data separately from
-private secrets. Recognize `VERCEL_OIDC_TOKEN` or `VERCEL_ACCESS_TOKEN`. Enable BYOK
-only for `PLAYGROUND_ALLOW_BYOK=true`.
+private secrets. Recognize local `VERCEL_OIDC_TOKEN`, Vercel production request
+context (`VERCEL=1`), or the complete official static `VERCEL_TOKEN`,
+`VERCEL_TEAM_ID`, and `VERCEL_PROJECT_ID` trio. Keep the static trio nested in
+private credentials and pass it to every Sandbox SDK create/get call. Enable
+BYOK only for `PLAYGROUND_ALLOW_BYOK=true`.
 
 - [ ] **Step 4: Write sealed-session tests**
 

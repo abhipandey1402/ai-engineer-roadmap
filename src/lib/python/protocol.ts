@@ -15,6 +15,7 @@ export type EngineState = 'idle' | 'loading' | 'ready'
 export type WorkerRequest =
   | { id: number; type: 'run'; code: string }
   | { id: number; type: 'repl'; code: string }
+  | { id: number; type: 'install'; packages: string[] }
   | { id: number; type: 'writeFile'; name: string; content: string }
   | { id: number; type: 'readFile'; name: string }
   | { id: number; type: 'listFiles' }

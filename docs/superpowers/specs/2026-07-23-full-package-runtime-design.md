@@ -18,7 +18,7 @@ and:
 
 ```sh
 npm install openai
-node example.js
+node example.mjs
 ```
 
 The feature must preserve the current fast in-browser Python experience while
@@ -149,8 +149,9 @@ Before Run:
    `.mjs`, and `.cjs`.
 4. Stream output and final exit status.
 
-The existing Run and Stop controls remain. Cloud mode also exposes Restart Session
-and Destroy Session. An idle session is destroyed automatically.
+The existing Run and Stop controls remain. In cloud mode, Stop ends the active
+sandbox session and a later run creates a fresh one. Cloud mode also exposes
+Restart Session and Destroy Session. An idle session is destroyed automatically.
 
 ### 3.4 Inline course runners
 
@@ -261,7 +262,8 @@ It never returns configuration values or credentials.
 - `PUT /api/runtime/sessions/current/files` synchronizes a complete bounded file
   set.
 - `POST /api/runtime/sessions/current/commands` runs one validated command.
-- `POST /api/runtime/sessions/current/stop` stops the active command or sandbox.
+- `POST /api/runtime/sessions/current/stop` stops the active sandbox and ends
+  the current session.
 
 The server sets a signed, HttpOnly, Secure, SameSite cookie containing an opaque
 session reference. Sandbox IDs are not accepted directly from the browser.
@@ -282,7 +284,8 @@ Snapshots and durable cloud projects are outside the first implementation.
 
 Cloud mode is off by default. Enabling it requires:
 
-- working Vercel Sandbox OIDC/access-token authentication;
+- working Vercel Sandbox OIDC authentication, or static authentication using
+  `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, and `VERCEL_PROJECT_ID` together;
 - `SANDBOX_ENABLED=true`;
 - a non-default session-signing secret;
 - an access policy appropriate to the deployment.
@@ -375,7 +378,8 @@ tests, and setup documentation. A working public cloud runtime additionally
 depends on deployment-owned state that cannot be committed safely:
 
 - a linked Vercel project and Sandbox entitlement;
-- OIDC or a Vercel access token;
+- Vercel OIDC, or the complete static `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, and
+  `VERCEL_PROJECT_ID` trio;
 - a session-signing secret;
 - an access/rate-limit policy;
 - an OpenAI credential-brokering or private BYOK policy.
