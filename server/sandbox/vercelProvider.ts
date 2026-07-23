@@ -5,7 +5,9 @@ import type {
   CloudRuntime,
   ProjectFile,
 } from '../../src/lib/sandbox/protocol'
+import { DEFAULT_LIMITS } from '../../src/lib/sandbox/protocol'
 import {
+  SandboxIndeterminateExecutionError,
   SandboxIdempotencyConflictError,
   SandboxNotFoundError,
   type SandboxCommand,
@@ -18,7 +20,8 @@ import {
 const WORKSPACE = '/vercel/sandbox/workspace'
 const DEFAULT_STATE_ROOT = '/vercel/sandbox/.pathwise/idempotency'
 const HELPER_GRACE_MS = 5_000
-const MAX_HELPER_OUTPUT_BYTES = 2_000_000
+const MAX_HELPER_OUTPUT_BYTES = DEFAULT_LIMITS.maxOutputBytes * 8
+const FLOCK_EXECUTABLE = '/usr/bin/flock'
 
 interface VercelRunCommandOptions {
   cmd: string
@@ -62,6 +65,7 @@ interface HelperPayload {
   cwd: string
   env: Record<string, string>
   timeoutMs: number
+  maxOutputBytes: number
 }
 
 const IDEMPOTENCY_HELPER = String.raw`
@@ -69,11 +73,14 @@ const fs = require('node:fs/promises');
 const process = require('node:process');
 const { spawn } = require('node:child_process');
 
-const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 const send = (value) => process.stdout.write(JSON.stringify(value));
 const isObject = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 const isMissing = (error) => isObject(error) && error.code === 'ENOENT';
-const isExisting = (error) => isObject(error) && error.code === 'EEXIST';
+const launcher = 'gate="$1"; failed="$2"; shift 2; '
+  + 'i=0; while [ ! -e "$gate" ]; do i=$((i + 1)); '
+  + '[ "$i" -ge 500 ] && exit 125; sleep 0.02; done; '
+  + 'if ! command -v "$1" >/dev/null 2>&1; then tmp="$failed.$$"; '
+  + 'printf "127" > "$tmp"; mv "$tmp" "$failed"; exit 127; fi; exec "$@"';
 
 function parsePayload() {
   const value = JSON.parse(Buffer.from(process.argv[1], 'base64url').toString('utf8'));
@@ -90,141 +97,233 @@ function parsePayload() {
     || value.args.some((item) => typeof item !== 'string')
     || typeof value.cwd !== 'string'
     || !isObject(value.env)
+    || Object.keys(value.env).some((item) => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(item))
     || Object.values(value.env).some((item) => typeof item !== 'string')
     || !Number.isSafeInteger(value.timeoutMs)
     || value.timeoutMs <= 0
+    || !Number.isSafeInteger(value.maxOutputBytes)
+    || value.maxOutputBytes <= 0
   ) {
     throw new Error('Invalid helper payload');
   }
   return value;
 }
 
-function ownerIsAlive(ownerPid) {
-  if (!Number.isSafeInteger(ownerPid) || ownerPid <= 0) return false;
+function validClaim(value) {
+  return isObject(value)
+    && value.version === 1
+    && value.phase === 'claimed'
+    && typeof value.fingerprint === 'string'
+    && Number.isSafeInteger(value.ownerPid)
+    && value.ownerPid > 0;
+}
+
+function validResult(value, maxOutputBytes) {
+  if (!isObject(value) || !Number.isSafeInteger(value.exitCode) || !Array.isArray(value.output)) {
+    return false;
+  }
+  let bytes = 0;
+  for (const chunk of value.output) {
+    if (
+      !isObject(chunk)
+      || !Number.isSafeInteger(chunk.sequence)
+      || chunk.sequence < 0
+      || (chunk.stream !== 'stdout' && chunk.stream !== 'stderr')
+      || typeof chunk.text !== 'string'
+    ) return false;
+    bytes += Buffer.byteLength(chunk.text, 'utf8');
+    if (bytes > maxOutputBytes) return false;
+  }
+  return true;
+}
+
+async function readRecord(path) {
   try {
-    process.kill(ownerPid, 0);
-    return true;
+    return { kind: 'value', value: JSON.parse(await fs.readFile(path, 'utf8')) };
   } catch (error) {
-    return isObject(error) && error.code !== 'ESRCH';
+    if (isMissing(error)) return { kind: 'missing' };
+    return { kind: 'malformed' };
   }
 }
 
-async function execute(payload) {
-  return new Promise((resolve, reject) => {
-    let sequence = 0;
-    const output = [];
-    let settled = false;
-    const child = spawn(payload.executable, payload.args, {
-      cwd: payload.cwd,
-      env: { ...process.env, ...payload.env },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    const collect = (stream) => (chunk) => {
-      output.push({ sequence: sequence++, stream, text: chunk.toString() });
-    };
-    child.stdout.on('data', collect('stdout'));
-    child.stderr.on('data', collect('stderr'));
-    const timer = setTimeout(() => child.kill('SIGKILL'), payload.timeoutMs);
-    child.once('error', (error) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      reject(error);
-    });
-    child.once('exit', (code, signal) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve({ exitCode: signal ? 124 : (code ?? 1), output });
-    });
-  });
+async function atomicWrite(path, value) {
+  const temporary = path + '.' + process.pid + '.' + Date.now() + '.tmp';
+  const file = await fs.open(temporary, 'wx');
+  try {
+    await file.writeFile(JSON.stringify(value));
+    await file.sync();
+  } finally {
+    await file.close();
+  }
+  await fs.rename(temporary, path);
+  const directory = await fs.open(path.slice(0, path.lastIndexOf('/')), 'r');
+  try {
+    await directory.sync();
+  } finally {
+    await directory.close();
+  }
 }
 
-async function readJson(path) {
-  return JSON.parse(await fs.readFile(path, 'utf8'));
+function boundedText(buffer, remaining) {
+  if (remaining <= 0) return '';
+  let text = buffer.subarray(0, remaining).toString('utf8');
+  while (Buffer.byteLength(text, 'utf8') > remaining) text = text.slice(0, -1);
+  return text;
 }
 
 async function main() {
   const payload = parsePayload();
   const claimPath = payload.recordPath + '/claim.json';
+  const startedPath = payload.recordPath + '/started.json';
   const resultPath = payload.recordPath + '/result.json';
-  await fs.mkdir(payload.recordPath.slice(0, payload.recordPath.lastIndexOf('/')), {
-    recursive: true,
-  });
+  const gatePath = payload.recordPath + '/gate-' + process.pid;
+  const failedPath = payload.recordPath + '/failed-before-start.json';
 
-  for (;;) {
-    let owner = false;
-    try {
-      await fs.mkdir(payload.recordPath);
-      owner = true;
-    } catch (error) {
-      if (!isExisting(error)) throw error;
-    }
-
-    if (owner) {
-      try {
-        await fs.writeFile(claimPath, JSON.stringify({
-          fingerprint: payload.fingerprint,
-          ownerPid: process.pid,
-        }), { flag: 'wx' });
-        const result = await execute(payload);
-        const temporaryResultPath = payload.recordPath + '/result-' + process.pid + '.tmp';
-        await fs.writeFile(temporaryResultPath, JSON.stringify(result), { flag: 'wx' });
-        await fs.rename(temporaryResultPath, resultPath);
-        send({ status: 'completed', result });
-        return;
-      } catch {
-        await fs.rm(payload.recordPath, { recursive: true, force: true });
-        send({ status: 'error' });
-        return;
-      }
-    }
-
-    let claim;
-    try {
-      claim = await readJson(claimPath);
-    } catch (error) {
-      if (isMissing(error)) {
-        await sleep(10);
-        continue;
-      }
-      await fs.rm(payload.recordPath, { recursive: true, force: true });
-      continue;
-    }
-    if (!isObject(claim) || typeof claim.fingerprint !== 'string') {
-      await fs.rm(payload.recordPath, { recursive: true, force: true });
-      continue;
-    }
-    if (claim.fingerprint !== payload.fingerprint) {
+  const claim = await readRecord(claimPath);
+  const started = await readRecord(startedPath);
+  const persistedResult = await readRecord(resultPath);
+  if (claim.kind === 'value' && validClaim(claim.value)) {
+    if (claim.value.fingerprint !== payload.fingerprint) {
       send({ status: 'conflict' });
       return;
     }
-
-    try {
-      const result = await readJson(resultPath);
-      send({ status: 'completed', result });
+    if (
+      persistedResult.kind === 'value'
+      && validResult(persistedResult.value, payload.maxOutputBytes)
+    ) {
+      send({ status: 'completed', result: persistedResult.value });
       return;
-    } catch (error) {
-      if (!isMissing(error)) {
-        await fs.rm(payload.recordPath, { recursive: true, force: true });
-        continue;
-      }
     }
-    if (!ownerIsAlive(claim.ownerPid)) {
-      await fs.rm(payload.recordPath, { recursive: true, force: true });
-      continue;
-    }
-    await sleep(25);
   }
+  if (started.kind !== 'missing') {
+    send({ status: 'indeterminate' });
+    return;
+  }
+
+  await fs.rm(payload.recordPath, { recursive: true, force: true });
+  await fs.mkdir(payload.recordPath);
+  await atomicWrite(claimPath, {
+    version: 1,
+    phase: 'claimed',
+    fingerprint: payload.fingerprint,
+    ownerPid: process.pid,
+  });
+
+  let execution;
+  try {
+    let announceStarted;
+    let rejectStarted;
+    const startedPromise = new Promise((resolve, reject) => {
+      announceStarted = resolve;
+      rejectStarted = reject;
+    });
+    execution = new Promise((resolve, reject) => {
+      let sequence = 0;
+      const output = [];
+      let outputBytes = 0;
+      let excessive = false;
+      let timedOut = false;
+      let settled = false;
+      let spawned = false;
+      const child = spawn('/bin/sh', [
+        '-c', launcher, 'pathwise-launcher', gatePath, failedPath,
+        payload.executable, ...payload.args,
+      ], {
+        cwd: payload.cwd,
+        env: {
+          ...payload.env,
+          PATH: '/usr/local/bin:/usr/bin:/bin',
+          HOME: '/vercel/sandbox',
+          TMPDIR: '/tmp',
+          LANG: 'C.UTF-8',
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      child.once('spawn', () => {
+        spawned = true;
+        announceStarted(child.pid);
+      });
+      const collect = (stream) => (chunk) => {
+        if (excessive) return;
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        const remaining = payload.maxOutputBytes - outputBytes;
+        const text = boundedText(buffer, remaining);
+        if (text) {
+          output.push({ sequence: sequence++, stream, text });
+          outputBytes += Buffer.byteLength(text, 'utf8');
+        }
+        if (buffer.byteLength > remaining) {
+          excessive = true;
+          child.kill('SIGKILL');
+        }
+      };
+      child.stdout.on('data', collect('stdout'));
+      child.stderr.on('data', collect('stderr'));
+      const timer = setTimeout(() => {
+        timedOut = true;
+        child.kill('SIGKILL');
+      }, payload.timeoutMs);
+      child.once('error', (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (spawned) reject(error);
+        else rejectStarted(error);
+      });
+      child.once('exit', (code, signal) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve({
+          exitCode: excessive ? 137 : (timedOut || signal ? 124 : (code ?? 1)),
+          output,
+        });
+      });
+    });
+    const childPid = await startedPromise;
+    await atomicWrite(startedPath, {
+      version: 1,
+      phase: 'started',
+      fingerprint: payload.fingerprint,
+      childPid,
+    });
+    await fs.writeFile(gatePath, '', { flag: 'wx' });
+  } catch {
+    await fs.rm(payload.recordPath, { recursive: true, force: true });
+    send({ status: 'error' });
+    return;
+  }
+
+  const result = await execution;
+  const failedBeforeStart = await readRecord(failedPath);
+  if (failedBeforeStart.kind !== 'missing') {
+    await fs.rm(payload.recordPath, { recursive: true, force: true });
+    send({ status: 'error' });
+    return;
+  }
+  if (!validResult(result, payload.maxOutputBytes)) {
+    send({ status: 'indeterminate' });
+    return;
+  }
+  try {
+    await atomicWrite(resultPath, result);
+  } catch {
+    send({ status: 'indeterminate' });
+    return;
+  }
+  send({ status: 'completed', result });
 }
 
-main().catch(() => send({ status: 'error' }));
+main().catch(() => {
+  send({ status: 'error' });
+});
 `
 
 const PYTHON_IDEMPOTENCY_HELPER = String.raw`
 import base64
 import json
 import os
+import re
 import selectors
 import shutil
 import subprocess
@@ -253,30 +352,103 @@ def parse_payload():
         and all(isinstance(item, str) for item in value['args'])
         and isinstance(value.get('cwd'), str)
         and isinstance(value.get('env'), dict)
+        and all(
+            isinstance(key, str)
+            and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', key)
+            for key in value['env']
+        )
         and all(isinstance(item, str) for item in value['env'].values())
         and isinstance(value.get('timeoutMs'), int)
         and value['timeoutMs'] > 0
+        and isinstance(value.get('maxOutputBytes'), int)
+        and value['maxOutputBytes'] > 0
     )
     if not valid:
         raise ValueError('Invalid helper payload')
     return value
 
-def owner_is_alive(owner_pid):
-    if not isinstance(owner_pid, int) or owner_pid <= 0:
-        return False
-    try:
-        os.kill(owner_pid, 0)
-        return True
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
+def valid_claim(value):
+    return (
+        isinstance(value, dict)
+        and value.get('version') == 1
+        and value.get('phase') == 'claimed'
+        and isinstance(value.get('fingerprint'), str)
+        and isinstance(value.get('ownerPid'), int)
+        and value['ownerPid'] > 0
+    )
 
-def execute(payload):
-    environment = os.environ.copy()
-    environment.update(payload['env'])
+def valid_result(value, maximum):
+    if (
+        not isinstance(value, dict)
+        or not isinstance(value.get('exitCode'), int)
+        or not isinstance(value.get('output'), list)
+    ):
+        return False
+    total = 0
+    for chunk in value['output']:
+        if (
+            not isinstance(chunk, dict)
+            or not isinstance(chunk.get('sequence'), int)
+            or chunk['sequence'] < 0
+            or chunk.get('stream') not in ('stdout', 'stderr')
+            or not isinstance(chunk.get('text'), str)
+        ):
+            return False
+        total += len(chunk['text'].encode('utf-8'))
+        if total > maximum:
+            return False
+    return True
+
+def read_record(path):
+    try:
+        with open(path, encoding='utf-8') as file:
+            return ('value', json.load(file))
+    except FileNotFoundError:
+        return ('missing', None)
+    except Exception:
+        return ('malformed', None)
+
+def atomic_write(path, value):
+    temporary = path + '.' + str(os.getpid()) + '.' + str(time.time_ns()) + '.tmp'
+    with open(temporary, 'x', encoding='utf-8') as file:
+        json.dump(value, file, separators=(',', ':'))
+        file.flush()
+        os.fsync(file.fileno())
+    os.replace(temporary, path)
+    directory = os.open(os.path.dirname(path), os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+
+def bounded_text(data, remaining):
+    if remaining <= 0:
+        return ''
+    text = data[:remaining].decode('utf-8', errors='replace')
+    while len(text.encode('utf-8')) > remaining:
+        text = text[:-1]
+    return text
+
+def execute(payload, gate_path, failed_path):
+    environment = dict(payload['env'])
+    environment.update({
+        'PATH': '/usr/local/bin:/usr/bin:/bin',
+        'HOME': '/vercel/sandbox',
+        'TMPDIR': '/tmp',
+        'LANG': 'C.UTF-8',
+    })
+    launcher = (
+        'gate="$1"; failed="$2"; shift 2; '
+        'i=0; while [ ! -e "$gate" ]; do i=$((i + 1)); '
+        '[ "$i" -ge 500 ] && exit 125; sleep 0.02; done; '
+        'if ! command -v "$1" >/dev/null 2>&1; then tmp="$failed.$$"; '
+        'printf "127" > "$tmp"; mv "$tmp" "$failed"; exit 127; fi; exec "$@"'
+    )
     child = subprocess.Popen(
-        [payload['executable'], *payload['args']],
+        [
+            '/bin/sh', '-c', launcher, 'pathwise-launcher',
+            gate_path, failed_path, payload['executable'], *payload['args'],
+        ],
         cwd=payload['cwd'],
         env=environment,
         stdin=subprocess.DEVNULL,
@@ -290,6 +462,16 @@ def execute(payload):
     output = []
     sequence = 0
     timed_out = False
+    excessive = False
+    output_bytes = 0
+    atomic_write(payload['recordPath'] + '/started.json', {
+        'version': 1,
+        'phase': 'started',
+        'fingerprint': payload['fingerprint'],
+        'childPid': child.pid,
+    })
+    with open(gate_path, 'x', encoding='utf-8'):
+        pass
     while selector.get_map():
         remaining = deadline - time.monotonic()
         if remaining <= 0 and child.poll() is None:
@@ -298,23 +480,27 @@ def execute(payload):
         for key, _ in selector.select(max(0, min(0.05, remaining))):
             chunk = os.read(key.fileobj.fileno(), 65536)
             if chunk:
-                output.append({
-                    'sequence': sequence,
-                    'stream': key.data,
-                    'text': chunk.decode('utf-8', errors='replace'),
-                })
-                sequence += 1
+                if not excessive:
+                    capacity = payload['maxOutputBytes'] - output_bytes
+                    text = bounded_text(chunk, capacity)
+                    if text:
+                        output.append({
+                            'sequence': sequence,
+                            'stream': key.data,
+                            'text': text,
+                        })
+                        sequence += 1
+                        output_bytes += len(text.encode('utf-8'))
+                    if len(chunk) > capacity:
+                        excessive = True
+                        child.kill()
             else:
                 selector.unregister(key.fileobj)
     return_code = child.wait()
     return {
-        'exitCode': 124 if timed_out else return_code,
+        'exitCode': 137 if excessive else (124 if timed_out else return_code),
         'output': output,
     }
-
-def read_json(path):
-    with open(path, encoding='utf-8') as file:
-        return json.load(file)
 
 def remove_record(path):
     shutil.rmtree(path, ignore_errors=True)
@@ -322,62 +508,59 @@ def remove_record(path):
 def main():
     payload = parse_payload()
     claim_path = payload['recordPath'] + '/claim.json'
+    started_path = payload['recordPath'] + '/started.json'
     result_path = payload['recordPath'] + '/result.json'
-    os.makedirs(os.path.dirname(payload['recordPath']), exist_ok=True)
-    while True:
-        owner = False
-        try:
-            os.mkdir(payload['recordPath'])
-            owner = True
-        except FileExistsError:
-            pass
+    gate_path = payload['recordPath'] + '/gate-' + str(os.getpid())
+    failed_path = payload['recordPath'] + '/failed-before-start.json'
 
-        if owner:
-            try:
-                with open(claim_path, 'x', encoding='utf-8') as file:
-                    json.dump({
-                        'fingerprint': payload['fingerprint'],
-                        'ownerPid': os.getpid(),
-                    }, file)
-                result = execute(payload)
-                temporary_path = payload['recordPath'] + '/result-' + str(os.getpid()) + '.tmp'
-                with open(temporary_path, 'x', encoding='utf-8') as file:
-                    json.dump(result, file, separators=(',', ':'))
-                os.replace(temporary_path, result_path)
-                send({'status': 'completed', 'result': result})
-                return
-            except Exception:
-                remove_record(payload['recordPath'])
-                send({'status': 'error'})
-                return
-
-        try:
-            claim = read_json(claim_path)
-        except FileNotFoundError:
-            time.sleep(0.01)
-            continue
-        except Exception:
-            remove_record(payload['recordPath'])
-            continue
-        if not isinstance(claim, dict) or not isinstance(claim.get('fingerprint'), str):
-            remove_record(payload['recordPath'])
-            continue
+    claim_kind, claim = read_record(claim_path)
+    started_kind, _ = read_record(started_path)
+    result_kind, persisted_result = read_record(result_path)
+    if claim_kind == 'value' and valid_claim(claim):
         if claim['fingerprint'] != payload['fingerprint']:
             send({'status': 'conflict'})
             return
-        try:
-            result = read_json(result_path)
-            send({'status': 'completed', 'result': result})
+        if (
+            result_kind == 'value'
+            and valid_result(persisted_result, payload['maxOutputBytes'])
+        ):
+            send({'status': 'completed', 'result': persisted_result})
             return
-        except FileNotFoundError:
-            pass
-        except Exception:
+    if started_kind != 'missing':
+        send({'status': 'indeterminate'})
+        return
+
+    remove_record(payload['recordPath'])
+    os.mkdir(payload['recordPath'])
+    atomic_write(claim_path, {
+        'version': 1,
+        'phase': 'claimed',
+        'fingerprint': payload['fingerprint'],
+        'ownerPid': os.getpid(),
+    })
+    try:
+        result = execute(payload, gate_path, failed_path)
+    except Exception:
+        if read_record(started_path)[0] == 'missing':
             remove_record(payload['recordPath'])
-            continue
-        if not owner_is_alive(claim.get('ownerPid')):
-            remove_record(payload['recordPath'])
-            continue
-        time.sleep(0.025)
+            send({'status': 'error'})
+        else:
+            send({'status': 'indeterminate'})
+        return
+
+    if read_record(failed_path)[0] != 'missing':
+        remove_record(payload['recordPath'])
+        send({'status': 'error'})
+        return
+    if not valid_result(result, payload['maxOutputBytes']):
+        send({'status': 'indeterminate'})
+        return
+    try:
+        atomic_write(result_path, result)
+    except Exception:
+        send({'status': 'indeterminate'})
+        return
+    send({'status': 'completed', 'result': result})
 
 try:
     main()
@@ -406,7 +589,10 @@ function validateProjectPath(path: string): void {
   }
 }
 
-function parseCommandResult(value: unknown): SandboxCommandResult {
+function parseCommandResult(
+  value: unknown,
+  maxOutputBytes = DEFAULT_LIMITS.maxOutputBytes,
+): SandboxCommandResult {
   if (
     !isRecord(value)
     || !Number.isSafeInteger(value.exitCode)
@@ -414,6 +600,7 @@ function parseCommandResult(value: unknown): SandboxCommandResult {
   ) {
     throw new Error('Invalid idempotency helper result')
   }
+  let outputBytes = 0
   const output = value.output.map((chunk) => {
     if (
       !isRecord(chunk)
@@ -422,6 +609,10 @@ function parseCommandResult(value: unknown): SandboxCommandResult {
       || (chunk.stream !== 'stdout' && chunk.stream !== 'stderr')
       || typeof chunk.text !== 'string'
     ) {
+      throw new Error('Invalid idempotency helper result')
+    }
+    outputBytes += Buffer.byteLength(chunk.text, 'utf8')
+    if (outputBytes > maxOutputBytes) {
       throw new Error('Invalid idempotency helper result')
     }
     return {
@@ -448,6 +639,9 @@ function parseHelperResponse(serialized: string): SandboxCommandResult {
   }
   if (parsed.status === 'error') {
     throw new Error('Sandbox command execution failed')
+  }
+  if (parsed.status === 'indeterminate') {
+    throw new SandboxIndeterminateExecutionError()
   }
   if (parsed.status !== 'completed') {
     throw new Error('Invalid idempotency helper result')
@@ -491,6 +685,7 @@ class VercelSandboxHandle implements SandboxHandle {
       cwd: command.cwd,
       env: command.env,
       timeoutMs: command.timeoutMs,
+      maxOutputBytes: DEFAULT_LIMITS.maxOutputBytes,
     }
     const encodedPayload = Buffer.from(
       JSON.stringify(payload),
@@ -516,9 +711,13 @@ class VercelSandboxHandle implements SandboxHandle {
       },
     })
     const usesPython = this.helperRuntime === 'python'
+    await this.sandbox.mkDir(this.stateRoot)
     const result = await this.sandbox.runCommand({
-      cmd: usesPython ? 'python3' : 'node',
+      cmd: FLOCK_EXECUTABLE,
       args: [
+        '-x',
+        `${this.stateRoot}/${keyDigest}.lock`,
+        usesPython ? 'python3' : 'node',
         usesPython ? '-c' : '-e',
         usesPython ? PYTHON_IDEMPOTENCY_HELPER : IDEMPOTENCY_HELPER,
         encodedPayload,

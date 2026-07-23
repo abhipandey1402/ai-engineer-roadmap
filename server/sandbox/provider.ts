@@ -59,6 +59,13 @@ export class SandboxIdempotencyConflictError extends Error {
   }
 }
 
+export class SandboxIndeterminateExecutionError extends Error {
+  constructor() {
+    super('Sandbox command may have started but no valid result is available')
+    this.name = 'SandboxIndeterminateExecutionError'
+  }
+}
+
 export class SandboxNotFoundError extends Error {
   constructor(name: string) {
     super(`Sandbox not found: ${name}`)
