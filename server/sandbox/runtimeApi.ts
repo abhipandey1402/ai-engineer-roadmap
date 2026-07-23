@@ -513,10 +513,10 @@ export class RuntimeApi {
   }
 
   async stop(req: RuntimeRequest): Promise<RuntimeResponse> {
-    const rejection = this.authorize(req)
-    if (rejection) return rejection
-
     const headers = { 'Set-Cookie': clearSessionCookie() }
+    const rejection = this.authorize(req)
+    if (rejection) return this.withHeaders(rejection, headers)
+
     if (!cookieToken(req)) return { status: 204, headers }
 
     const session = await this.session(req)

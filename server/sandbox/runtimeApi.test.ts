@@ -89,6 +89,12 @@ class FakeHandle implements SandboxHandle {
     this.fingerprints.set(idempotencyKey, requestFingerprint)
     const execution = this.runDeferred ?? this.run(command)
     this.executions.set(idempotencyKey, execution)
+    void execution.catch(() => {
+      if (this.executions.get(idempotencyKey) === execution) {
+        this.executions.delete(idempotencyKey)
+        this.fingerprints.delete(idempotencyKey)
+      }
+    })
     return execution
   }
 
@@ -168,6 +174,36 @@ async function createApi(
   if (!handle) throw new Error('expected sandbox handle')
   return { api, provider, created, cookie, handle }
 }
+
+describe('SandboxHandle idempotency contract', () => {
+  it('removes a rejected atomic claim so the same request can retry', async () => {
+    const handle = new FakeHandle('pathwise-provider-retry')
+    const command: SandboxCommand = {
+      executable: 'python',
+      args: ['main.py'],
+      cwd: '/vercel/sandbox/workspace',
+      env: {},
+      timeoutMs: DEFAULT_LIMITS.commandTimeoutMs,
+    }
+    const idempotency = {
+      key: 'provider-execution-retry',
+      requestFingerprint: 'fingerprint',
+    }
+    handle.runError = new Error('execution rejected')
+
+    await expect(handle.runIdempotent(command, idempotency)).rejects.toThrow(
+      'execution rejected',
+    )
+    handle.runError = undefined
+    await expect(handle.runIdempotent(command, idempotency)).resolves.toEqual({
+      exitCode: 0,
+      output: [],
+    })
+
+    expect(handle.executionStarts).toBe(2)
+    expect(handle.runCalls).toHaveLength(2)
+  })
+})
 
 describe('RuntimeApi', () => {
   it('returns public capabilities without creating a sandbox', async () => {
@@ -771,6 +807,60 @@ describe('RuntimeApi', () => {
     expect(second.headers?.['Set-Cookie']).toContain('Max-Age=0')
     expect(handle.stopCalls).toBe(1)
   })
+
+  it.each(['stop', 'destroySession'] as const)(
+    'clears the session cookie when %s is rejected because cloud is disabled',
+    async (operation) => {
+      const provider = new FakeProvider()
+      const api = new RuntimeApi({
+        config: disabledConfig,
+        credentials: undefined,
+        provider,
+        now: () => NOW,
+      })
+
+      const response = await api[operation](request(
+        undefined,
+        { 'x-playground-access': 'anything', cookie: 'pathwise_runtime=stale' },
+      ))
+
+      expect(response.status).toBe(503)
+      expect(errorCode(response)).toBe('CLOUD_DISABLED')
+      expect(response.headers?.['Set-Cookie']).toContain('Max-Age=0')
+      expect(provider.getCalls).toEqual([])
+    },
+  )
+
+  it.each(['stop', 'destroySession'] as const)(
+    'clears the session cookie when %s is rejected by access authorization',
+    async (operation) => {
+      const provider = new FakeProvider()
+      const api = new RuntimeApi({
+        config: enabledConfig,
+        credentials,
+        provider,
+        now: () => NOW,
+      })
+      const token = await sealSession({
+        name: 'pathwise-unauthorized-stop',
+        runtime: 'python',
+        expiresAt: NOW + DEFAULT_LIMITS.sandboxTimeoutMs,
+      }, SESSION_SECRET)
+
+      const response = await api[operation](request(
+        undefined,
+        {
+          'x-playground-access': 'incorrect',
+          cookie: `pathwise_runtime=${token}`,
+        },
+      ))
+
+      expect(response.status).toBe(401)
+      expect(errorCode(response)).toBe('ACCESS_DENIED')
+      expect(response.headers?.['Set-Cookie']).toContain('Max-Age=0')
+      expect(provider.getCalls).toEqual([])
+    },
+  )
 
   it.each(['expired', 'invalid'] as const)(
     'stops an %s session idempotently and clears the cookie',

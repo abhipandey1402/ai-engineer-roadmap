@@ -35,7 +35,9 @@ export interface SandboxHandle {
    * inside the sandbox so the guarantee survives serverless cold instances.
    * The request fingerprint must be persisted with the key. Reuse with a
    * different fingerprint must throw SandboxIdempotencyConflictError before
-   * replaying output. Keys are scoped to this handle's sandbox.
+   * replaying output. If execution rejects, the atomic claim and fingerprint
+   * must be removed so a later same-key/fingerprint call can retry. Keys are
+   * scoped to this handle's sandbox.
    */
   runIdempotent(
     command: SandboxCommand,
