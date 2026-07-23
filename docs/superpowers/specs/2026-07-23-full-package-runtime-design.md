@@ -18,7 +18,7 @@ and:
 
 ```sh
 npm install openai
-node example.js
+node example.mjs
 ```
 
 The feature must preserve the current fast in-browser Python experience while
