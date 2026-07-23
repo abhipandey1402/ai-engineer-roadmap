@@ -1,3 +1,5 @@
+import { getEnvironmentPresentation } from './playgroundIntegration'
+
 export interface EnvironmentEntry {
   id: number
   name: string
@@ -8,7 +10,7 @@ export interface EnvironmentEntry {
 interface Props {
   entries: EnvironmentEntry[]
   accessToken: string
-  allowAccessToken: boolean
+  allowSecrets: boolean
   onAccessTokenChange: (value: string) => void
   onAdd: () => void
   onChange: (id: number, patch: Partial<Omit<EnvironmentEntry, 'id'>>) => void
@@ -19,7 +21,7 @@ interface Props {
 export function EnvironmentPanel({
   entries,
   accessToken,
-  allowAccessToken,
+  allowSecrets,
   onAccessTokenChange,
   onAdd,
   onChange,
@@ -27,19 +29,20 @@ export function EnvironmentPanel({
   onClearSecrets,
 }: Props) {
   const hasSecrets = Boolean(accessToken) || entries.some((entry) => entry.secret && entry.value)
+  const presentation = getEnvironmentPresentation(allowSecrets)
   return (
     <section className="environment-panel">
       <div className="environment-head">
         <div>
           <h2>Environment</h2>
-          <p>Values are kept in memory and sent only to this cloud session.</p>
+          <p>Credentials and values stay in memory and are sent only to this cloud session.</p>
         </div>
         <button type="button" onClick={onClearSecrets} disabled={!hasSecrets}>
           Clear secrets
         </button>
       </div>
 
-      {allowAccessToken && (
+      {presentation.showAccessToken && (
         <label className="environment-access">
           <span>Playground access token</span>
           <input
@@ -49,7 +52,12 @@ export function EnvironmentPanel({
             autoComplete="off"
             spellCheck={false}
           />
+          <span>Required to authenticate every cloud session request.</span>
         </label>
+      )}
+
+      {presentation.secretNotice && (
+        <p className="environment-secret-notice">{presentation.secretNotice}</p>
       )}
 
       <div className="environment-rows">
@@ -76,14 +84,16 @@ export function EnvironmentPanel({
                 spellCheck={false}
               />
             </label>
-            <label className="environment-secret">
-              <input
-                type="checkbox"
-                checked={entry.secret}
-                onChange={(event) => onChange(entry.id, { secret: event.target.checked })}
-              />
-              <span>Secret</span>
-            </label>
+            {allowSecrets && (
+              <label className="environment-secret">
+                <input
+                  type="checkbox"
+                  checked={entry.secret}
+                  onChange={(event) => onChange(entry.id, { secret: event.target.checked })}
+                />
+                <span>Secret</span>
+              </label>
+            )}
             <button type="button" onClick={() => onRemove(entry.id)} aria-label={`Remove variable ${index + 1}`}>
               Remove
             </button>

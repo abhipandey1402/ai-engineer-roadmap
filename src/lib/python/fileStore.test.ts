@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { defaultPlaygroundStore, fileReducer, uniqueName, type FileStore } from './fileStore'
+import {
+  applyCloudHandoff,
+  defaultPlaygroundStore,
+  fileReducer,
+  uniqueName,
+  type FileStore,
+} from './fileStore'
 
 const base: FileStore = {
   files: { 'a.py': '1', 'b.py': '2' },
@@ -72,5 +78,45 @@ describe('uniqueName', () => {
 
   it('ships a runnable default main.py', () => {
     expect(defaultPlaygroundStore.files['main.py']).toContain('print')
+  })
+})
+
+describe('applyCloudHandoff', () => {
+  it('preserves an active app.js and selects a new Cloud Python file', () => {
+    const store: FileStore = {
+      files: { 'app.js': 'console.log("keep me")', 'notes.py': '# keep me too' },
+      order: ['app.js', 'notes.py'],
+      active: 'app.js',
+    }
+
+    const result = applyCloudHandoff(store, 'print("from lesson")')
+
+    expect(result).toEqual({
+      files: {
+        'app.js': 'console.log("keep me")',
+        'notes.py': '# keep me too',
+        'cloud-handoff.py': 'print("from lesson")',
+      },
+      order: ['app.js', 'notes.py', 'cloud-handoff.py'],
+      active: 'cloud-handoff.py',
+    })
+  })
+
+  it('suffixes the handoff filename instead of overwriting a collision', () => {
+    const store: FileStore = {
+      files: {
+        'cloud-handoff.py': 'first',
+        'cloud-handoff_1.py': 'second',
+      },
+      order: ['cloud-handoff.py', 'cloud-handoff_1.py'],
+      active: 'cloud-handoff.py',
+    }
+
+    const result = applyCloudHandoff(store, 'third')
+
+    expect(result.active).toBe('cloud-handoff_2.py')
+    expect(result.files['cloud-handoff.py']).toBe('first')
+    expect(result.files['cloud-handoff_1.py']).toBe('second')
+    expect(result.files['cloud-handoff_2.py']).toBe('third')
   })
 })

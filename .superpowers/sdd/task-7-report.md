@@ -62,3 +62,71 @@ The signature remains concentrated in the three-position rail and its active sea
 - Environment variables, secret values, and access tokens remain in React memory. The only new storage is the one-time code handoff, consumed and removed during playground initialization; existing editor persistence remains unchanged.
 - Inputs have labels, status/output regions use `aria-live`/`role="log"`, focus is visible, reduced motion is respected, and runtime/environment layouts stack on narrow screens.
 - Inline course runners keep their Browser Python execution path and add only the incompatibility handoff action.
+
+## Reviewer Fix Cycle
+
+### Findings addressed
+
+- Separated the mandatory, memory-only Playground access token from BYOK.
+  Enabled cloud runtimes always render the masked access-token field. The
+  `allowByok` capability now controls only secret environment rows; when it is
+  false, the Secret control is absent, owner-secret creation is rejected, and
+  the UI explains that ordinary environment variables remain available.
+  The controller independently strips disallowed secret rows and names before
+  constructing a command request, so stale UI state cannot bypass the policy.
+- Reworked the one-time lesson handoff into pure consume/apply helpers. Storage
+  is removed while it is read, persisted files are preserved, and handoff code
+  is added and selected as `cloud-handoff.py` (with `_1`, `_2`, and so on for
+  collisions). The intended runtime is Cloud Python even when cloud setup is
+  disabled, allowing the setup notice and prepared file to remain visible.
+- Changed `runFiles` to return explicit success/failure and added `syncing` to
+  the session state. The cloud-run coordinator does not call `runCommand` after
+  a failed PUT, rejects a second invocation synchronously, and always clears
+  its local synchronization flag.
+- While files are synchronizing, Run, terminal submission, runtime selection,
+  Clear, Restart, and Destroy are disabled. The status and primary control
+  announce “syncing” / “Syncing files…” without turning a PUT into a stoppable
+  command.
+
+### TDD evidence
+
+The first focused RED run produced the expected missing-helper and behavioral
+failures:
+
+```text
+Test Files 3 failed (3)
+Tests 5 failed | 37 passed (42)
+```
+
+Failures proved that handoff overwrote the active file, `runFiles` returned no
+result, and sync never entered a busy state. A second focused RED run proved the
+access/BYOK presentation helper was absent (2/8 failed). The controller policy
+regression was also verified independently with its filter removed: the test
+failed because `OPENAI_API_KEY` appeared in both the environment body and
+`secretNames`.
+
+After implementation, the Task 6 + Task 7 focused suites passed:
+
+```text
+Test Files 5 passed (5)
+Tests 81 passed (81)
+```
+
+The focused set covers sandbox client/controller behavior, terminal behavior,
+file-store handoff preservation/collisions, access/BYOK request shaping,
+sync-failure sequencing, and double-invocation/busy cleanup.
+
+### Verification
+
+- Full Vitest suite: 19 files, 282 tests passed.
+- ESLint: zero errors.
+- TypeScript/Vite build: succeeded; the existing generated-chunk size advisory
+  remains.
+- `git diff --check`: clean.
+
+### Concerns
+
+- No live cloud sandbox was used in this cycle; request sequencing and policy
+  enforcement are verified with injected client doubles.
+- The build retains the existing non-fatal advisory for a generated chunk over
+  500 kB.

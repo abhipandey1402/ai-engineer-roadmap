@@ -178,27 +178,30 @@ export class SandboxController {
     }
   }
 
-  async runFiles(files: ProjectFile[]): Promise<void> {
+  async runFiles(files: ProjectFile[]): Promise<boolean> {
     this.files = files.map((file) => ({ ...file }))
     const generation = this.lifecycleGeneration
     try {
       await this.prepareOperation(generation)
       await this.ensureSession(generation)
+      this.send({ type: 'state', state: 'syncing' })
       await this.client.syncFiles(this.files, this.credentials.accessToken)
       this.assertCurrent(generation)
       this.send({ type: 'state', state: 'ready' })
+      return true
     } catch (error) {
-      if (!this.isCurrent(generation)) return
+      if (!this.isCurrent(generation)) return false
       if (this.isExpired(error)) {
         try {
           await this.recreateAndResync(generation)
-          return
+          return true
         } catch (recoveryError) {
           this.failIfCurrent(generation, recoveryError)
-          return
+          return false
         }
       }
       this.failIfCurrent(generation, error)
+      return false
     }
   }
 
@@ -418,6 +421,7 @@ export class SandboxController {
     this.sessionCreated = false
     await this.ensureSession(generation)
     if (this.files.length > 0) {
+      this.send({ type: 'state', state: 'syncing' })
       await this.client.syncFiles(this.files, this.credentials.accessToken)
       this.assertCurrent(generation)
     }
@@ -428,10 +432,21 @@ export class SandboxController {
     command: ExecuteCommand,
     signal: AbortSignal,
   ): Promise<CommandResult> {
+    const allowedSecretNames = this.capabilities?.allowByok
+      ? this.credentials.secretNames
+      : []
+    const disallowedSecretNames = new Set(
+      this.capabilities?.allowByok ? [] : this.credentials.secretNames,
+    )
+    const allowedEnvironment = Object.fromEntries(
+      Object.entries(this.credentials.environment).filter(
+        ([name]) => !disallowedSecretNames.has(name),
+      ),
+    )
     return this.client.run(
       command,
-      this.credentials.environment,
-      this.credentials.secretNames,
+      allowedEnvironment,
+      allowedSecretNames,
       this.credentials.accessToken,
       signal,
     )

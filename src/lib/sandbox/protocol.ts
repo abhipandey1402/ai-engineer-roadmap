@@ -7,6 +7,7 @@ export type SessionState =
   | 'idle'
   | 'creating'
   | 'ready'
+  | 'syncing'
   | 'running'
   | 'stopping'
   | 'error'

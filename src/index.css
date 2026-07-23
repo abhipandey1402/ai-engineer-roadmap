@@ -2113,6 +2113,13 @@ kbd {
   font: 12px/1.4 var(--mono);
 }
 
+.environment-secret-notice {
+  margin: 0 0 10px;
+  color: var(--gray-4);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .environment-rows {
   display: grid;
   gap: 7px;

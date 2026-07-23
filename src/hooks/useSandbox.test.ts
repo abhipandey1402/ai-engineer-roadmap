@@ -163,6 +163,35 @@ describe('SandboxController', () => {
     expect(snapshot().state).toBe('ready')
   })
 
+  it('never sends secret rows when capabilities disallow BYOK', async () => {
+    const client = clientMock({
+      capabilities: vi.fn().mockResolvedValue({
+        ...enabledCapabilities,
+        allowByok: false,
+      }),
+    })
+    const { controller } = setup(client)
+    await controller.updateConfiguration('python', {
+      accessToken: 'playground-access',
+      environment: {
+        MODE: 'test',
+        OPENAI_API_KEY: 'must-not-leave-memory',
+      },
+      secretNames: ['OPENAI_API_KEY'],
+    })
+
+    await controller.runCommand(command)
+
+    expect(client.create).toHaveBeenCalledWith('python', 'playground-access')
+    expect(client.run).toHaveBeenCalledWith(
+      command,
+      { MODE: 'test' },
+      [],
+      'playground-access',
+      expect.any(AbortSignal),
+    )
+  })
+
   it('deduplicates session creation across concurrent first actions', async () => {
     let resolveCreate!: () => void
     const create = vi.fn().mockReturnValue(new Promise<void>((resolve) => {
@@ -211,7 +240,7 @@ describe('SandboxController', () => {
     })
     const { controller, snapshot } = setup(client)
 
-    await controller.runFiles(files)
+    await expect(controller.runFiles(files)).resolves.toBe(true)
     await controller.runCommand(command)
 
     expect(client.syncFiles).toHaveBeenCalledWith(files, 'owner-token')
@@ -220,6 +249,42 @@ describe('SandboxController', () => {
       'second',
       'third',
     ])
+  })
+
+  it('returns failure and never reports ready when file synchronization fails', async () => {
+    const client = clientMock({
+      syncFiles: vi.fn().mockRejectedValue(new RuntimeClientError(
+        'REQUEST_FAILED',
+        'File synchronization failed.',
+        502,
+      )),
+    })
+    const { controller, snapshot } = setup(client)
+
+    await expect(controller.runFiles(files)).resolves.toBe(false)
+
+    expect(snapshot()).toMatchObject({
+      state: 'error',
+      error: 'File synchronization failed.',
+    })
+  })
+
+  it('reports syncing while the file PUT is pending', async () => {
+    let finishSync!: () => void
+    const client = clientMock({
+      syncFiles: vi.fn(() => new Promise<void>((resolve) => {
+        finishSync = resolve
+      })),
+    })
+    const { controller, snapshot } = setup(client)
+
+    const syncing = controller.runFiles(files)
+    await vi.waitFor(() => expect(client.syncFiles).toHaveBeenCalled())
+    expect(snapshot().state).toBe('syncing')
+
+    finishSync()
+    await expect(syncing).resolves.toBe(true)
+    expect(snapshot().state).toBe('ready')
   })
 
   it('aborts an active request before asking the server to stop', async () => {

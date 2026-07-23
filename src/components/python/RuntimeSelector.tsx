@@ -8,6 +8,7 @@ interface Props {
   value: PlaygroundRuntime
   capabilities?: RuntimeCapabilities
   cloudState: SandboxState
+  disabled?: boolean
   onChange: (runtime: PlaygroundRuntime) => void
 }
 
@@ -25,6 +26,7 @@ export function RuntimeSelector({
   value,
   capabilities,
   cloudState,
+  disabled = false,
   onChange,
 }: Props) {
   return (
@@ -50,8 +52,9 @@ export function RuntimeSelector({
               className={`runtime-option ${selected ? 'active' : ''}`}
               role="radio"
               aria-checked={selected}
-              aria-disabled={!supported}
-              onClick={() => supported && onChange(runtime.value)}
+              aria-disabled={!supported || disabled}
+              disabled={disabled}
+              onClick={() => supported && !disabled && onChange(runtime.value)}
             >
               <span className="runtime-marker" aria-hidden="true" />
               <span className="runtime-name">{runtime.name}</span>

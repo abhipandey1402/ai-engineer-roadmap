@@ -86,6 +86,14 @@ export function uniqueRuntimeName(
   return candidate
 }
 
+export function applyCloudHandoff(
+  state: FileStore,
+  content: string,
+): FileStore {
+  const name = uniqueRuntimeName(state, 'cloud-python', 'cloud-handoff')
+  return fileReducer(state, { type: 'add', name, content })
+}
+
 export const defaultPlaygroundStore: FileStore = {
   files: {
     'main.py': 'print("Hello from Pathwise 🐍")\n\nfor i in range(3):\n    print("count", i)\n',

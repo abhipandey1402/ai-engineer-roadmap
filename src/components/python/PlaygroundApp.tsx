@@ -5,11 +5,11 @@ import type { Theme } from '../../hooks/useTheme'
 import { usePython } from '../../hooks/usePython'
 import {
   defaultPlaygroundStore,
+  applyCloudHandoff,
   fileReducer,
   uniqueRuntimeName,
   type FileStore,
 } from '../../lib/python/fileStore'
-import { CLOUD_PLAYGROUND_HANDOFF_KEY } from '../../lib/python/browserPackageFallback'
 import { commandForFile } from '../../lib/sandbox/commands'
 import type { PlaygroundRuntime } from '../../lib/sandbox/protocol'
 import { Logo } from '../Logo'
@@ -20,6 +20,11 @@ import { FileTabs } from './FileTabs'
 import { PackageTerminal } from './PackageTerminal'
 import { Repl } from './Repl'
 import { RuntimeSelector } from './RuntimeSelector'
+import {
+  buildCloudEnvironment,
+  consumeCloudHandoff,
+  runCloudProject,
+} from './playgroundIntegration'
 
 const STORE_KEY = 'pathwise-playground-files'
 const knownExtension = /\.(?:py|cjs|mjs|js)$/i
@@ -47,9 +52,7 @@ function loadStore(): FileStore {
 export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggleTheme: () => void }) {
   const [handoff] = useState(() => {
     try {
-      const code = sessionStorage.getItem(CLOUD_PLAYGROUND_HANDOFF_KEY)
-      sessionStorage.removeItem(CLOUD_PLAYGROUND_HANDOFF_KEY)
-      return code
+      return consumeCloudHandoff(sessionStorage)
     } catch {
       return null
     }
@@ -57,19 +60,18 @@ export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggle
   const [store, dispatch] = useReducer(fileReducer, undefined, () => {
     const loaded = loadStore()
     if (handoff === null) return loaded
-    return {
-      ...loaded,
-      files: { ...loaded.files, [loaded.active]: handoff },
-    }
+    return applyCloudHandoff(loaded, handoff)
   })
   const [runtime, setRuntime] = useState<PlaygroundRuntime>(
     handoff === null ? 'browser-python' : 'cloud-python',
   )
   const [showRepl, setShowRepl] = useState(false)
   const [runError, setRunError] = useState('')
+  const [syncing, setSyncing] = useState(false)
   const [environmentEntries, setEnvironmentEntries] = useState<EnvironmentEntry[]>([])
   const [accessToken, setAccessToken] = useState('')
   const nextEnvironmentId = useRef(1)
+  const cloudRunBusy = useRef(false)
   const {
     engineState,
     running: browserRunning,
@@ -81,18 +83,8 @@ export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggle
     writeFile,
   } = usePython()
 
-  const environment = useMemo(
-    () => Object.fromEntries(
-      environmentEntries
-        .filter((entry) => entry.name.trim())
-        .map((entry) => [entry.name.trim(), entry.value]),
-    ),
-    [environmentEntries],
-  )
-  const secretNames = useMemo(
-    () => environmentEntries
-      .filter((entry) => entry.secret && entry.name.trim())
-      .map((entry) => entry.name.trim()),
+  const requestedCloudEnvironment = useMemo(
+    () => buildCloudEnvironment(environmentEntries, true),
     [environmentEntries],
   )
   const clearSecrets = useCallback(() => {
@@ -105,12 +97,16 @@ export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggle
   const sandbox = useSandbox({
     runtime: cloudRuntime,
     accessToken,
-    environment,
-    secretNames,
+    environment: requestedCloudEnvironment.environment,
+    secretNames: requestedCloudEnvironment.secretNames,
     onSecretsCleared: clearSecrets,
   })
   const browserMode = runtime === 'browser-python'
-  const cloudBusy = ['creating', 'running', 'stopping'].includes(sandbox.state)
+  const allowSecrets = sandbox.capabilities?.enabled === true
+    && sandbox.capabilities.allowByok
+  const syncBusy = syncing || sandbox.state === 'syncing'
+  const cloudBusy = syncBusy
+    || ['creating', 'running', 'stopping'].includes(sandbox.state)
   const running = browserMode ? browserRunning : cloudBusy
 
   useEffect(() => {
@@ -136,10 +132,17 @@ export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggle
     try {
       sandbox.clearOutput()
       const command = commandForFile(cloudRuntime, active)
-      await sandbox.runFiles(
-        store.order.map((name) => ({ path: name, content: store.files[name] })),
-      )
-      await sandbox.runCommand(command)
+      await runCloudProject({
+        files: store.order.map((name) => ({
+          path: name,
+          content: store.files[name],
+        })),
+        command,
+        runFiles: sandbox.runFiles,
+        runCommand: sandbox.runCommand,
+        busy: cloudRunBusy,
+        onSyncingChange: setSyncing,
+      })
     } catch (reason) {
       setRunError(reason instanceof Error ? reason.message : 'Could not run this file.')
     }
@@ -159,6 +162,7 @@ export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggle
 
   const selectRuntime = async (next: PlaygroundRuntime) => {
     if (next === runtime) return
+    if (syncBusy) return
     if (!browserMode && sandbox.state === 'running') {
       const confirmed = window.confirm(
         'A cloud command is running. Destroy this session and change runtime?',
@@ -171,6 +175,7 @@ export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggle
   }
 
   const setEnvironment = (name: string, value: string, secret: boolean) => {
+    if (secret && !allowSecrets) return
     setEnvironmentEntries((entries) => {
       const existing = entries.find((entry) => entry.name === name)
       if (existing) {
@@ -191,6 +196,7 @@ export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggle
     id: number,
     patch: Partial<Omit<EnvironmentEntry, 'id'>>,
   ) => {
+    if (patch.secret && !allowSecrets) return
     setEnvironmentEntries((entries) => entries.map((entry) => (
       entry.id === id ? { ...entry, ...patch } : entry
     )))
@@ -224,6 +230,7 @@ export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggle
         value={runtime}
         capabilities={sandbox.capabilities}
         cloudState={sandbox.state}
+        disabled={syncBusy}
         onChange={(next) => void selectRuntime(next)}
       />
 
@@ -248,7 +255,15 @@ export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggle
             ariaLabel={`Code for ${active}`}
           />
           <div className="py-toolbar">
-            {running ? (
+            {syncBusy || (!browserMode && ['creating', 'stopping'].includes(sandbox.state)) ? (
+              <button className="py-btn" disabled>
+                {syncBusy
+                  ? 'Syncing files…'
+                  : sandbox.state === 'creating'
+                    ? 'Creating session…'
+                    : 'Stopping session…'}
+              </button>
+            ) : running ? (
               <button
                 className="py-btn py-stop"
                 onClick={browserMode ? stopBrowser : () => void sandbox.stop()}
@@ -288,7 +303,7 @@ export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggle
             <span className="py-status" aria-live="polite">
               {browserMode
                 ? engineState === 'loading' ? 'loading…' : browserRunning ? 'running…' : 'ready'
-                : sandbox.state}
+                : syncing ? 'syncing' : sandbox.state}
             </span>
           </div>
         </section>
@@ -310,7 +325,7 @@ export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggle
             <EnvironmentPanel
               entries={environmentEntries}
               accessToken={accessToken}
-              allowAccessToken={sandbox.capabilities.allowByok}
+              allowSecrets={allowSecrets}
               onAccessTokenChange={setAccessToken}
               onAdd={() => setEnvironmentEntries((entries) => [...entries, {
                 id: nextEnvironmentId.current++,
