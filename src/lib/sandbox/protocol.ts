@@ -41,3 +41,39 @@ export const DEFAULT_LIMITS = {
   commandTimeoutMs: 120_000,
   sandboxTimeoutMs: 900_000,
 } as const
+
+export type RuntimeLimits = typeof DEFAULT_LIMITS
+
+interface RuntimeCapabilitiesBase {
+  enabled: boolean
+  reason?: string
+  runtimes: readonly CloudRuntime[]
+  allowByok: boolean
+  limits: RuntimeLimits
+}
+
+export interface EnabledRuntimeCapabilities extends RuntimeCapabilitiesBase {
+  enabled: true
+}
+
+export interface DisabledRuntimeCapabilities extends RuntimeCapabilitiesBase {
+  enabled: false
+  reason: string
+  runtimes: readonly []
+}
+
+export type RuntimeCapabilities =
+  | EnabledRuntimeCapabilities
+  | DisabledRuntimeCapabilities
+
+export interface CommandOutputChunk {
+  sequence: number
+  stream: 'stdout' | 'stderr'
+  text: string
+}
+
+export interface CommandResult {
+  idempotencyKey: string
+  exitCode: number
+  output: CommandOutputChunk[]
+}
