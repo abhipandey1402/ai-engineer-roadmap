@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import {
   parseTerminalCommand,
 } from '../../src/lib/sandbox/commands'
@@ -15,8 +15,13 @@ import {
   type RuntimeConfig,
 } from './config'
 import type {
+  SandboxCommandIdempotency,
   SandboxCommandResult,
   SandboxProvider,
+} from './provider'
+import {
+  SandboxIdempotencyConflictError,
+  SandboxNotFoundError,
 } from './provider'
 import {
   clearSessionCookie,
@@ -54,6 +59,9 @@ interface CommandRequest {
 
 const WORKSPACE = '/vercel/sandbox/workspace'
 const ENVIRONMENT_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/
+const MINIMUM_REDACTABLE_SECRET_LENGTH = 8
+const MAX_WARM_IDEMPOTENCY_ENTRIES = 100
+const MAX_WARM_IDEMPOTENCY_AGE_MS = 5 * 60 * 1000
 const encoder = new TextEncoder()
 
 function error(
@@ -147,7 +155,11 @@ function parseEnvironment(
   allowByok: boolean,
   maxEntries: number,
   maxValueBytes: number,
-): { environment: Record<string, string>; secrets: string[] } {
+): {
+  environment: Record<string, string>
+  secrets: string[]
+  secretNames: string[]
+} {
   if (!isRecord(environmentValue) || !Array.isArray(secretNamesValue)) {
     throw new Error('Invalid environment')
   }
@@ -185,10 +197,28 @@ function parseEnvironment(
   }
 
   const secretNames = [...new Set(secretNamesValue as string[])]
+  if (secretNames.some(
+    (name) => environment[name].length < MINIMUM_REDACTABLE_SECRET_LENGTH,
+  )) {
+    throw new Error('Selected secrets must be at least eight characters')
+  }
   return {
     environment,
     secrets: secretNames.map((name) => environment[name]),
+    secretNames,
   }
+}
+
+function commandFingerprint(commandRequest: CommandRequest): string {
+  const canonical = JSON.stringify({
+    command: commandRequest.command,
+    environment: Object.entries(commandRequest.environment)
+      .sort(([left], [right]) => (
+        left < right ? -1 : left > right ? 1 : 0
+      )),
+    secretNames: [...commandRequest.secretNames].sort(),
+  })
+  return createHash('sha256').update(canonical, 'utf8').digest('hex')
 }
 
 function normalizeOutput(
@@ -200,7 +230,7 @@ function normalizeOutput(
     (left, right) => left.sequence - right.sequence,
   )
   let totalBytes = 0
-  return sorted.map((chunk) => {
+  for (const chunk of sorted) {
     if (
       !Number.isSafeInteger(chunk.sequence)
       || chunk.sequence < 0
@@ -211,11 +241,42 @@ function normalizeOutput(
     }
     totalBytes += encoder.encode(chunk.text).byteLength
     if (totalBytes > maxOutputBytes) throw new Error('Output limit exceeded')
-    return {
-      ...chunk,
-      text: redactSecrets(chunk.text, secrets),
+  }
+
+  const fullText = sorted.map((chunk) => chunk.text).join('')
+  const redactedFullText = redactSecrets(fullText, secrets)
+  if (redactedFullText === fullText) return sorted
+
+  const candidates = [...new Set(secrets)]
+    .filter((secret) => secret.length >= MINIMUM_REDACTABLE_SECRET_LENGTH)
+    .sort((left, right) => right.length - left.length)
+  const texts = sorted.map(() => '')
+  const boundaries: number[] = []
+  let boundary = 0
+  for (const chunk of sorted) {
+    boundary += chunk.text.length
+    boundaries.push(boundary)
+  }
+  let chunkIndex = 0
+  for (let index = 0; index < fullText.length;) {
+    while (index >= boundaries[chunkIndex] && chunkIndex < sorted.length - 1) {
+      chunkIndex += 1
     }
-  })
+    const secret = candidates.find((candidate) => fullText.startsWith(candidate, index))
+    if (secret) {
+      texts[chunkIndex] += '[REDACTED]'
+      index += secret.length
+      continue
+    }
+    texts[chunkIndex] += fullText[index]
+    index += 1
+  }
+
+  const output = sorted.map((chunk, index) => ({ ...chunk, text: texts[index] }))
+  if (output.map((chunk) => chunk.text).join('') !== redactedFullText) {
+    throw new Error('Unable to redact provider output')
+  }
+  return output
 }
 
 export class RuntimeApi {
@@ -223,6 +284,11 @@ export class RuntimeApi {
   private readonly credentials: PrivateRuntimeCredentials | undefined
   private readonly provider: SandboxProvider
   private readonly now: () => number
+  private readonly commandResponses = new Map<string, {
+    expiresAt: number
+    requestFingerprint: string
+    response: Promise<RuntimeResponse>
+  }>()
 
   constructor(options: RuntimeApiOptions) {
     this.config = options.config
@@ -312,9 +378,6 @@ export class RuntimeApi {
   }
 
   async runCommand(req: RuntimeRequest): Promise<RuntimeResponse> {
-    const rejection = this.authorize(req)
-    if (rejection) return rejection
-
     const idempotencyKey = req.headers['idempotency-key']
     if (
       typeof idempotencyKey !== 'string'
@@ -324,9 +387,13 @@ export class RuntimeApi {
     ) {
       return error(400, 'COMMAND_REJECTED', 'A valid Idempotency-Key is required.')
     }
+    const responseHeaders = { 'Idempotency-Key': idempotencyKey }
+
+    const rejection = this.authorize(req)
+    if (rejection) return this.withHeaders(rejection, responseHeaders)
 
     const session = await this.session(req)
-    if ('status' in session) return session
+    if ('status' in session) return this.withHeaders(session, responseHeaders)
 
     let commandRequest: CommandRequest
     let secrets: string[]
@@ -343,17 +410,47 @@ export class RuntimeApi {
       commandRequest = {
         command,
         environment: parsedEnvironment.environment,
-        secretNames: req.body.secretNames as string[],
+        secretNames: parsedEnvironment.secretNames,
       }
       secrets = parsedEnvironment.secrets
     } catch {
-      return error(400, 'COMMAND_REJECTED', 'The command or environment is invalid.')
+      return error(
+        400,
+        'COMMAND_REJECTED',
+        'The command or environment is invalid.',
+        responseHeaders,
+      )
     }
 
-    const responseHeaders = { 'Idempotency-Key': idempotencyKey }
+    const cacheKey = `${session.name}\0${idempotencyKey}`
+    const requestFingerprint = commandFingerprint(commandRequest)
+    const cached = this.cachedCommandResponse(
+      cacheKey,
+      requestFingerprint,
+      responseHeaders,
+    )
+    if (cached) return cached
+    const response = this.executeCommand(
+      session,
+      { key: idempotencyKey, requestFingerprint },
+      commandRequest,
+      secrets,
+      responseHeaders,
+    )
+    this.cacheCommandResponse(cacheKey, requestFingerprint, response)
+    return response
+  }
+
+  private async executeCommand(
+    session: SessionPayload,
+    idempotency: SandboxCommandIdempotency,
+    commandRequest: CommandRequest,
+    secrets: string[],
+    responseHeaders: Record<string, string>,
+  ): Promise<RuntimeResponse> {
     try {
       const sandbox = await this.provider.get(session.name)
-      const result = await sandbox.run({
+      const result = await sandbox.runIdempotent({
         executable: 'flock',
         args: [
           '-n',
@@ -366,7 +463,7 @@ export class RuntimeApi {
         cwd: WORKSPACE,
         env: commandRequest.environment,
         timeoutMs: this.config.limits.commandTimeoutMs,
-      })
+      }, idempotency)
       if (result.exitCode === 75) {
         return error(
           409,
@@ -384,14 +481,27 @@ export class RuntimeApi {
         status: 200,
         headers: responseHeaders,
         body: {
-          idempotencyKey,
+          idempotencyKey: idempotency.key,
           exitCode: result.exitCode,
           output,
         },
       }
     } catch (caught) {
       if (caught instanceof Error && caught.message === 'Output limit exceeded') {
-        return error(413, 'OUTPUT_LIMIT', 'Command output exceeded the configured limit.')
+        return error(
+          413,
+          'OUTPUT_LIMIT',
+          'Command output exceeded the configured limit.',
+          responseHeaders,
+        )
+      }
+      if (caught instanceof SandboxIdempotencyConflictError) {
+        return error(
+          409,
+          'IDEMPOTENCY_CONFLICT',
+          'The Idempotency-Key was already used for a different command.',
+          responseHeaders,
+        )
       }
       return error(
         503,
@@ -410,18 +520,90 @@ export class RuntimeApi {
     if (!cookieToken(req)) return { status: 204, headers }
 
     const session = await this.session(req)
-    if ('status' in session) return session
+    if ('status' in session) return { status: 204, headers }
     try {
       const sandbox = await this.provider.get(session.name)
-      await sandbox.stop()
+      await sandbox.stopIdempotent()
       return { status: 204, headers }
-    } catch {
+    } catch (caught) {
+      if (caught instanceof SandboxNotFoundError) return { status: 204, headers }
       return error(
         503,
         'SANDBOX_UNAVAILABLE',
         'The cloud sandbox is temporarily unavailable.',
         headers,
       )
+    }
+  }
+
+  private cachedCommandResponse(
+    key: string,
+    requestFingerprint: string,
+    responseHeaders: Record<string, string>,
+  ): Promise<RuntimeResponse> | undefined {
+    const entry = this.commandResponses.get(key)
+    if (!entry) return undefined
+    if (entry.expiresAt <= this.now()) {
+      this.commandResponses.delete(key)
+      return undefined
+    }
+    if (entry.requestFingerprint !== requestFingerprint) {
+      return Promise.resolve(error(
+        409,
+        'IDEMPOTENCY_CONFLICT',
+        'The Idempotency-Key was already used for a different command.',
+        responseHeaders,
+      ))
+    }
+    return entry.response
+  }
+
+  private cacheCommandResponse(
+    key: string,
+    requestFingerprint: string,
+    response: Promise<RuntimeResponse>,
+  ): void {
+    const now = this.now()
+    for (const [cachedKey, entry] of this.commandResponses) {
+      if (entry.expiresAt <= now) this.commandResponses.delete(cachedKey)
+    }
+    while (this.commandResponses.size >= MAX_WARM_IDEMPOTENCY_ENTRIES) {
+      const oldest = this.commandResponses.keys().next().value as string | undefined
+      if (!oldest) break
+      this.commandResponses.delete(oldest)
+    }
+    this.commandResponses.set(key, {
+      expiresAt: now + Math.min(
+        MAX_WARM_IDEMPOTENCY_AGE_MS,
+        this.config.limits.sandboxTimeoutMs,
+      ),
+      requestFingerprint,
+      response,
+    })
+    void response.then(
+      (result) => {
+        if (result.status >= 500) this.deleteCachedResponse(key, response)
+      },
+      () => this.deleteCachedResponse(key, response),
+    )
+  }
+
+  private deleteCachedResponse(
+    key: string,
+    response: Promise<RuntimeResponse>,
+  ): void {
+    if (this.commandResponses.get(key)?.response === response) {
+      this.commandResponses.delete(key)
+    }
+  }
+
+  private withHeaders(
+    response: RuntimeResponse,
+    headers: Record<string, string>,
+  ): RuntimeResponse {
+    return {
+      ...response,
+      headers: { ...response.headers, ...headers },
     }
   }
 
