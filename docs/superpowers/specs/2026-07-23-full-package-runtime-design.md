@@ -1,6 +1,6 @@
 # Pathwise Full Package Runtime
 
-**Date:** 2026-07-23  
+**Date:** 2026-07-23
 **Status:** Approved for planning
 
 ## 1. Goal
