@@ -61,6 +61,10 @@ export class PythonClient {
     return this.request<ReplResult>({ type: 'repl', code }, onOutput)
   }
 
+  install(packages: string[], onOutput?: OutputHandler): Promise<RunResult> {
+    return this.request<RunResult>({ type: 'install', packages }, onOutput)
+  }
+
   writeFile(name: string, content: string): Promise<RunResult> {
     return this.request<RunResult>({ type: 'writeFile', name, content })
   }

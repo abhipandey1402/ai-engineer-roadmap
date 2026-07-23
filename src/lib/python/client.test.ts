@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { PythonClient } from './client'
 import type { WorkerResponse } from './protocol'
 
@@ -14,9 +14,9 @@ class MockWorker {
   posted: PostedMsg[] = []
   terminated = false
 
-  postMessage(msg: PostedMsg) {
+  postMessage = vi.fn((msg: PostedMsg) => {
     this.posted.push(msg)
-  }
+  })
   terminate() {
     this.terminated = true
   }
@@ -35,6 +35,18 @@ function setup() {
 }
 
 describe('PythonClient', () => {
+  it('requests installation of browser-compatible packages', async () => {
+    const { mock: worker, client } = setup()
+    const pending = client.install(['openai', 'numpy'])
+    expect(worker.postMessage).toHaveBeenCalledWith({
+      id: 1,
+      type: 'install',
+      packages: ['openai', 'numpy'],
+    })
+    worker.emit({ kind: 'done', id: 1, ok: true })
+    await expect(pending).resolves.toEqual({ ok: true, error: undefined, result: undefined })
+  })
+
   it('correlates a run response by id', async () => {
     const { mock, client } = setup()
     const p = client.run('print(1)')

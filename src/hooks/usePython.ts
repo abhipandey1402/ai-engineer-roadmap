@@ -51,6 +51,20 @@ export function usePython() {
     [append],
   )
 
+  const install = useCallback(
+    async (packages: string[]) => {
+      setRunning(true)
+      try {
+        return await pythonClient.install(packages, append)
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      } finally {
+        setRunning(false)
+      }
+    },
+    [append],
+  )
+
   const stop = useCallback(() => {
     pythonClient.stop()
     setRunning(false)
@@ -70,6 +84,7 @@ export function usePython() {
     output,
     run,
     runRepl,
+    install,
     stop,
     reset,
     clearOutput,
