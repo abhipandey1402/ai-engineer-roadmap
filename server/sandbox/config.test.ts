@@ -1,46 +1,62 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_LIMITS } from '../../src/lib/sandbox/protocol'
-import { authorizeAccess, loadRuntimeConfig } from './config'
+import {
+  authorizeAccess,
+  loadRuntimeConfig,
+  loadRuntimeCredentials,
+} from './config'
 
 const SESSION_SECRET = 'test-session-secret-with-at-least-32-characters'
 
 describe('loadRuntimeConfig', () => {
   it('disables cloud runtimes by default', () => {
-    const config = loadRuntimeConfig({})
-
-    expect(config.capabilities).toEqual({
+    expect(loadRuntimeConfig({})).toEqual({
       enabled: false,
       reason: 'Set SANDBOX_ENABLED=true to enable cloud runtimes.',
       runtimes: [],
       allowByok: false,
       limits: DEFAULT_LIMITS,
     })
-    expect(config.credentials).toBeUndefined()
   })
 
-  it('structurally separates public capabilities from private credentials', () => {
-    const config = loadRuntimeConfig({
+  it('returns only serializable public capabilities when enabled', () => {
+    const env = {
       SANDBOX_ENABLED: 'true',
       VERCEL_OIDC_TOKEN: 'oidc-token',
       PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
       PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
       PLAYGROUND_ALLOW_BYOK: 'true',
-    })
+    }
+    const config = loadRuntimeConfig(env)
 
-    expect(config.capabilities).toEqual({
+    expect(config).toEqual({
       enabled: true,
       runtimes: ['python', 'node'],
       allowByok: true,
       limits: DEFAULT_LIMITS,
     })
-    expect(config.credentials).toEqual({
+
+    const serializedConfig = JSON.stringify(config)
+    expect(serializedConfig).not.toContain(SESSION_SECRET)
+    expect(serializedConfig).not.toContain('owner-access-token')
+  })
+
+  it('loads private credentials separately only for valid enablement', () => {
+    expect(loadRuntimeCredentials({})).toBeUndefined()
+    expect(loadRuntimeCredentials({
+      SANDBOX_ENABLED: 'true',
+      VERCEL_OIDC_TOKEN: 'oidc-token',
+      PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
+      PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
+    })).toEqual({
       sessionSecret: SESSION_SECRET,
       accessToken: 'owner-access-token',
     })
-
-    const serializedCapabilities = JSON.stringify(config.capabilities)
-    expect(serializedCapabilities).not.toContain(SESSION_SECRET)
-    expect(serializedCapabilities).not.toContain('owner-access-token')
+    expect(() => loadRuntimeCredentials({
+      SANDBOX_ENABLED: 'true',
+      PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
+      PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
+    })).toThrow('Vercel authentication')
   })
 
   it('accepts a Vercel access token instead of OIDC authentication', () => {
@@ -49,7 +65,7 @@ describe('loadRuntimeConfig', () => {
       VERCEL_ACCESS_TOKEN: 'vercel-access-token',
       PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
       PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
-    }).capabilities.enabled).toBe(true)
+    }).enabled).toBe(true)
   })
 
   it('enables BYOK only for the exact value true', () => {
@@ -59,7 +75,7 @@ describe('loadRuntimeConfig', () => {
       PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
       PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
       PLAYGROUND_ALLOW_BYOK: 'TRUE',
-    }).capabilities.allowByok).toBe(false)
+    }).allowByok).toBe(false)
   })
 
   it('rejects enabled configuration without Vercel authentication', () => {
@@ -92,15 +108,18 @@ describe('loadRuntimeConfig', () => {
 })
 
 describe('authorizeAccess', () => {
-  const config = loadRuntimeConfig({
+  const env = {
     SANDBOX_ENABLED: 'true',
     VERCEL_OIDC_TOKEN: 'oidc-token',
     PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
     PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
-  })
+  }
 
   it('authorizes the configured access token', () => {
-    expect(authorizeAccess(config, 'owner-access-token')).toBe(true)
+    expect(authorizeAccess(
+      loadRuntimeCredentials(env),
+      'owner-access-token',
+    )).toBe(true)
   })
 
   it.each([
@@ -109,10 +128,10 @@ describe('authorizeAccess', () => {
     'incorrect',
     'owner-access-token-with-a-different-length',
   ])('rejects an incorrect access token %j', (token) => {
-    expect(authorizeAccess(config, token)).toBe(false)
+    expect(authorizeAccess(loadRuntimeCredentials(env), token)).toBe(false)
   })
 
   it('rejects access when cloud runtimes are disabled', () => {
-    expect(authorizeAccess(loadRuntimeConfig({}), 'anything')).toBe(false)
+    expect(authorizeAccess(loadRuntimeCredentials({}), 'anything')).toBe(false)
   })
 })

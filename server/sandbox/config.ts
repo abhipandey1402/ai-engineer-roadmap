@@ -6,7 +6,7 @@ import {
 
 type RuntimeLimits = typeof DEFAULT_LIMITS
 
-interface RuntimeCapabilities {
+interface PublicRuntimeConfig {
   enabled: boolean
   reason?: string
   runtimes: readonly CloudRuntime[]
@@ -14,33 +14,19 @@ interface RuntimeCapabilities {
   limits: RuntimeLimits
 }
 
-export interface EnabledRuntimeCapabilities extends RuntimeCapabilities {
+export interface EnabledRuntimeConfig extends PublicRuntimeConfig {
   enabled: true
 }
 
-export interface DisabledRuntimeCapabilities extends RuntimeCapabilities {
+export interface DisabledRuntimeConfig extends PublicRuntimeConfig {
   enabled: false
   reason: string
   runtimes: readonly []
 }
 
-export type PublicRuntimeCapabilities =
-  | EnabledRuntimeCapabilities
-  | DisabledRuntimeCapabilities
-
 export interface PrivateRuntimeCredentials {
   sessionSecret: string
   accessToken: string
-}
-
-export interface EnabledRuntimeConfig {
-  capabilities: EnabledRuntimeCapabilities
-  credentials: PrivateRuntimeCredentials
-}
-
-export interface DisabledRuntimeConfig {
-  capabilities: DisabledRuntimeCapabilities
-  credentials?: never
 }
 
 export type RuntimeConfig = EnabledRuntimeConfig | DisabledRuntimeConfig
@@ -69,21 +55,9 @@ function isSafeSessionSecret(secret: string | undefined): secret is string {
   return !DEFAULT_SECRET_MARKERS.some((marker) => normalized.includes(marker))
 }
 
-export function loadRuntimeConfig(
+function loadEnabledCredentials(
   env: Record<string, string | undefined>,
-): RuntimeConfig {
-  if (env.SANDBOX_ENABLED !== 'true') {
-    return {
-      capabilities: {
-        enabled: false,
-        reason: DISABLED_REASON,
-        runtimes: [],
-        allowByok: false,
-        limits: DEFAULT_LIMITS,
-      },
-    }
-  }
-
+): PrivateRuntimeCredentials {
   if (!hasValue(env.VERCEL_OIDC_TOKEN) && !hasValue(env.VERCEL_ACCESS_TOKEN)) {
     throw new Error('Vercel authentication is required to enable cloud runtimes.')
   }
@@ -99,17 +73,39 @@ export function loadRuntimeConfig(
   }
 
   return {
-    capabilities: {
-      enabled: true,
-      runtimes: CLOUD_RUNTIMES,
-      allowByok: env.PLAYGROUND_ALLOW_BYOK === 'true',
-      limits: DEFAULT_LIMITS,
-    },
-    credentials: {
-      sessionSecret,
-      accessToken,
-    },
+    sessionSecret,
+    accessToken,
   }
+}
+
+export function loadRuntimeConfig(
+  env: Record<string, string | undefined>,
+): RuntimeConfig {
+  if (env.SANDBOX_ENABLED !== 'true') {
+    return {
+      enabled: false,
+      reason: DISABLED_REASON,
+      runtimes: [],
+      allowByok: false,
+      limits: DEFAULT_LIMITS,
+    }
+  }
+
+  loadEnabledCredentials(env)
+
+  return {
+    enabled: true,
+    runtimes: CLOUD_RUNTIMES,
+    allowByok: env.PLAYGROUND_ALLOW_BYOK === 'true',
+    limits: DEFAULT_LIMITS,
+  }
+}
+
+export function loadRuntimeCredentials(
+  env: Record<string, string | undefined>,
+): PrivateRuntimeCredentials | undefined {
+  if (env.SANDBOX_ENABLED !== 'true') return undefined
+  return loadEnabledCredentials(env)
 }
 
 function digest(value: string): Buffer {
@@ -117,15 +113,14 @@ function digest(value: string): Buffer {
 }
 
 export function authorizeAccess(
-  config: RuntimeConfig,
+  credentials: PrivateRuntimeCredentials | undefined,
   token: string | undefined,
 ): boolean {
-  const expected = config.credentials?.accessToken ?? ''
+  const expected = credentials?.accessToken ?? ''
   const supplied = typeof token === 'string' ? token : ''
   const matches = timingSafeEqual(digest(expected), digest(supplied))
 
-  return config.capabilities.enabled
-    && config.credentials !== undefined
+  return credentials !== undefined
     && typeof token === 'string'
     && matches
 }
