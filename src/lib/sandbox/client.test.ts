@@ -50,6 +50,24 @@ describe('SandboxClient', () => {
     })
   })
 
+  it('invokes the default global fetch with the global receiver', async () => {
+    // Regression: storing globalThis.fetch and calling it as this.fetch(...)
+    // throws "Illegal invocation" in browsers. The default client must call it
+    // with the global object as receiver.
+    const original = globalThis.fetch
+    let receiver: unknown = 'unset'
+    globalThis.fetch = function (this: unknown) {
+      receiver = this
+      return Promise.resolve(jsonResponse(capabilities))
+    } as typeof globalThis.fetch
+    try {
+      await new SandboxClient().capabilities()
+      expect(receiver).toBe(globalThis)
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+
   it('creates a cloud session using only the access header and cookie credentials', async () => {
     const { client, fetch } = setup([jsonResponse({ runtime: 'python' }, { status: 201 })])
 

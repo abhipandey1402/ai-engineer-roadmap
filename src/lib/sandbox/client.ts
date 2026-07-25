@@ -140,7 +140,11 @@ export class SandboxClient {
   private readonly usedIdempotencyKeys = new Set<string>()
 
   constructor(
-    fetch: Fetch = globalThis.fetch,
+    // The native fetch must be invoked with the global object as its receiver;
+    // storing `globalThis.fetch` directly and calling it as `this.fetch(...)`
+    // throws "Illegal invocation" in browsers. Wrap it so the receiver is
+    // always correct, and resolve it lazily to avoid a module-load dependency.
+    fetch: Fetch = (input, init) => globalThis.fetch(input, init),
     createIdempotencyKey: IdempotencyKeyFactory = defaultIdempotencyKey,
   ) {
     this.fetch = fetch
