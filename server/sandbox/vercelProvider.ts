@@ -24,6 +24,29 @@ const HELPER_GRACE_MS = 5_000
 const MAX_HELPER_OUTPUT_BYTES = DEFAULT_LIMITS.maxOutputBytes * 8
 const FLOCK_EXECUTABLE = '/usr/bin/flock'
 
+// TEMPORARY DEBUG: extract the Vercel Sandbox APIError status + body so a failed
+// SDK call reports which request the API rejected and why. Remove with the
+// response-level debug exposure once the command-execution failure is fixed.
+function apiErrorDetail(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const e = error as {
+      response?: { status?: number }
+      json?: unknown
+      text?: unknown
+      message?: unknown
+    }
+    const status = e.response?.status
+    const body = e.json !== undefined
+      ? JSON.stringify(e.json)
+      : typeof e.text === 'string' ? e.text : undefined
+    if (status !== undefined || body !== undefined) {
+      return `status=${status ?? '?'} body=${String(body ?? '').slice(0, 300)}`
+    }
+    if (typeof e.message === 'string') return e.message
+  }
+  return String(error)
+}
+
 interface VercelRunCommandOptions {
   cmd: string
   args?: string[]
@@ -728,23 +751,32 @@ class VercelSandboxHandle implements SandboxHandle {
       },
     })
     const usesPython = this.helperRuntime === 'python'
-    await this.sandbox.mkDir(this.stateRoot)
-    const result = await this.sandbox.runCommand({
-      cmd: FLOCK_EXECUTABLE,
-      args: [
-        '-x',
-        `${this.stateRoot}/${keyDigest}.lock`,
-        usesPython ? 'python3' : 'node',
-        usesPython ? '-c' : '-e',
-        usesPython ? PYTHON_IDEMPOTENCY_HELPER : IDEMPOTENCY_HELPER,
-        encodedPayload,
-      ],
-      cwd: WORKSPACE,
-      env: {},
-      stdout,
-      stderr,
-      timeoutMs: command.timeoutMs + HELPER_GRACE_MS,
-    })
+    try {
+      await this.sandbox.mkDir(this.stateRoot)
+    } catch (mkDirError) {
+      throw new Error(`mkDir(${this.stateRoot}): ${apiErrorDetail(mkDirError)}`)
+    }
+    let result: { exitCode: number }
+    try {
+      result = await this.sandbox.runCommand({
+        cmd: FLOCK_EXECUTABLE,
+        args: [
+          '-x',
+          `${this.stateRoot}/${keyDigest}.lock`,
+          usesPython ? 'python3' : 'node',
+          usesPython ? '-c' : '-e',
+          usesPython ? PYTHON_IDEMPOTENCY_HELPER : IDEMPOTENCY_HELPER,
+          encodedPayload,
+        ],
+        cwd: WORKSPACE,
+        env: {},
+        stdout,
+        stderr,
+        timeoutMs: command.timeoutMs + HELPER_GRACE_MS,
+      })
+    } catch (runError) {
+      throw new Error(`runCommand(cwd=${WORKSPACE}): ${apiErrorDetail(runError)}`)
+    }
     if (result.exitCode !== 0) {
       // Operator-only diagnostic: the in-sandbox helper's stderr and the
       // detected helper runtime, so a non-zero exit can be diagnosed from logs.
@@ -814,7 +846,7 @@ export class VercelSandboxProvider implements SandboxProvider {
       )
     } catch (error) {
       if (isNotFound(error)) throw new SandboxNotFoundError(name)
-      throw error
+      throw new Error(`get(${name}): ${apiErrorDetail(error)}`)
     }
   }
 }
