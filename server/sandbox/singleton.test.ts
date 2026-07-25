@@ -25,7 +25,14 @@ describe('runtime singleton authentication wiring', () => {
     vi.stubEnv('PLAYGROUND_SESSION_SECRET', SESSION_SECRET)
     vi.stubEnv('PLAYGROUND_ACCESS_TOKEN', 'owner-access-token')
 
-    await import('./singleton')
+    const { runtimeApi } = await import('./singleton')
+    expect(providerConstructor).not.toHaveBeenCalled()
+
+    await runtimeApi.createSession({
+      method: 'POST',
+      headers: { 'x-playground-access': 'owner-access-token' },
+      body: { runtime: 'python' },
+    })
 
     expect(providerConstructor).toHaveBeenCalledWith(undefined, {
       credentials: {
@@ -42,9 +49,34 @@ describe('runtime singleton authentication wiring', () => {
     vi.stubEnv('PLAYGROUND_SESSION_SECRET', SESSION_SECRET)
     vi.stubEnv('PLAYGROUND_ACCESS_TOKEN', 'owner-access-token')
 
-    await import('./singleton')
+    const { runtimeApi } = await import('./singleton')
+    expect(providerConstructor).not.toHaveBeenCalled()
+
+    await runtimeApi.createSession({
+      method: 'POST',
+      headers: { 'x-playground-access': 'owner-access-token' },
+      body: { runtime: 'python' },
+    })
 
     expect(providerConstructor).toHaveBeenCalledWith()
+  })
+
+  it('does not import the sandbox provider for capabilities when disabled', async () => {
+    vi.stubEnv('SANDBOX_ENABLED', 'false')
+
+    const { runtimeApi } = await import('./singleton')
+    const capabilities = await runtimeApi.capabilities({
+      method: 'GET',
+      headers: {},
+    })
+
+    expect(capabilities.status).toBe(200)
+    expect(capabilities.body).toMatchObject({
+      enabled: false,
+      runtimes: [],
+      allowByok: false,
+    })
+    expect(providerConstructor).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -99,7 +131,7 @@ describe('runtime singleton authentication wiring', () => {
         message: 'Cloud runtimes require server setup.',
       },
     })
-    expect(providerConstructor).toHaveBeenCalledWith()
+    expect(providerConstructor).not.toHaveBeenCalled()
 
     const publicResponse = JSON.stringify({ capabilities, create })
     for (const value of Object.values(env)) {

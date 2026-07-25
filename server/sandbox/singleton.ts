@@ -5,8 +5,37 @@ import {
   type PrivateRuntimeCredentials,
   type RuntimeConfig,
 } from './config'
+import type { SandboxProvider } from './provider'
 import { RuntimeApi } from './runtimeApi'
-import { VercelSandboxProvider } from './vercelProvider'
+
+class LazyVercelSandboxProvider implements SandboxProvider {
+  private provider: Promise<SandboxProvider> | undefined
+
+  constructor(
+    private readonly credentials:
+      | PrivateRuntimeCredentials['sandboxCredentials']
+      | undefined,
+  ) {}
+
+  private async loadProvider(): Promise<SandboxProvider> {
+    if (!this.provider) {
+      this.provider = import('./vercelProvider').then(({ VercelSandboxProvider }) => (
+        this.credentials
+          ? new VercelSandboxProvider(undefined, { credentials: this.credentials })
+          : new VercelSandboxProvider()
+      ))
+    }
+    return this.provider
+  }
+
+  async create(...args: Parameters<SandboxProvider['create']>) {
+    return await (await this.loadProvider()).create(...args)
+  }
+
+  async get(...args: Parameters<SandboxProvider['get']>) {
+    return await (await this.loadProvider()).get(...args)
+  }
+}
 
 const environment = process.env
 let config: RuntimeConfig
@@ -20,11 +49,7 @@ try {
   config = setupRequiredRuntimeConfig()
   credentials = undefined
 }
-const provider = credentials?.sandboxCredentials
-  ? new VercelSandboxProvider(undefined, {
-      credentials: credentials.sandboxCredentials,
-    })
-  : new VercelSandboxProvider()
+const provider = new LazyVercelSandboxProvider(credentials?.sandboxCredentials)
 
 export const runtimeApi = new RuntimeApi({
   config,
