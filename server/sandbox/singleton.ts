@@ -43,9 +43,26 @@ let credentials: PrivateRuntimeCredentials | undefined
 try {
   config = loadRuntimeConfig(environment)
   credentials = loadRuntimeCredentials(environment)
-} catch {
+} catch (caught) {
   // Keep the public setup endpoint available when an enabled deployment is
   // incomplete. Execution remains disabled, and no operator details leak.
+  // Operator-only diagnostic (server logs, never the public response): report
+  // which credential check failed and whether each variable is present, using
+  // booleans and lengths so no secret value is ever logged.
+  console.error('[runtime-setup] cloud runtimes disabled:', {
+    reason: caught instanceof Error ? caught.message : String(caught),
+    SANDBOX_ENABLED: environment.SANDBOX_ENABLED,
+    hasSessionSecret: Boolean(environment.PLAYGROUND_SESSION_SECRET?.trim()),
+    sessionSecretLength: environment.PLAYGROUND_SESSION_SECRET?.length ?? 0,
+    hasAccessToken: Boolean(environment.PLAYGROUND_ACCESS_TOKEN?.trim()),
+    VERCEL: environment.VERCEL,
+    hasOidcToken: Boolean(environment.VERCEL_OIDC_TOKEN?.trim()),
+    staticCreds: {
+      VERCEL_TOKEN: Boolean(environment.VERCEL_TOKEN?.trim()),
+      VERCEL_TEAM_ID: Boolean(environment.VERCEL_TEAM_ID?.trim()),
+      VERCEL_PROJECT_ID: Boolean(environment.VERCEL_PROJECT_ID?.trim()),
+    },
+  })
   config = setupRequiredRuntimeConfig()
   credentials = undefined
 }
