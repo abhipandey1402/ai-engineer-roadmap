@@ -751,10 +751,19 @@ class VercelSandboxHandle implements SandboxHandle {
       },
     })
     const usesPython = this.helperRuntime === 'python'
+    // The SDK's mkDir is neither recursive nor idempotent, so it cannot create
+    // the nested idempotency state root when its parent is missing. Create the
+    // workspace and state root (and parents) with `mkdir -p`, which is both.
     try {
-      await this.sandbox.mkDir(this.stateRoot)
-    } catch (mkDirError) {
-      throw new Error(`mkDir(${this.stateRoot}): ${apiErrorDetail(mkDirError)}`)
+      const prepared = await this.sandbox.runCommand({
+        cmd: 'mkdir',
+        args: ['-p', WORKSPACE, this.stateRoot],
+      })
+      if (prepared.exitCode !== 0) {
+        throw new Error(`mkdir -p exited ${prepared.exitCode}`)
+      }
+    } catch (prepareError) {
+      throw new Error(`prepareDirs: ${apiErrorDetail(prepareError)}`)
     }
     let result: { exitCode: number }
     try {
