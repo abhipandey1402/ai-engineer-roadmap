@@ -534,6 +534,12 @@ export class RuntimeApi {
         },
       }
     } catch (caught) {
+      // Operator-only diagnostic (server logs, never the response): surface the
+      // real error that the generic 503 below would otherwise mask.
+      console.error('[run-command] execution failed', {
+        message: caught instanceof Error ? caught.message : String(caught),
+        name: caught instanceof Error ? caught.name : undefined,
+      })
       if (caught instanceof Error && caught.message === 'Output limit exceeded') {
         return error(
           413,

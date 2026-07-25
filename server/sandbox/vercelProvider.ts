@@ -719,8 +719,11 @@ class VercelSandboxHandle implements SandboxHandle {
         callback()
       },
     })
+    let helperStderr = ''
     const stderr = new Writable({
-      write(_chunk, _encoding, callback) {
+      write(chunk: Buffer | string, _encoding, callback) {
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+        if (helperStderr.length < 2000) helperStderr += buffer.toString('utf8')
         callback()
       },
     })
@@ -743,6 +746,13 @@ class VercelSandboxHandle implements SandboxHandle {
       timeoutMs: command.timeoutMs + HELPER_GRACE_MS,
     })
     if (result.exitCode !== 0) {
+      // Operator-only diagnostic: the in-sandbox helper's stderr and the
+      // detected helper runtime, so a non-zero exit can be diagnosed from logs.
+      console.error('[sandbox-helper] non-zero exit', {
+        helperRuntime: this.helperRuntime,
+        exitCode: result.exitCode,
+        stderr: helperStderr.slice(0, 1000),
+      })
       throw new Error('Sandbox idempotency helper failed')
     }
     return parseHelperResponse(helperOutput)
