@@ -98,24 +98,43 @@ describe('loadRuntimeConfig', () => {
     )
   })
 
-  it.each([
-    [
-      { VERCEL_TOKEN: 'vercel-token' },
-      'VERCEL_TEAM_ID, VERCEL_PROJECT_ID',
-    ],
-    [
-      { VERCEL_TEAM_ID: 'team-id', VERCEL_PROJECT_ID: 'project-id' },
-      'VERCEL_TOKEN',
-    ],
-  ])('rejects a partial static credential trio without exposing values', (partial, missing) => {
+  it('rejects a partial static trio when VERCEL_TOKEN is set without the rest', () => {
     expect(() => loadRuntimeConfig({
       SANDBOX_ENABLED: 'true',
-      ...partial,
+      VERCEL_TOKEN: 'vercel-token',
       PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
       PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
     })).toThrow(
-      `Static Vercel authentication requires VERCEL_TOKEN, VERCEL_TEAM_ID, and VERCEL_PROJECT_ID together; missing: ${missing}.`,
+      'Static Vercel authentication requires VERCEL_TOKEN, VERCEL_TEAM_ID, and VERCEL_PROJECT_ID together; missing: VERCEL_TEAM_ID, VERCEL_PROJECT_ID.',
     )
+  })
+
+  it('ignores Vercel auto-injected VERCEL_PROJECT_ID on the OIDC path', () => {
+    // Vercel injects VERCEL_PROJECT_ID into every deployment. Without an
+    // explicit VERCEL_TOKEN this must not be read as static auth, and the
+    // production request context (VERCEL=1) still enables cloud runtimes.
+    const env = {
+      SANDBOX_ENABLED: 'true',
+      VERCEL: '1',
+      VERCEL_PROJECT_ID: 'auto-injected-project-id',
+      PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
+      PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
+    }
+    expect(loadRuntimeConfig(env).enabled).toBe(true)
+    expect(loadRuntimeCredentials(env)).toEqual({
+      sessionSecret: SESSION_SECRET,
+      accessToken: 'owner-access-token',
+    })
+  })
+
+  it('treats VERCEL_TEAM_ID/VERCEL_PROJECT_ID without VERCEL_TOKEN as non-static', () => {
+    expect(() => loadRuntimeConfig({
+      SANDBOX_ENABLED: 'true',
+      VERCEL_TEAM_ID: 'team-id',
+      VERCEL_PROJECT_ID: 'project-id',
+      PLAYGROUND_SESSION_SECRET: SESSION_SECRET,
+      PLAYGROUND_ACCESS_TOKEN: 'owner-access-token',
+    })).toThrow('Vercel authentication')
   })
 
   it('does not accept the unsupported VERCEL_ACCESS_TOKEN name', () => {

@@ -76,26 +76,22 @@ function isSafeSessionSecret(secret: string | undefined): secret is string {
 function loadEnabledCredentials(
   env: Record<string, string | undefined>,
 ): PrivateRuntimeCredentials {
-  const staticCredentialNames = [
-    'VERCEL_TOKEN',
-    'VERCEL_TEAM_ID',
-    'VERCEL_PROJECT_ID',
-  ] as const
-  const suppliedStaticCredentials = staticCredentialNames.filter(
-    (name) => hasValue(env[name]),
-  )
-  if (
-    suppliedStaticCredentials.length > 0
-    && suppliedStaticCredentials.length < staticCredentialNames.length
-  ) {
-    const missing = staticCredentialNames.filter((name) => !hasValue(env[name]))
-    throw new Error(
-      `Static Vercel authentication requires VERCEL_TOKEN, VERCEL_TEAM_ID, and VERCEL_PROJECT_ID together; missing: ${missing.join(', ')}.`,
+  // Only an explicit VERCEL_TOKEN signals that an operator opted into static
+  // Vercel authentication. Vercel automatically injects other VERCEL_* system
+  // variables (notably VERCEL_PROJECT_ID) into every deployment, so their mere
+  // presence must not be mistaken for a partially supplied static trio.
+  const hasStaticCredentials = hasValue(env.VERCEL_TOKEN)
+  if (hasStaticCredentials) {
+    const missing = (['VERCEL_TEAM_ID', 'VERCEL_PROJECT_ID'] as const).filter(
+      (name) => !hasValue(env[name]),
     )
+    if (missing.length > 0) {
+      throw new Error(
+        `Static Vercel authentication requires VERCEL_TOKEN, VERCEL_TEAM_ID, and VERCEL_PROJECT_ID together; missing: ${missing.join(', ')}.`,
+      )
+    }
   }
 
-  const hasStaticCredentials = suppliedStaticCredentials.length
-    === staticCredentialNames.length
   if (
     !hasValue(env.VERCEL_OIDC_TOKEN)
     && env.VERCEL !== '1'
