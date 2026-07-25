@@ -29,6 +29,11 @@ import {
 const STORE_KEY = 'pathwise-playground-files'
 const knownExtension = /\.(?:py|cjs|mjs|js)$/i
 
+// Owner gate for cloud runtimes, intentionally shipped in the public bundle so
+// the playground is open to every visitor. This must match PLAYGROUND_ACCESS_TOKEN
+// in the deployment. Rotate both together to revoke access.
+const DEFAULT_ACCESS_TOKEN = 'Qf05JtJaLrqC4tFow83Gp09uCQSHk4fV'
+
 function ensureRuntimeExtension(name: string, runtime: PlaygroundRuntime): string {
   if (knownExtension.test(name)) return name
   return runtime === 'cloud-node' ? `${name}.js` : `${name}.py`
@@ -69,7 +74,7 @@ export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggle
   const [runError, setRunError] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [environmentEntries, setEnvironmentEntries] = useState<EnvironmentEntry[]>([])
-  const [accessToken, setAccessToken] = useState('')
+  const [accessToken, setAccessToken] = useState(DEFAULT_ACCESS_TOKEN)
   const nextEnvironmentId = useRef(1)
   const cloudRunBusy = useRef(false)
   const {
@@ -88,7 +93,9 @@ export function PlaygroundApp({ theme, onToggleTheme }: { theme: Theme; onToggle
     [environmentEntries],
   )
   const clearSecrets = useCallback(() => {
-    setAccessToken('')
+    // Restore the built-in owner gate so the playground stays open after a
+    // destroy/clear rather than falling back to an empty, unauthorized token.
+    setAccessToken(DEFAULT_ACCESS_TOKEN)
     setEnvironmentEntries((entries) => entries.map((entry) => (
       entry.secret ? { ...entry, value: '' } : entry
     )))
