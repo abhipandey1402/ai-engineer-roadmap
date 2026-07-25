@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto'
 import {
   DEFAULT_LIMITS,
   type CloudRuntime,
-} from '../../src/lib/sandbox/protocol'
+} from '../../src/lib/sandbox/protocol.js'
 
 type RuntimeLimits = typeof DEFAULT_LIMITS
 

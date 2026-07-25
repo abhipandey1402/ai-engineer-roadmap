@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type {
   RuntimeRequest,
   RuntimeResponse,
-} from './runtimeApi'
+} from './runtimeApi.js'
 
 const MAX_BODY_BYTES = 1_000_000
 

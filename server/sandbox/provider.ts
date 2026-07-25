@@ -1,7 +1,7 @@
 import type {
   CloudRuntime,
   ProjectFile,
-} from '../../src/lib/sandbox/protocol'
+} from '../../src/lib/sandbox/protocol.js'
 
 export interface SandboxCommand {
   executable: string

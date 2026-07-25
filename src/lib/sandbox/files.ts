@@ -1,4 +1,4 @@
-import type { ProjectFile } from './protocol'
+import type { ProjectFile } from './protocol.js'
 
 interface ProjectFileLimits {
   maxFiles: number

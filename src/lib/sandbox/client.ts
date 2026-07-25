@@ -4,13 +4,13 @@ import type {
   ExecuteCommand,
   ProjectFile,
   RuntimeCapabilities,
-} from './protocol'
+} from './protocol.js'
 
 export type {
   CommandOutputChunk,
   CommandResult,
   RuntimeCapabilities,
-} from './protocol'
+} from './protocol.js'
 
 type Fetch = typeof globalThis.fetch
 type IdempotencyKeyFactory = () => string

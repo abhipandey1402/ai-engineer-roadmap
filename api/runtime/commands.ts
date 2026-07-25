@@ -1,5 +1,5 @@
-import { nodeHandler } from '../../server/sandbox/http'
-import { runtimeApi } from '../../server/sandbox/singleton'
+import { nodeHandler } from '../../server/sandbox/http.js'
+import { runtimeApi } from '../../server/sandbox/singleton.js'
 
 export default nodeHandler(
   (request) => runtimeApi.runCommand(request),

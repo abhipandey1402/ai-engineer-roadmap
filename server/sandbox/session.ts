@@ -5,7 +5,7 @@ import {
   createHash,
   randomBytes,
 } from 'node:crypto'
-import type { CloudRuntime } from '../../src/lib/sandbox/protocol'
+import type { CloudRuntime } from '../../src/lib/sandbox/protocol.js'
 
 export interface SessionPayload {
   name: string

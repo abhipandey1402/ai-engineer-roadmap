@@ -4,8 +4,8 @@ import { Sandbox } from '@vercel/sandbox'
 import type {
   CloudRuntime,
   ProjectFile,
-} from '../../src/lib/sandbox/protocol'
-import { DEFAULT_LIMITS } from '../../src/lib/sandbox/protocol'
+} from '../../src/lib/sandbox/protocol.js'
+import { DEFAULT_LIMITS } from '../../src/lib/sandbox/protocol.js'
 import {
   SandboxIndeterminateExecutionError,
   SandboxIdempotencyConflictError,
@@ -15,8 +15,8 @@ import {
   type SandboxCommandResult,
   type SandboxHandle,
   type SandboxProvider,
-} from './provider'
-import type { SandboxCredentials } from './config'
+} from './provider.js'
+import type { SandboxCredentials } from './config.js'
 
 const WORKSPACE = '/vercel/sandbox/workspace'
 const DEFAULT_STATE_ROOT = '/vercel/sandbox/.pathwise/idempotency'

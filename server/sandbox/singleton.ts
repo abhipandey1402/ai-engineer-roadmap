@@ -4,9 +4,9 @@ import {
   setupRequiredRuntimeConfig,
   type PrivateRuntimeCredentials,
   type RuntimeConfig,
-} from './config'
-import type { SandboxProvider } from './provider'
-import { RuntimeApi } from './runtimeApi'
+} from './config.js'
+import type { SandboxProvider } from './provider.js'
+import { RuntimeApi } from './runtimeApi.js'
 
 class LazyVercelSandboxProvider implements SandboxProvider {
   private provider: Promise<SandboxProvider> | undefined
@@ -19,7 +19,7 @@ class LazyVercelSandboxProvider implements SandboxProvider {
 
   private async loadProvider(): Promise<SandboxProvider> {
     if (!this.provider) {
-      this.provider = import('./vercelProvider').then(({ VercelSandboxProvider }) => (
+      this.provider = import('./vercelProvider.js').then(({ VercelSandboxProvider }) => (
         this.credentials
           ? new VercelSandboxProvider(undefined, { credentials: this.credentials })
           : new VercelSandboxProvider()

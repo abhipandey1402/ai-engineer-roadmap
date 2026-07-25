@@ -4,7 +4,7 @@ import {
   type ExecuteCommand,
   type ParsedTerminalCommand,
   type PlaygroundRuntime,
-} from './protocol'
+} from './protocol.js'
 
 type Quote = 'single' | 'double' | null
 type CommandRuntime = CloudRuntime | PlaygroundRuntime

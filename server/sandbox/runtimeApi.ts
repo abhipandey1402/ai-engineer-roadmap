@@ -1,28 +1,28 @@
 import { createHash, randomUUID } from 'node:crypto'
 import {
   parseTerminalCommand,
-} from '../../src/lib/sandbox/commands'
-import { validateProjectFiles } from '../../src/lib/sandbox/files'
-import { redactSecrets } from '../../src/lib/sandbox/redaction'
+} from '../../src/lib/sandbox/commands.js'
+import { validateProjectFiles } from '../../src/lib/sandbox/files.js'
+import { redactSecrets } from '../../src/lib/sandbox/redaction.js'
 import type {
   CloudRuntime,
   ExecuteCommand,
   ProjectFile,
-} from '../../src/lib/sandbox/protocol'
+} from '../../src/lib/sandbox/protocol.js'
 import {
   authorizeAccess,
   type PrivateRuntimeCredentials,
   type RuntimeConfig,
-} from './config'
+} from './config.js'
 import type {
   SandboxCommandIdempotency,
   SandboxCommandResult,
   SandboxProvider,
-} from './provider'
+} from './provider.js'
 import {
   SandboxIdempotencyConflictError,
   SandboxNotFoundError,
-} from './provider'
+} from './provider.js'
 import {
   clearSessionCookie,
   openSession,
@@ -30,7 +30,7 @@ import {
   sealSession,
   serializeSessionCookie,
   type SessionPayload,
-} from './session'
+} from './session.js'
 
 export interface RuntimeRequest {
   method: string
