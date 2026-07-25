@@ -753,7 +753,9 @@ class VercelSandboxHandle implements SandboxHandle {
         exitCode: result.exitCode,
         stderr: helperStderr.slice(0, 1000),
       })
-      throw new Error('Sandbox idempotency helper failed')
+      throw new Error(
+        `Sandbox idempotency helper failed [rt=${this.helperRuntime} exit=${result.exitCode} stderr=${helperStderr.slice(0, 400).replace(/\s+/g, ' ').trim()}]`,
+      )
     }
     return parseHelperResponse(helperOutput)
   }

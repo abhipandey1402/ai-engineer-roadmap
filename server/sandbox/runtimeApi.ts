@@ -559,7 +559,10 @@ export class RuntimeApi {
       return error(
         503,
         'SANDBOX_UNAVAILABLE',
-        'The cloud sandbox is temporarily unavailable.',
+        // TEMPORARY DEBUG: surface the real cause of the 503 in the response so
+        // it can be read without Vercel log access. Revert to the generic
+        // message once the command-execution failure is fixed.
+        `DEBUG ${caught instanceof Error ? `${caught.name}: ${caught.message}` : String(caught)}`,
         responseHeaders,
       )
     }
