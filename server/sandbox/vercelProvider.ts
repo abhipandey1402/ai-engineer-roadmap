@@ -24,9 +24,9 @@ const HELPER_GRACE_MS = 5_000
 const MAX_HELPER_OUTPUT_BYTES = DEFAULT_LIMITS.maxOutputBytes * 8
 const FLOCK_EXECUTABLE = '/usr/bin/flock'
 
-// TEMPORARY DEBUG: extract the Vercel Sandbox APIError status + body so a failed
-// SDK call reports which request the API rejected and why. Remove with the
-// response-level debug exposure once the command-execution failure is fixed.
+// Extract the Vercel Sandbox APIError status + body so a failed SDK call reports
+// which request the API rejected and why. The detail is only ever logged
+// server-side (the client always receives a generic message).
 function apiErrorDetail(error: unknown): string {
   if (error && typeof error === 'object') {
     const e = error as {
@@ -258,7 +258,10 @@ async function main() {
         cwd: payload.cwd,
         env: {
           ...payload.env,
-          PATH: '/usr/local/bin:/usr/bin:/bin',
+          // Keep the sandbox's own PATH so runtime tools (e.g. node/npm under
+          // /vercel/runtimes/nodeXX) resolve; append the standard system dirs.
+          PATH: [process.env.PATH, '/usr/local/bin', '/usr/bin', '/bin']
+            .filter(Boolean).join(':'),
           HOME: '/vercel/sandbox',
           TMPDIR: '/tmp',
           LANG: 'C.UTF-8',
@@ -468,8 +471,12 @@ def bounded_text(data, remaining):
 
 def execute(payload, gate_path, failed_path):
     environment = dict(payload['env'])
+    # Keep the sandbox's own PATH so the runtime's tools (e.g. python/pip under
+    # /vercel/runtimes/python) resolve; append the standard system dirs.
+    inherited_path = os.environ.get('PATH', '')
+    base_path = '/usr/local/bin:/usr/bin:/bin'
     environment.update({
-        'PATH': '/usr/local/bin:/usr/bin:/bin',
+        'PATH': (inherited_path + ':' + base_path) if inherited_path else base_path,
         'HOME': '/vercel/sandbox',
         'TMPDIR': '/tmp',
         'LANG': 'C.UTF-8',

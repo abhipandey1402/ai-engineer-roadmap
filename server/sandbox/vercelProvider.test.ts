@@ -55,6 +55,9 @@ class LocalSandbox implements VercelSandboxFacade {
   }
 
   async runCommand(options: RunCommandOptions): Promise<{ exitCode: number }> {
+    // Directory preparation (`mkdir -p ...`) is best-effort setup, not a helper
+    // invocation; treat it as a successful no-op so assertions target the helper.
+    if (options.cmd === 'mkdir') return { exitCode: 0 }
     this.runCalls.push(options)
     if (options.cmd !== '/usr/bin/flock') return this.spawn(options)
 
@@ -626,6 +629,7 @@ describe('VercelSandboxProvider', () => {
     const handle = await new VercelSandboxProvider(sdk, { stateRoot }).get('existing')
     const maliciousKey = `${'x'.repeat(4_096)}/../../escape`
     sandbox.runCommand = vi.fn(async (options: RunCommandOptions) => {
+      if (options.cmd === 'mkdir') return { exitCode: 0 }
       sandbox.runCalls.push(options)
       options.stdout?.write('not-json')
       return { exitCode: 0 }
